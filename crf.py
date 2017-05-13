@@ -79,8 +79,7 @@ class LinearChainCRF:
         @param ytags  : a tag sequence
         @param xwords:  a sequence of word representations
         """
-        ytags         = [self.source_tag] + ytags
-        ytags_bigrams = list(zip(ytags,ytags[1:]))
+        ytags_bigrams = list(zip([self.source_tag]+ytags,ytags))
         score = 1
         for x,y in zip(xwords,ytags_bigrams):
             score *= self.score(y[0],y[1],x)
@@ -143,8 +142,7 @@ class LinearChainCRF:
         #pre-computes delta_ref (first term of the gradient is constant)
         delta_ref  = SparseWeightVector()
         for ytags,xwords in dataset:
-            ytags         = [self.source_tag] + ytags
-            ytags_bigrams = list(zip(ytags,ytags[1:]))
+            ytags_bigrams = list(zip([self.source_tag]+ytags,ytags))
             for x,y in zip(xwords,ytags_bigrams):
                 delta_ref += SparseWeightVector.code_phi(x,y)
 
