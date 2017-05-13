@@ -60,14 +60,15 @@ class LinearCRF:
         #End state
         smax,amax = 0,0
         for pred in range(K):
+            score = viterbi[N-1,pred]
             if score > smax:
                 smax,amax = score,pred
                 
         #Backtrace
-        rev_tag_sequence = [self.Y[amax]]
-        for i in range(N-1,1,-1):
-            amax = history[i,amax]
-            rev_tag_sequence.append( self.Y[ int(history[i-1,amax]) ] )
+        rev_tag_sequence = [] 
+        for i in range(N-1,-1,-1):
+            rev_tag_sequence.append(self.Y[ amax ])
+            amax = int(history[i,amax])
             
         return list(reversed(rev_tag_sequence))
 
