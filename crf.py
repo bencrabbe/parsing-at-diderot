@@ -24,7 +24,7 @@ def make_dataset(text):
     return dataset
 
 
-class LinearCRF:
+class LinearChainCRF:
 
 
     def __init__(self):
@@ -190,6 +190,6 @@ corpus = ['Le/D chat/N mange/V la/D souris/N ./PONCT','La/D souris/N danse/V ./P
 D = make_dataset(corpus)
 print(D)
 
-crf = LinearCRF()
+crf = LinearChainCRF()
 crf.train(D)
 print(crf.test(D))
