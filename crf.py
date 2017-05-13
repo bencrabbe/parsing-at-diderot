@@ -3,7 +3,6 @@ from math import exp,log
 
 import numpy as np
 
-
 def make_dataset(text):
     """
     @param text: a list of strings of the form : Le/D chat/N mange/V la/D souris/N ./PONCT
@@ -72,7 +71,7 @@ class LinearChainCRF:
             
         return list(reversed(rev_tag_sequence))
 
-    def exp_score(self,ytags,xwords):
+    def sequence_score(self,ytags,xwords):
         """
         Returns the unnormalized exp(dot product) score of a tag
         sequence given words and model parameters.
@@ -169,7 +168,7 @@ class LinearChainCRF:
                             prob = (alphas[i-1,yprev] * self.score(self.Y[yprev],self.Y[ytag],xwords[i]) * betas[i,ytag]) / Z
                             delta_pred += prob * SparseWeightVector.code_phi(xwords[i],(self.Y[yprev],self.Y[ytag]))
 
-                loss += log(self.exp_score(ytags,xwords)/Z)
+                loss += log(self.sequence_score(ytags,xwords)/Z)
                 
             print('Log likelihood(D) = ',loss)
             self.model += step_size*(delta_ref-delta_pred)
