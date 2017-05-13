@@ -3,6 +3,7 @@ from math import exp,log
 
 import numpy as np
 
+
 def make_dataset(text):
     """
     @param text: a list of strings of the form : Le/D chat/N mange/V la/D souris/N ./PONCT
@@ -25,7 +26,6 @@ def make_dataset(text):
 
 
 class LinearChainCRF:
-
 
     def __init__(self):
         self.model      = SparseWeightVector()
@@ -52,7 +52,7 @@ class LinearChainCRF:
             for j in range(K):
                 smax,amax = 0,0
                 for pred in range(K):
-                    score =  viterbi[i-1,pred] + self.score(self.Y[pred],self.Y[j],sentence[i])
+                    score =  viterbi[i-1,pred] * self.score(self.Y[pred],self.Y[j],sentence[i])
                     if score > smax:
                         smax,amax = score,pred
                 viterbi[i,j],history[i,j] = smax,amax
@@ -147,7 +147,8 @@ class LinearChainCRF:
             ytags_bigrams = list(zip(ytags,ytags[1:]))
             for x,y in zip(xwords,ytags_bigrams):
                 delta_ref += SparseWeightVector.code_phi(x,y)
-                            
+
+                
         for e in range(max_epochs):
             
             loss = 0.0
@@ -159,7 +160,7 @@ class LinearChainCRF:
                 alphas, Z   = self.forward(xwords)
                 betas, _    = self.backward(xwords) 
         
-                #init forward-backward
+                #forward-backward at init
                 for ytag in range(K):
                     prob = (self.score(self.source_tag,self.Y[ytag],xwords[0]) * betas[0,ytag]) / Z
                     delta_pred += prob * SparseWeightVector.code_phi(xwords[0],(self.source_tag,self.Y[ytag]))
@@ -172,9 +173,10 @@ class LinearChainCRF:
 
                 loss += log(self.exp_score(ytags,xwords)/Z)
                 
-            print('Loss (log likelihood) = ',loss)
+            print('Log likelihood(D) = ',loss)
             self.model += step_size*(delta_ref-delta_pred)
 
+            
     def test(self,dataset):
 
         N       = 0.0
@@ -185,11 +187,10 @@ class LinearChainCRF:
             correct += sum([ref == pred for ref,pred in zip(ytags,ypreds)])
         return correct / N
 
-            
-corpus = ['Le/D chat/N mange/V la/D souris/N ./PONCT','La/D souris/N danse/V ./PONCT','Il/Pro la/Pro voit/V dans/P la/D cour/N ./PONCT','Le/D chat/N la/Pro mange/V ./PONCT',"Le/D chat/V la/Pro mange/V"]
-D = make_dataset(corpus)
-print(D)
+if __name__ == '__main__':           
+    corpus = ['Le/D chat/N mange/V la/D souris/N ./PONCT','La/D souris/N danse/V ./PONCT','Il/Pro la/Pro voit/V dans/P la/D cour/N ./PONCT','Le/D chat/N la/Pro mange/V ./PONCT',"Le/D chat/N la/Pro mange/V",'Il/Pro est/V grand/A ./PONCT',"Il/Pro se/Pro dirige/V vers/P l'/D est/N ./PONCT"]
+    D = make_dataset(corpus)
 
-crf = LinearChainCRF()
-crf.train(D)
-print(crf.test(D))
+    crf = LinearChainCRF()
+    crf.train(D)
+    print(crf.test(D))
