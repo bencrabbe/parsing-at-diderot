@@ -163,12 +163,13 @@ class LinearCRF:
 
     def test(self,dataset):
 
+        N       = 0.0
+        correct = 0.0
         for ytags,xwords in dataset:
+            N += len(ytags)
             ypreds = self.tag(xwords)
-            print(ypreds)
-            
-            #result = list([ (y == self.tag(x)) for y,x in dataset ])
-            #return sum(result) / len(result)
+            correct += sum([ref == pred for ref,pred in zip(ytags,ypreds)])
+        return correct / N
 
             
 corpus = ['Le/D chat/N mange/V la/D souris/N ./PONCT','La/D souris/N danse/V ./PONCT','Il/Pro la/Pro voit/V dans/P la/D cour/N ./PONCT','Le/D chat/N la/Pro mange/V ./PONCT',"Le/D chat/V la/Pro mange/V"]
@@ -177,4 +178,4 @@ print(D)
 
 crf = LinearCRF()
 crf.train(D)
-crf.test(D)
+print(crf.test(D))
