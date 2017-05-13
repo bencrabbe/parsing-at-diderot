@@ -97,10 +97,9 @@ class StructuredPerceptron:
                 
                 if ypreds != ytags:
                     loss += 1.0 
-                    ytags         = [self.source_tag] + ytags
-                    ytags_bigrams = list(zip(ytags,ytags[1:]))
-                    ypreds        = [self.source_tag] + ypreds
-                    ypreds_bigrams= list(zip(ypreds,ypreds[1:]))
+
+                    ytags_bigrams = list(zip([self.source_tag]+ytags,ytags))
+                    ypreds_bigrams= list(zip([self.source_tag]+ypreds,ypreds))
 
                     delta_pred = SparseWeightVector()
                     for y,x in zip(ypreds_bigrams,xwords):
