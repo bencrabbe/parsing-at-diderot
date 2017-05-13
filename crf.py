@@ -65,9 +65,9 @@ class LinearCRF:
                 
         #Backtrace
         rev_tag_sequence = [self.Y[amax]]
-        for i in range(N-1,2,-1):
+        for i in range(N-1,1,-1):
             amax = history[i,amax]
-            rev_tag_sequence.append( self.Y[ history[i-1,amax] ] )
+            rev_tag_sequence.append( self.Y[ int(history[i-1,amax]) ] )
             
         return list(reversed(rev_tag_sequence))
 
@@ -145,7 +145,7 @@ class LinearCRF:
                 alphas,Z1  = self.forward(xwords)
                 betas, Z2  = self.backward(xwords) 
                 print(Z1,Z2)
-                assert(Z1==Z2)
+                #assert(Z1==Z2)
                 Z = Z1
                 #init forward-backward
                 for ytag in range(K):
@@ -160,9 +160,20 @@ class LinearCRF:
             self.model += step_size*(delta_ref-delta_pred)
             print('Loss (log likelihood) = ',loss)
 
+    def test(self,dataset):
+
+        for ytags,xwords in dataset:
+            ypreds = self.tag(xwords)
+            print(ypreds)
+            
+            #result = list([ (y == self.tag(x)) for y,x in dataset ])
+            #return sum(result) / len(result)
+
+            
 corpus = ['Le/D chat/N mange/V la/D souris/N ./PONCT','La/D souris/N danse/V ./PONCT','Il/Pro la/Pro voit/V dans/P la/D cour/N ./PONCT','Le/D chat/N la/Pro mange/V ./PONCT',"Le/D chat/V la/Pro mange/V"]
 D = make_dataset(corpus)
 print(D)
 
 crf = LinearCRF()
 crf.train(D)
+crf.test(D)
