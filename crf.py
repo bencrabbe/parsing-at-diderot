@@ -164,5 +164,3 @@ D = make_dataset(corpus)
 print(D)
 
 crf = LinearCRF()
-crf.Y = ["A","B"]
-crf.tag("Le chat dort".split())
