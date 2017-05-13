@@ -72,7 +72,20 @@ class LinearCRF:
             
         return list(reversed(rev_tag_sequence))
 
-    
+    def exp_score(self,ytags,xwords):
+        """
+        Returns the unnormalized exp(dot product) score of a tag
+        sequence.
+        @param ytags  : a tag sequence
+        @param xwords:  a sequence of word representations
+        """
+        ytags         = [self.source_tag] + ytags
+        ytags_bigrams = list(zip(ytags,ytags[1:]))
+        score = 1
+        for x,y in zip(xwords,ytags_bigrams):
+            score *= self.score(y[0],y[1],x)
+        return score
+        
     def score(self,y_pred,y,word_repr):
         """
         Scores a CRF clique (psi value for y-1,y,x)
@@ -143,11 +156,9 @@ class LinearCRF:
             for ytags,xwords in dataset:
                 N = len(xwords)
                 K = len(self.Y)
-                alphas,Z1  = self.forward(xwords)
-                betas, Z2  = self.backward(xwords) 
-                print(Z1,Z2)
-                #assert(Z1==Z2)
-                Z = Z1
+                alphas,Z   = self.forward(xwords)
+                betas, ZZ  = self.backward(xwords) 
+        
                 #init forward-backward
                 for ytag in range(K):
                     prob = (self.score(self.source_tag,self.Y[ytag],xwords[0]) * betas[0,ytag]) / Z
@@ -158,8 +169,10 @@ class LinearCRF:
                         for ytag in range(K):
                             prob = (alphas[i-1,yprev] * self.score(self.Y[yprev],self.Y[ytag],xwords[i]) * betas[i,ytag]) / Z
                             delta_pred += prob * SparseWeightVector.code_phi(xwords[i],(self.Y[yprev],self.Y[ytag]))
-            self.model += step_size*(delta_ref-delta_pred)
+                loss += log(self.exp_score(ytags,xwords)/Z)
+                
             print('Loss (log likelihood) = ',loss)
+            self.model += step_size*(delta_ref-delta_pred)
 
     def test(self,dataset):
 
