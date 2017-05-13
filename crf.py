@@ -75,7 +75,7 @@ class LinearCRF:
     def exp_score(self,ytags,xwords):
         """
         Returns the unnormalized exp(dot product) score of a tag
-        sequence.
+        sequence given words and model parameters.
         @param ytags  : a tag sequence
         @param xwords:  a sequence of word representations
         """
@@ -156,8 +156,8 @@ class LinearCRF:
             for ytags,xwords in dataset:
                 N = len(xwords)
                 K = len(self.Y)
-                alphas,Z   = self.forward(xwords)
-                betas, ZZ  = self.backward(xwords) 
+                alphas, Z   = self.forward(xwords)
+                betas, _   = self.backward(xwords) 
         
                 #init forward-backward
                 for ytag in range(K):
