@@ -169,6 +169,7 @@ class LinearCRF:
                         for ytag in range(K):
                             prob = (alphas[i-1,yprev] * self.score(self.Y[yprev],self.Y[ytag],xwords[i]) * betas[i,ytag]) / Z
                             delta_pred += prob * SparseWeightVector.code_phi(xwords[i],(self.Y[yprev],self.Y[ytag]))
+
                 loss += log(self.exp_score(ytags,xwords)/Z)
                 
             print('Loss (log likelihood) = ',loss)
