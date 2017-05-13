@@ -157,7 +157,7 @@ class LinearCRF:
                 N = len(xwords)
                 K = len(self.Y)
                 alphas, Z   = self.forward(xwords)
-                betas, _   = self.backward(xwords) 
+                betas, _    = self.backward(xwords) 
         
                 #init forward-backward
                 for ytag in range(K):
