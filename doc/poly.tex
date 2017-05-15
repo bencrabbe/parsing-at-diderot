@@ -1,0 +1,1247 @@
+%% The openany option is here just to remove the blank pages before a new chapter
+\documentclass[11pt,openany]{book}
+
+\title{Analyse syntaxique automatique du langage naturel}
+
+\usepackage{pagenote}
+\usepackage{booktabs}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{latexsym}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{tikz}
+\usetikzlibrary{snakes}
+\usetikzlibrary{matrix}
+\usepackage{comment}
+\usepackage{minted}
+
+
+
+\newtheorem{definition}{Définition}[chapter]
+\newtheorem{exo}{Exercice}[chapter]
+\includecomment{solution}
+%\excludecomment{solution}
+
+
+%%%%%%%%%%%%% For customising the endnote markers. Comment these out if you don't want them.
+% To prefix each note number with the chapter number
+\renewcommand{\thepagenote}{\thechapter-\arabic{pagenote}}
+
+% To have a slightly different formatting for the endnote numbers in the text -- smaller text, sans-serif, square brackets
+\renewcommand\notenumintext[1]{\space{\footnotesize\sffamily[FN-#1]}}
+
+% To have a slightly different formatting for the endnote numbers in the notes section. Just the square brackets and sans-serif; normal size.
+\renewcommand\notenuminnotes[1]{{\sffamily[FN-#1] }}
+
+% If you want a different name/heading for the end notes
+\renewcommand{\notesname}{End Notes}
+%%%%%%%%%%%%% End customisation
+
+
+%% THIS LINE IS MANDATORY
+\makepagenote
+
+\usepackage{hyperref}
+\usepackage{tikz}
+
+\newcommand{\ac}[1]{{\sc #1}} %acronym
+\newcommand{\kw}[1]{{\bf #1}} %keyword
+
+\begin{document}
+
+
+\chapter*{Notations}
+
+\url{http://www-users.cs.umn.edu/~karypis/parbook/Lectures/AG/chap12_slides.pdf}
+\url{http://www.aclweb.org/anthology/C08-5001}
+\url{http://www.cs.columbia.edu/~mcollins/}
+
+\paragraph{Pseudo Code}
+\begin{description}
+\item $X|Y$ concatène les listes $X$ et $Y$
+\item $x_i$ le $i$-ème élément de la liste $X$
+\item $_{\ominus}X$ la liste $X$ sans son premier élément
+\item $X_{\ominus}$ la liste $X$ sans son dernier élément
+\end{description}
+ 
+
+\chapter{Traitement automatique des langues et prédiction structurée}
+
+
+\section{Prédiction structurée}
+Un nombre important de problèmes de traitement automatique des langues (\ac{Tal}) peuvent se formaliser comme des problèmes de recherche de chemin le plus long (ou parfois le plus court) dans un graphe acyclique orienté (\ac{Dag}).
+
+Un exemple intuitif est le problème d'étiquetage de séquences appelé étiquetage morphosyntaxique. \'{E}tant donnée une séquence de $n$ mots $w_1\ldots w_n$,  on se donne pour tâche de prédire leurs parties de discours $t_1\ldots t_n$. 
+
+En première approche, on peut considérer deux méthodes pour  étiqueter des séquences de mots~: d'une part on peut envisager étiqueter chaque mot $w_i$ par une étiquette $t_i$ en fonction du contexte $C$ où il apparaît à l'aide d'une fonction $f: W, C \mapsto T$ (où $W$ dénote un ensemble de mots, $C$ un ensemble de contextes\footnote{Typiquement un élément de $C$ sera un tuple de mots qui sont situés à gauche et à droite de $w_i$} et $T$ un ensemble de parties de discours). La première approche met en jeu  un {\bf modèle local} qui prédit  chacune des étiquettes $t_i$ indépendamment de toute autre étiquette $t_j\, (i\not = j)$.
+
+L'approche alternative, dite globale et qui fait intervenir un {\bf modèle structuré} cherche à prédire la séquence de tags $t_1\ldots t_n$ en une fois.  La fonction de prédiction est de la forme $f:W^n \mapsto T^n$, autrement dit elle envoie une séquence de $n$ mots sur des séquences d'étiquettes de $n$ tags.  Utiliser cette seconde alternative  revient à supposer que les séquences forment une structure intéressante pour la prédiction. Ainsi un modèle local
+peut faire des erreurs pour prédire le tag $t_i$ qui sont liées à l'ignorance des prédictions 
+faites pour les tags avoisinants (comme par exemple $t_{i-1},t_{i-2}$\ldots). 
+
+\begin{center}
+\begin{tabular}{ccc}\toprule
+\multicolumn{3}{c}{Prédiction globale ?}\\\midrule
+D & A & N\\
+Le & grand & est\\\bottomrule
+\end{tabular}
+\begin{tabular}{ccc}\toprule
+\multicolumn{3}{c}{Prédiction locale ?}\\\midrule
+D & A & {\bf\color{red} V}\\
+Le & grand & est\\\bottomrule
+\end{tabular}
+\end{center}
+
+Le problème de prédiction globale ou structurée est plus complexe que le problème de prédiction locale. En effet pour un jeu de tags $T$ un modèle local doit choisir $n$ fois parmi $|T|$ alternatives pour étiqueter une phrase,  alors qu'un modèle global doit choisir parmi un ensemble de $|T|^n$ alternatives, ce qui a un coût~: réaliser ce choix naïvement demande d'enumérer un ensemble  exponentiel d'alternatives d'étiquetages de la phrase.
+
+\paragraph{Fonction de pondération}
+Réaliser le tagging d'une séquence de mots $\mathbf{w} =  w_1\ldots w_n$ demande de choisir une séquence de tags $\mathbf{t} = t_1\ldots t_n \in T^n$. 
+Ce  choix s'appuie en général sur une \kw{fonction de pondération} $\sigma : T^n\times W^n \mapsto \mathbb{R}$ qui associe un score à toute séquence de tags.
+La méthode de pondération permet alors d'ordonner les différentes séquences de tags en fonction du score qui leur est associé.  La \kw{fonction de décision} réalise le choix de la séquence à préférer en utilisant souvent une forme du type :
+\begin{equation}
+\label{eq-decision}
+\hat{\mathbf{t}} = \mathop{\text{argmax}}_{\mathbf{t} \in T^n}\quad \sigma(\mathbf{t},\mathbf{w})
+\end{equation}
+Généralement la fonction de pondération est instanciée par une méthode d'apprentissage automatique. Indiquons également que le calcul de la solution de (\ref{eq-decision})  consiste essentiellement à résoudre un \kw{problème d'optimisation} de la forme :
+\begin{equation}
+\label{eq-combi-optim}
+m = \mathop{\text{max}}_{\mathbf{t} \in T^n}\quad \sigma(\mathbf{t},\mathbf{w})
+\end{equation}
+à partir de là on tire généralement la solution de (\ref{eq-decision}) 
+par effet de bord.
+
+Ce qui distingue \ref{eq-combi-optim} d'un problème d'optimisation classique,
+c'est qu'il s'agit de chercher une valeur optimale dans un ensemble énumérable de taille finie dont les valeurs sont structurées en séquences.
+Bien que de taille finie, l'ensemble des solutions est en général de taille considérable de telle sorte qu'une méthode de recherche de solutions qui consiste à énumérer exhaustivement chacune des solutions est en général inutilisable.
+
+
+\section{Arbre de recherche de solutions}
+\marginpar{Biblio (AIMA : a modern approach)}
+
+La recherche de solutions à des problèmes de type (\ref{eq-combi-optim}) 
+peut s'exprimer sous la forme générale d'un problème de recherche~:
+\begin{itemize}
+\item Un espace de recherche qui est un ensemble $Q$ d'états
+\item Un état initial $q_0 \in Q$ qui est l'état à partir duquel le tagger commence.    
+\item Un ensemble $F\subseteq Q$ d'états finaux qui indique les états dans lequel le tagger a terminé.
+\item Un ensemble $A$ d'actions, dans le cas d'un tagger la seule action possible est de tagguer le mot suivant. On définit un ensemble d'actions $A$ pour lequel chaque élément représente l'attribution d'un tag au mot suivant dans la phrase.
+\item Un ensemble $T\subseteq Q\times Q \times A$ de transitions qui induit une structure d'arbre.
+\item Une fonction de coût $\sigma$ ou de score qui représente le score d'une séquence d'états calculé depuis l'état initial. On suppose que toute transition  $(q_i,q_{i+1},a_i) \in T$ se voit attribuer un coût $s(q_i,q_{i+1},a_i)$ par une fonction $s: T \mapsto \mathbb{R}$. On pose par convention que le coût de la séquence de transitions qui mène à l'état $q_k$ est le produit des coûts des transitions qui la composent~: 
+\begin{displaymath}
+\sigma(q_k) = \bigotimes_{0\leq i < k} s(q_i,q_{i+1},a_i)
+\end{displaymath}
+\end{itemize}
+\begin{figure}[htbp]
+\begin{tikzpicture}[xscale=2,yscale=2]
+
+    \node[shape=circle,draw=black,double=red] (S) at (0,3) {S};
+     \node[shape=circle,draw=black,double=red] (E) at (6,3) {E};
+
+
+    \node[shape=circle,draw=black] (A1) at (1,1) {D};
+    \node[shape=circle,draw=black] (B1) at (1,2) {N};
+    \node[shape=circle,draw=black] (C1) at (1,3) {A};
+    \node[shape=circle,draw=black] (D1) at (1,4) {P};
+    \node[shape=circle,draw=black] (E1) at (1,5) {V};
+
+ \draw [opacity=0.5](B1.east) -- (1.5,1.6) -- (1.5,2.4) -- cycle;
+ \draw [opacity=0.5](C1.east) -- (1.5,3.4) -- (1.5,2.6) -- cycle;
+ \draw [opacity=0.5](D1.east) -- (1.5,4.4) -- (1.5,3.6) -- cycle;
+ \draw [opacity=0.5](E1.east) -- (1.5,5.4) -- (1.5,4.6) -- cycle;
+ 
+    \node[shape=circle,draw=black] (A2) at (2,-1){D};
+    \node[shape=circle,draw=black] (B2) at (2,0) {N};
+    \node[shape=circle,draw=black] (C2) at (2,1) {A};
+    \node[shape=circle,draw=black] (D2) at (2,2) {P};
+    \node[shape=circle,draw=black] (E2) at (2,3) {V};
+
+     \draw [opacity=0.5](A2.east) -- (2.5,-1.4) -- (2.5,-0.6) -- cycle;
+     \draw [opacity=0.5](B2.east) -- (2.5,0.4) -- (2.5,-0.4) -- cycle;
+     \draw [opacity=0.5](C2.east) -- (2.5,0.6) -- (2.5,1.4) -- cycle;
+      \draw [opacity=0.5](D2.east) -- (2.5,2.4) -- (2.5,1.6) -- cycle;
+       \draw [opacity=0.5](E2.east) -- (2.5,3.4) -- (2.5,2.6) -- cycle;
+     
+      \draw [->,decorate,decoration={snake,amplitude=.8mm,segment length=2mm,post length=1mm},opacity=0.5](2,5)  --  (E.west);
+      \draw [->,decorate,decoration={snake,amplitude=.8mm,segment length=2mm,post length=1mm},opacity=0.5](3,3)  --  (E.west);
+      \draw [->,decorate,decoration={snake,amplitude=.8mm,segment length=2mm,post length=1mm},opacity=0.5](3,-1)  --  (E.west);
+
+	 \draw [->,ultra thick,opacity=0.5] (S) -- (A1);
+	 \draw [->,opacity=0.5] (S) -- (B1);
+	 \draw [->,opacity=0.5] (S) -- (C1);
+	 \draw [->,opacity=0.5] (S) -- (D1);
+	 \draw [->,opacity=0.5] (S) -- (E1);
+
+     \draw [->,opacity=0.5] (A1) -- (A2);
+	 \draw [->,opacity=0.5] (A1) -- (B2);
+	 \draw [->,ultra thick,opacity=0.5] (A1) -- (C2);
+	 \draw [->,opacity=0.5] (A1) -- (D2);
+	 \draw [->,opacity=0.5] (A1) -- (E2);
+
+
+
+ \node[draw=white,text depth=0.25ex,text height=1cm] (W1) at (1,-2) {La} ;
+    \node[draw=white,text depth=0.25ex,text height=1cm] (W2) at (2,-2) {belle} ;
+    \node[draw=white,text depth=0.25ex,text height=1cm] (W3) at (3,-2) {porte} ;
+    \node[draw=white,text depth=0.25ex,text height=1cm] (W4) at (4,-2) {le} ;
+    \node[draw=white,text depth=0.25ex,text height=1cm] (W5) at (5,-2) {cache} ;
+
+\end{tikzpicture}
+\caption{\label{fig-searchtree}Arbre de recherche de solutions}
+\end{figure}
+On peut illustrer la  structure d'un problème de recherche par un arbre comme en figure \ref{fig-searchtree} pour un problème d'étiquetage morphosyntaxique (les scores sont omis). En fait un nombre très important de problèmes de \ac{tal} peut s'analyser en termes de problème de recherche de solutions dans de grands ensembles à valeurs structurées. On verra qu'on peut ainsi définir des variantes quant à la nature des états, du système de transition, des actions et que la fonction de coût dépend en général de la méthode d'apprentissage utilisée. 
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{MaxSearch}{S,B,$\sigma$}
+\If{$B \not = \epsilon$}
+\State maxscore $\gets -\infty$
+\ForAll{$t \in T$}
+	\State pscore $\gets \sigma + s(S,B,t)$
+	\State maxscore $\gets $\Call{Max}{}(maxscore,\Call{MaxSearch}{$S|t$,$_{\ominus}$B,pscore})
+\EndFor
+\State\Return maxscore
+\Else
+  \State\Return $\sigma$
+\EndIf
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-searchtree}Algorithme de recherche structuré en arbre (cas du tagger)}
+\end{algorithm}
+En principe, quand l'arbre de recherche a une taille raisonnable, l'exploration des solutions peut se faire exhaustivement.  Mais en pratique cette première solution est en général utilisée rarement telle quelle~: on utilise plutôt des méthodes de programmation dynamique, de recherche approximative ou une combinaison des deux.
+
+On  donne en algorithme \ref{algo-searchtree},
+un exemple d'algorithme de recherche pour un problème structuré en arbre. On peut notamment constater que la structure d'arbre de recherche n'est pas exprimée par une structure de donnée explicite mais plutôt implicitement par la structure d'appels récursifs du programme. Comme exercice, il peut être intéressant de repérer les différentes composantes du problème de recherche dans le pseudo-code  (Algorithme \ref{algo-searchtree}).
+
+
+
+\begin{exo}Réécrire l'algorithme de parcours d'arbre de recherche
+pour que le résultat renvoyé soit maintenant un couple qui comporte la valeur de score maximale mais aussi la séquence de tags correspondante
+\end{exo}
+
+
+
+
+
+
+\section{Systèmes de transition}
+
+Pour spécifier explicitement un problème de recherche de solutions en \ac{tal}, on utilise fréquemment une spécification sous forme de système de transitions. Ce type de spécification a été popularisé par la tâche d'analyse syntaxique en dépendances.  Mais celle-ci est très générale, on trouve ce type de systèmes également pour spécifier des problèmes de planification en intelligence artificielle et (parfois) des méthodes de démonstration automatique. 
+
+On propose de les introduire immédiatement par un premier exemple qui caractérise explicitement une tâche de tagging. Spécifier un système de transitions revient à spécifier chacun des éléments suivants~:
+\begin{itemize}
+\item L'ensemble $Q$ des états est structuré. Chaque état $q\in Q$ est un couple $(S,B)$ où $S$ est une séquence de tags déjà prédits et $B$ une séquence de mots encore à traiter dans la phrase. 
+\item L'état initial $q_0$ est l'état $(\epsilon , B)$ où $B$ est la liste des mots de la phrase à étiqueter.
+\item L'ensemble des états finaux est l'ensemble $F$ des états tels que $B$ est vide. 
+\item L'ensemble $A$ des actions est l'ensemble qui représente le jeu de tags $t\in A$ utilisé par le tagger.
+\item L'ensemble $T$ des transitions est la relation
+entre états qui satisfait le critère suivant~: 
+\begin{displaymath}
+(S,b_0|B) \stackrel{t}{\Rightarrow}(S|t,B)\qquad (t \in A)
+\end{displaymath}
+Ce qui signifie que le premier mot de $B$ est enlevé; le tag qui correspond à l'action exécutée est ajouté à $S$.
+\item Le coût local d'une transition $s(S,B,t)$ est calculé par un modèle d'apprentissage approprié. 
+\end{itemize}
+
+Notons que les systèmes de transitions peuvent servir à exprimer des automates et des transducteurs à nombre finis d'états ou des contreparties d'automates à pile. Mais il est commun en \ac{tal} de ne pas limiter l'usage des systèmes de transition au seul encodage de ce type de machines.
+
+\begin{exo}
+Définir une variante de ce système de transition qui permet à un tagger d'accéder également aux mots qui précèdent dans la phrase avec la fonction de score $s(S,B,t)$ ou une de ses variantes. 
+\end{exo}
+\begin{exo}
+Réécrire l'algorithme de parcours d'un arbre de recherche pour qu'il renvoie le poids de la solution de poids maximal à l'aide du système de transitions donné ci-dessus.
+\end{exo}
+\begin{solution}
+\begin{algorithmic}
+\Function{MaxSearch}{S,B,$\sigma$}
+\If {B $\not = \epsilon$}
+\State maxscore $\gets -\infty$
+\ForAll{$t \in A$}
+\State pscore $\gets \sigma + s(S,B,t)$ 
+\State maxscore $\gets$ \Call{Max}{}(maxscore,\Call{MaxSearch}{$S|t$,$_\ominus B$,pscore})
+\EndFor
+\State\Return maxscore
+\Else
+\State\Return $\sigma$
+\EndIf
+\EndFunction
+\end{algorithmic}
+\end{solution}
+\begin{exo}
+Modifier la formulation de l'exercice précédent pour faire en sorte qu'il renvoie la séquence de tags ainsi que le poids de cette solution
+\end{exo}
+
+Lorsque l'espace des solutions est trop grand (ce qui est généralement le cas pour la plupart des problèmes de \ac{tal}) l'algorithme naïf de recherche vu jusqu'à présent, qui a une complexité exponentielle en $\mathcal{O}(A^n)$ est inutilisable. On se tourne alors vers des solutions qui s'appuient sur de la programmation dynamique (Section \ref{sec-DP}) ou des solutions  de recherche approximative ou une combinaison des deux.
+
+
+
+
+\section{Programmation dynamique}
+\label{sec-DP}
+Une des faiblesses de l'algorithme de recherche de solutions
+vu jusqu'à présent est qu'il réplique une quantité très importante de calculs.
+Pour nous en rendre compte, considérons deux séquences de tags 
+\begin{center}
+\begin{tabular}{ccccc}\toprule
+D &A& N& D& V\\
+D& A& N& P& V\\\midrule
+La&belle&porte&le&cache\\\bottomrule
+\end{tabular}
+\end{center}
+qui diffèrent par un élément.  On constate qu'une méthode de recherche en arbre (qui procède ici de droite à gauche)  va recalculer au moins deux foix la valeur du préfixe {\sl D A N}.  De manière générale la méthode de recherche de solutions en arbre reduplique une quantité considérable de calculs de préfixes, ce qui est largement inefficace.
+\begin{center}
+\begin{tikzpicture}[xscale=1.75,yscale=1.75]
+
+\node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
+\node[shape=circle,draw=black,double=red] (E) at (6,0) {E};
+\node[shape=circle,draw=black] (A1) at (5,0) {V};
+\node[shape=circle,draw=black] (A2) at (4,-1) {P};
+\node[shape=circle,draw=black] (B2) at (4,1) {D};
+\node[shape=circle,fill=red,fill opacity=0.2,draw=black] (C2) at (3,-1) {N};
+\node[shape=circle,fill=red,fill opacity=0.2,draw=black] (C1) at (3,1) {N};
+\draw [->,opacity=0.5](E) -- (A1);
+\draw [->,opacity=0.5](A1) -- (A2);
+\draw [->,opacity=0.5](A1) -- (B2);
+\draw [->,opacity=0.5](A2) -- (C2);
+\draw [->,opacity=0.5](B2) -- (C1);
+\draw [->,opacity=0.5, decorate,decoration={snake,amplitude=.2mm,segment length=2mm,post length=1mm}] (C1) -- (S.east);
+\draw [->,opacity=0.5, decorate,decoration={snake,amplitude=.2mm,segment length=2mm,post length=1mm}] (C2) -- (S.east);
+\end{tikzpicture}
+\end{center}
+L'idée des méthodes de \kw{programmation dynamique}, c'est d'éviter les reduplications de calculs inutiles pour réutiliser des résultats intermédiaires (partage de calcul). Ainsi l'espace des états est organisé en  graphe (\ac{dag}) plutôt qu'en arbre. Cette nouvelle organisation permet de proposer des solutions algorithmiques en temps polynomial plutôt qu'en temps exponentiel aux problèmes de recherche qui nous concernent.
+
+\begin{center}
+\begin{tikzpicture}[xscale=1.75,yscale=1.75]
+
+\node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
+\node[shape=circle,draw=black,double=red] (E) at (6,0) {E};
+\node[shape=circle,draw=black] (A1) at (5,0) {V};
+\node[shape=circle,draw=black] (A2) at (4,-1) {P};
+\node[shape=circle,draw=black] (B2) at (4,1) {D};
+\node[shape=circle,fill=green,fill opacity=0.2,draw=black] (C1) at (3,0) {N};
+\draw [->,opacity=0.5](E) -- (A1);
+\draw [->,opacity=0.5](A1) -- (A2);
+\draw [->,opacity=0.5](A1) -- (B2);
+\draw [->,opacity=0.5](A2) -- (C1);
+\draw [->,opacity=0.5](B2) -- (C1);
+\draw [->,opacity=0.5, decorate,decoration={snake,amplitude=.2mm,segment length=2mm,post length=1mm}] (C1) -- (S.east);
+\end{tikzpicture}
+\end{center}
+
+
+
+\subsection{Graphe Acyclique orienté}
+
+\begin{definition}[DAG] 
+Un graphe acyclique orienté (\ac{dag}) est un graphe $G = \langle V,E \rangle$ où $V$ est un ensemble de noeuds et $E$ un ensemble d'arcs
+($E \subseteq V\times V$) tel qu'il ne comporte pas de circuit.
+Dans le cas pondéré, on  y ajoute une fonction $s: E \mapsto \mathbb{R}$
+qui donne un score à chacun des arcs.
+\end{definition}
+
+\begin{definition}[Arc entrants] 
+Soit un noeud $x\in V$, l'ensemble $AE(x) = \{(y,x) \,|\, (y,x) \in E , y \in V \}$ est l'ensemble des arcs entrants sur ce noeud. 
+\end{definition}
+
+\begin{definition}[Arc sortants] 
+Soit un noeud $x\in V$, l'ensemble $AS(x) = \{(x,y) \,|\, (x,y) \in E , y \in V \}$ est l'ensemble des arcs sortants de ce noeud. 
+\end{definition}
+
+\begin{definition}[Chemin]
+Un chemin de longeur $n$ est une séquence de noeuds $\pi \in V^n$ de la forme $\pi = v_1 v_2\ldots v_n$ tel que $(v_i,v_{i+1}) \in E$ pour tout $1\leq i < n$. Le score $\sigma(\pi)$ d'un chemin est le produit :
+\begin{displaymath}
+\sigma(\pi) = \bigotimes_{i=1}^{n-1} s(v_i,v_{i+1}) 
+\end{displaymath}
+\end{definition}
+
+\begin{definition}[Poids maximal depuis la source]
+Soit un \ac{dag} dont un noeud distingué $s\in V$ est appelé noeud source. En notant $P(x)$ l'ensemble des chemins qui mènent de la source
+à $x$, on définit le poids maximal de $x$ comme suit~: 
+\begin{displaymath}
+\delta(x)  = \left\{ 
+\begin{array}{ll}
+\bar{0} & \text{si } $x = s$ \\
+\bigoplus_{\pi \in P(x)} \sigma(\pi) &\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\end{definition}
+
+
+\subsection{Optimisation de fonctions récursives}
+Un problème de programmation dynamique est typiquement formulé comme un problème d'optimisation entre différentes alternatives~: il s'agit par exemple de trouver un chemin de poids maximum parmi plusieurs chemins pondérés.
+
+\begin{center}
+\begin{tikzpicture}[xscale=2,yscale=2]
+\node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
+\node[shape=circle,draw=black,double=red] (E) at (4,0) {E};
+\node[shape=circle,draw=black] (1) at (1,1) {A};
+\node[shape=circle,draw=black] (2) at (3,1) {C};
+\node[shape=circle,draw=black] (3) at (2,0) {B};
+\draw [->,opacity=0.5](S) -- (1) node[midway,fill=white]{$s(S,A)$};
+\draw [->,opacity=0.5](S) -- (3) node[midway,fill=white]{$s(S,B)$};
+\draw [->,opacity=0.5](1) -- (3) node[midway,fill=white]{$s(A,B)$};
+\draw [->,opacity=0.5](1) -- (2) node[midway,fill=white]{$s(A,C)$};
+\draw [->,opacity=0.5](3) -- (2) node[midway,fill=white]{$s(B,C)$};
+\draw [->,opacity=0.5](2) -- (E) node[midway,fill=white]{$s(C,E)$};
+\draw [->,opacity=0.5](3) -- (E) node[midway,fill=white]{$s(B,E)$};
+\end{tikzpicture}
+\end{center}
+
+Notons $\sigma(x)$ le coût d'un chemin entre le noeud initial du \ac{dag} et un noeud $x$. En notant $x_{-1},x_{-2}\ldots x_{-k}$ les prédécesseurs d'un noeud $x$ dans le graphe ($x_{-i} \in AE(x)$), on a que le chemin de poids maximal pour arriver à $x$ depuis ses prédécesseurs est donné par l'équation :
+\begin{equation}
+\label{eq-bellmann}
+\delta(x) = \left\{ 
+\begin{array}{ll}
+0 & \text{si }  x = q_0\\
+\oplus \left[ \alpha(x_{-1}) \otimes s(x_{-1},x), \ldots ,\alpha(x_{-k}) \otimes s(x_{-k},x) \right] &\text{sinon}
+\end{array}
+\right.
+\end{equation}
+qui est appelée équation de programmation dynamique ou \kw{équation de Bellmann}. Il s'agit d'une formule récursive qui fait intervenir deux opérations~: $\oplus$ est une opération d'aggrégation parmi plusieurs alternatives comme typiquemen {\sl max} ou {\sl min} et $\otimes$ est un opération de composition destinée à calculer le score de chemins dans un \ac{dag} comme typiquement $+$ ou $\times$. 
+
+La récurrence exprimée en (\ref{eq-bellmann})  indique que pour déterminer le poids du chemin optimal qui mène à $x$, il faut comparer le poids de l'ensemble des chemins qui passent par les prédécesseurs de $x$ dans le \ac{dag}.
+
+Mais cette récurrence indique surtout que pour déterminer le coût du chemin optimal pour atteindre $x$ il faut essentiellement réutiliser la solution du sous-problème pour chacun des prédécesseurs de $x$, ce qui revient à déterminer le chemin optimal qui mène à chacun des $x_{-i}$.
+
+Lorsque certains sous-problèmes sont à recalculer plusieurs fois, on  dit qu'il y a \kw{recouvrement de sous-problèmes}. Les techniques de programmation dynamique consistent à éviter l'évaluation multiple d'un même sous-problème en mémorisant les solutions intermédiaires.
+
+Plusieurs techniques pour réaliser la mémorisation seront présentées mais celles-ci font généralement appel à une table dite table de programmation dynamique pour mémoriser les résultats intermédiaires. Celle-ci mémorise les valeurs $\delta(x)$ des états $x$ visités lors de la résolution du problème.
+
+Une solution simple et directe pour exprimer ce qui précède est la technique de \kw{mémoisation}. Celle-ci repose sur l'usage de \kw{mémo-fonctions}. L'idée est de mémoriser la solution $\delta(x)$ dans une table dès que celle-ci est déterminée. Cette table est alors consultée dans les étapes ultérieures de l'algorithme de telle sorte que la valeur mémorisée est réutilisée au lieu de réexécuter l'appel récursif.
+
+L'algorithme \ref{algo-searchMemo} illustre le principe de la mémoisation. On suppose que le \ac{dag} a un état final $q_f$, et que la table {\sl memo} est initialisée à $\delta(x) = -\infty$ pour tout  $x\in V$ (sauf $\delta(q_0) = 0$). La fonction est initialement appelée avec le paramètre $q_f$.  
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{MaxSearchMemo}{x}
+\If{$\text{memo}[x] \not = -\infty$}
+\Comment{Score mémoisé}
+\State\Return memo[x]
+\EndIf
+\ForAll{$y \in AE(x)$}
+\State memo[x] $\gets$ \Call{Max}{}(memo[x],\Call{MaxSearchMemo}{y} + s(y,x))
+\EndFor
+\State\Return memo[x]
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-searchMemo}Algorithme de recherche d'une valeur optimale mémoisé}
+\end{algorithm}
+
+\begin{exo}Donner une valuation numérique aux arcs du \ac{dag} suivant et  simuler l'exécution de l'algorithme \ref{algo-searchMemo} sur papier.
+\begin{center}
+\begin{tikzpicture}[xscale=2,yscale=2]
+\node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
+\node[shape=circle,draw=black,double=red] (E) at (4,0) {E};
+\node[shape=circle,draw=black] (1) at (1,1) {A};
+\node[shape=circle,draw=black] (2) at (3,1) {C};
+\node[shape=circle,draw=black] (3) at (2,0) {B};
+\draw [->,opacity=0.5](S) -- (1) node[midway,fill=white]{$s(S,A)$};
+\draw [->,opacity=0.5](S) -- (3) node[midway,fill=white]{$s(S,B)$};
+\draw [->,opacity=0.5](1) -- (3) node[midway,fill=white]{$s(A,B)$};
+\draw [->,opacity=0.5](1) -- (2) node[midway,fill=white]{$s(A,C)$};
+\draw [->,opacity=0.5](3) -- (2) node[midway,fill=white]{$s(B,C)$};
+\draw [->,opacity=0.5](2) -- (E) node[midway,fill=white]{$s(C,E)$};
+\draw [->,opacity=0.5](3) -- (E) node[midway,fill=white]{$s(B,E)$};
+\end{tikzpicture}
+\end{center}
+\end{exo}
+\begin{exo}
+Reformuler l'algorithme \ref{algo-searchMemo} de telle sorte que le chemin optimal 
+soit celui de poids minimum.  Simuler son exécution sur papier.
+\end{exo}
+\begin{exo}
+Reformuler l'algorithme \ref{algo-searchMemo} en utilisant la notation en opérations abstraites $\oplus$ et $\otimes$
+\end{exo}
+\begin{exo}
+Reformuler l'algorithme \ref{algo-searchMemo} en supprimant la conditionnelle qui réalise la mémoisation.  Tenter de le simuler sur papier.
+\end{exo}
+
+\section{Algorithme de Viterbi}
+L'algorithme mémoisé présenté dans la section précédente peut se reformuler par une version souvent plus pratique à l'usage. C'est l'\kw{algorithme de Viterbi}.
+
+\begin{definition}[Ordre topologique] Un ordre topologique sur un \ac{dag} $G=(V,E)$ est tout ordre total sur les noeuds $V$ de ce \ac{dag} tel que pour tout couple de noeuds $(x,y) \in E$,  $x \prec y$. Il existe en général plusieurs ordres topologiques valides pour un \ac{dag} donné.
+\end{definition}
+
+
+\begin{figure}[htbp]
+\begin{tikzpicture}[xscale=2,yscale=2]
+    \node[shape=circle,draw=black] (A1) at (1,1) {D};
+    \node[shape=circle,draw=black] (B1) at (1,2) {N};
+    \node[shape=circle,draw=black] (C1) at (1,3) {A};
+    \node[shape=circle,draw=black] (D1) at (1,4) {P};
+    \node[shape=circle,draw=black] (E1) at (1,5) {V};
+     \node[shape=circle,draw=black] (A2) at (2,1) {D};
+    \node[shape=circle,draw=black] (B2) at (2,2) {N};
+    \node[shape=circle,draw=black] (C2) at (2,3) {A};
+    \node[shape=circle,draw=black] (D2) at (2,4) {P};
+    \node[shape=circle,draw=black] (E2) at (2,5) {V};
+     \node[shape=circle,draw=black] (A3) at (3,1) {D};
+    \node[shape=circle,draw=black] (B3) at (3,2) {N};
+    \node[shape=circle,draw=black] (C3) at (3,3) {A};
+    \node[shape=circle,draw=black] (D3) at (3,4) {P};
+    \node[shape=circle,draw=black] (E3) at (3,5) {V};
+     \node[shape=circle,draw=black] (A4) at (4,1) {D};
+    \node[shape=circle,draw=black] (B4) at (4,2) {N};
+    \node[shape=circle,draw=black] (C4) at (4,3) {A};
+    \node[shape=circle,draw=black] (D4) at (4,4) {P};
+    \node[shape=circle,draw=black] (E4) at (4,5) {V};
+     \node[shape=circle,draw=black] (A5) at (5,1) {D};
+    \node[shape=circle,draw=black] (B5) at (5,2) {N};
+    \node[shape=circle,draw=black] (C5) at (5,3) {A};
+    \node[shape=circle,draw=black] (D5) at (5,4) {P};
+    \node[shape=circle,draw=black] (E5) at (5,5) {V};
+    \node[draw=white,text depth=0.25ex,text height=1cm] (W1) at (1,0) {La} ;
+    \node[draw=white,text depth=0.25ex,text height=1cm] (W2) at (2,0) {belle} ;
+    \node[draw=white,text depth=0.25ex,text height=1cm] (W3) at (3,0) {porte} ;
+    \node[draw=white,text depth=0.25ex,text height=1cm] (W4) at (4,0) {le} ;
+    \node[draw=white,text depth=0.25ex,text height=1cm] (W5) at (5,0) {cache} ;
+    \node[shape=circle,draw=black,double=red] (S) at (0,3) {S};
+ \node[shape=circle,draw=black,double=red] (E) at (6,3) {E};
+
+ \draw [->,ultra thick,opacity=0.5] (S) -- (A1);
+ \draw [->,opacity=0.5] (S) -- (B1);
+ \draw [->,opacity=0.5] (S) -- (C1);
+ \draw [->,opacity=0.5] (S) -- (D1);
+ \draw [->,opacity=0.5] (S) -- (E1);
+ 
+ \draw [->,opacity=0.5] (A1) -- (A2);
+ \draw [->,opacity=0.5] (A1) -- (B2);
+ \draw [->,ultra thick,opacity=0.5] (A1) -- (C2);
+ \draw [->,opacity=0.5] (A1) -- (D2);
+ \draw [->,opacity=0.5] (A1) -- (E2);
+
+\draw [->,opacity=0.5] (B1) -- (A2);
+ \draw [->,opacity=0.5] (B1) -- (B2);
+ \draw [->,opacity=0.5] (B1) -- (C2);
+ \draw [->,opacity=0.5] (B1) -- (D2);
+ \draw [->,opacity=0.5] (B1) -- (E2);
+
+\draw [->,opacity=0.5]  (C1) -- (A2);
+ \draw [->,opacity=0.5] (C1) -- (B2);
+ \draw [->,opacity=0.5] (C1) -- (C2);
+ \draw [->,opacity=0.5] (C1) -- (D2);
+ \draw [->,opacity=0.5] (C1) -- (E2);
+
+\draw [->,opacity=0.5]  (D1) -- (A2);
+ \draw [->,opacity=0.5] (D1) -- (B2);
+ \draw [->,opacity=0.5] (D1) -- (C2);
+ \draw [->,opacity=0.5] (D1) -- (D2);
+ \draw [->,opacity=0.5] (D1) -- (E2);
+ 
+ \draw [->,opacity=0.5]  (E1) -- (A2);
+ \draw [->,opacity=0.5] (E1) -- (B2);
+ \draw [->,opacity=0.5] (E1) -- (C2);
+ \draw [->,opacity=0.5] (E1) -- (D2);
+ \draw [->,opacity=0.5] (E1) -- (E2);
+ 
+ \draw [->,opacity=0.5] (A2) -- (A3);
+ \draw [->,opacity=0.5] (A2) -- (B3);
+ \draw [->,opacity=0.5] (A2) -- (C3);
+ \draw [->,opacity=0.5] (A2) -- (D3);
+ \draw [->,opacity=0.5] (A2) -- (E3);
+
+\draw [->,opacity=0.5] (B2) -- (A3);
+ \draw [->,opacity=0.5] (B2) -- (B3);
+ \draw [->,opacity=0.5] (B2) -- (C3);
+ \draw [->,opacity=0.5] (B2) -- (D3);
+ \draw [->,opacity=0.5] (B2) -- (E3);
+
+\draw [->,opacity=0.5]  (C2) -- (A3);
+ \draw [->,ultra thick,opacity=0.5] (C2) -- (B3);
+ \draw [->,opacity=0.5] (C2) -- (C3);
+ \draw [->,opacity=0.5] (C2) -- (D3);
+ \draw [->,opacity=0.5] (C2) -- (E3);
+
+\draw [->,opacity=0.5]  (D2) -- (A3);
+ \draw [->,opacity=0.5] (D2) -- (B3);
+ \draw [->,opacity=0.5] (D2) -- (C3);
+ \draw [->,opacity=0.5] (D2) -- (D3);
+ \draw [->,opacity=0.5] (D2) -- (E3);
+ 
+ \draw [->,opacity=0.5]  (E2) -- (A3);
+ \draw [->,opacity=0.5] (E2) -- (B3);
+ \draw [->,opacity=0.5] (E2) -- (C3);
+ \draw [->,opacity=0.5] (E2) -- (D3);
+ \draw [->,opacity=0.5] (E2) -- (E3);
+
+ \draw [->,opacity=0.5] (A3) -- (A4);
+ \draw [->,opacity=0.5] (A3) -- (B4);
+ \draw [->,opacity=0.5] (A3) -- (C4);
+ \draw [->,opacity=0.5] (A3) -- (D4);
+ \draw [->,opacity=0.5] (A3) -- (E4);
+
+\draw [->,opacity=0.5] (B3) -- (A4);
+ \draw [->,opacity=0.5] (B3) -- (B4);
+ \draw [->,opacity=0.5] (B3) -- (C4);
+ \draw [->,ultra thick,opacity=0.5] (B3) -- (D4);
+ \draw [->,opacity=0.5] (B3) -- (E4);
+
+\draw [->,opacity=0.5]  (C3) -- (A4);
+ \draw [->,opacity=0.5] (C3) -- (B4);
+ \draw [->,opacity=0.5] (C3) -- (C4);
+ \draw [->,opacity=0.5] (C3) -- (D4);
+ \draw [->,opacity=0.5] (C3) -- (E4);
+
+\draw [->,opacity=0.5]  (D3) -- (A4);
+ \draw [->,opacity=0.5] (D3) -- (B4);
+ \draw [->,opacity=0.5] (D3) -- (C4);
+ \draw [->,opacity=0.5] (D3) -- (D4);
+ \draw [->,opacity=0.5] (D3) -- (E4);
+ 
+ \draw [->,opacity=0.5] (E3) -- (A4);
+ \draw [->,opacity=0.5] (E3) -- (B4);
+ \draw [->,opacity=0.5] (E3) -- (C4);
+ \draw [->,opacity=0.5] (E3) -- (D4);
+ \draw [->,opacity=0.5] (E3) -- (E4);
+
+ \draw [->,opacity=0.5] (A4) -- (A5);
+ \draw [->,opacity=0.5] (A4) -- (B5);
+ \draw [->,opacity=0.5] (A4) -- (C5);
+ \draw [->,opacity=0.5] (A4) -- (D5);
+ \draw [->,opacity=0.5] (A4) -- (E5);
+
+\draw [->,opacity=0.5] (B4) -- (A5);
+ \draw [->,opacity=0.5] (B4) -- (B5);
+ \draw [->,opacity=0.5] (B4) -- (C5);
+ \draw [->,opacity=0.5] (B4) -- (D5);
+ \draw [->,opacity=0.5] (B4) -- (E5);
+
+\draw [->,opacity=0.5]  (C4) -- (A5);
+ \draw [->,opacity=0.5] (C4) -- (B5);
+ \draw [->,opacity=0.5] (C4) -- (C5);
+ \draw [->,opacity=0.5] (C4) -- (D5);
+ \draw [->,opacity=0.5] (C4) -- (E5);
+
+\draw [->,opacity=0.5]  (D4) -- (A5);
+ \draw [->,opacity=0.5] (D4) -- (B5);
+ \draw [->,opacity=0.5] (D4) -- (C5);
+ \draw [->,opacity=0.5] (D4) -- (D5);
+ \draw [->,ultra thick,opacity=0.5] (D4) -- (E5);
+ 
+ \draw [->,opacity=0.5] (E4) -- (A5);
+ \draw [->,opacity=0.5] (E4) -- (B5);
+ \draw [->,opacity=0.5] (E4) -- (C5);
+ \draw [->,opacity=0.5] (E4) -- (D5);
+ \draw [->,opacity=0.5] (E4) -- (E5);
+
+ \draw [->,opacity=0.5] (A5) -- (E);
+ \draw [->,opacity=0.5] (B5) -- (E);
+ \draw [->,opacity=0.5] (C5) -- (E);
+ \draw [->,opacity=0.5] (D5) -- (E);
+ \draw [->,ultra thick,opacity=0.5] (E5) -- (E);
+
+\end{tikzpicture}
+\caption{Graphe acyclique orienté pour énumérer les solutions de manière compacte}
+\end{figure}
+
+\chapter{Rappels de classification non structurée}
+
+
+\chapter{Champs conditionnels aléatoires}
+
+\section{Généralisation des modèles logistiques}
+
+Les modèles de champs conditionnels aléatoires \ac{crf}
+sont des modèle qui généralisent les modèles de régression logistique multinomiale au cas des données structurées.
+Dans ce cours, on  donne une présentation pour la modélisation de séquences, ce qui est le cas d'usage le plus courant.
+
+On se rappelle qu'un modèle de régression logistique multinomiale prédit une donnée $y$ à partir de variables observées $\mathbf{x}$ de la manière suivante~:
+\begin{equation}
+\label{eq-logistic-base}
+P(Y = y \,|\, \mathbf{x},\mathbf{w}) = \frac{\text{exp}(\mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y))}{\sum_{y'\in Y}\text{exp}(\mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y'))}
+\end{equation}
+Le numérateur représente un score $\psi(y) \geq 0$~: la fonction exponentielle transforme toute valeur réelle en  réel positif. 
+
+Comme chaque classe $y\in Y$ reçoit un score $\psi(y)$,
+le dénominateur ne dit rien d'autre qu'un score se transforme en probabilité en le divisant par la somme totale des scores pour toutes les classes. Le dénominateur est parfois appelé constante de normalisation.
+
+Un \ac{crf} linéaire n'est rien d'autre qu'un modèle de régression logistique multinomiale dont la variable $Y$ à prédire est un ensemble de séquences. Dans ce contexte, la difficulté est que le nombre de séquences possibles de tags (ou plus généralement de symboles) croit exponentiellement en fonction de la longueur de la séquence à prédire.
+Ainsi il devient rapidement très difficile de réutiliser naïvement le modèle de régression logistique multinomiale (équation \ref{eq-logistic-base}), car le calcul de la constante de normalisation devient très vite ingérable.
+
+Toute l'idée de \ac{crf} c'est de permettre la décomposition du calcul du score d'une séquence de telle sorte que l'on puisse réutiliser les méthodes de programmation dynamique notamment introduites dans les cours précédents pour réaliser les calculs dans des temps raisonnables (complexité polynomiale).  Ainsi une séquence de tags $\mathbf{y} = y_1 \ldots y_m$ sera prédite par un \ac{crf} à l'aide de la formule suivante~:
+\begin{equation}
+\label{eq-crf-predict}
+P(\mathbf{Y} = \mathbf{y} \,|\, \mathbf{x},\mathbf{w}) = \frac{\text{exp}\left(\sum_{i=1}^m \mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)\right)}
+{\sum_{\mathbf{y}'\in \mathbf{Y}}
+\text{exp}\left(\sum_{i=1}^m \mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y^{'}_{i-1},y^{'}_i)\right)}
+\end{equation}
+On voit que dans cette formulation le score global d'une séquence se décompose en une somme de scores locaux.  Il ne s'agit de rien d'autre que d'imposer une décomposition du calcul d'un produit scalaire destiné à évaluer une séquence (un produit scalaire est une grosse addition de toute façon).
+
+<DESSIN QUI ILLUSTRE QU'UNE SEQUENCE EST UNE SOMME DE SCORES>
+
+On va évidemment tirer parti de cette propriété pour exprimer des algorithmes qui partagent des sous parties de calculs efficacement\ldots  On traite en priorité l'algorithmique des deux problèmes d'inférence suivants~:
+\begin{itemize}
+\item Prédire la séquence de tags la plus probable $\hat{\mathbf{y}}$ pour une séquence de mots $\mathbf{x}$, c'est-à-dire résoudre le problème suivant~:
+\begin{equation}
+\label{eq-crf-argmax}
+\hat{\mathbf{y}} =  \mathop{\text{argmax}}_{\mathbf{y}\in \mathbf{Y}}
+\, P(\mathbf{Y}=\mathbf{y} | \mathbf{x},\mathbf{w})
+\end{equation}
+\item Estimation par maximum de vraisemblance conditionnelle des paramètres d'un modèle dans un contexte d'apprentissage supervisé.
+La résolution de ce problème nous fera résoudre par effet de bord le sous-problème de calcul de la probabilité d'une assignation de tags $P(\mathbf{Y}=\mathbf{y} | \mathbf{x},\mathbf{w})$.
+\end{itemize}
+
+\begin{exo}[fonction exponentielle]
+Faire un graphique avec la librairie graphique de votre choix de la fonction $x\mapsto e^x $ sur l'intervalle réelle $]-\infty,+\infty[$
+\end{exo}
+
+\section{Recherche de la séquence de tags la plus probable}
+
+\paragraph{La solution du paresseux}
+La solution la plus efficace (et à utiliser en pratique) au problème (\ref{eq-crf-argmax}) est celle du paresseux.  Il suffit de remarquer que les fonctions exponentielles utilisées en (\ref{eq-crf-predict})  n'ont pas d'autre fonction que de normaliser les scores de produits scalaires pour obtenir des probabilités et que la normalisation
+ne change pas la valeur du maximum. Par conséquent, chercher la solution de~:
+\begin{equation}
+\hat{\mathbf{y}} =  \mathop{\text{argmax}}_{\mathbf{y}\in \mathbf{Y}}
+\, \sum_{i=1}^m \mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)
+\end{equation}
+à la place de (\ref{eq-crf-argmax}) résoud le problème. La solution du paresseux revient donc à réutiliser la méthode de résolution déjà présentée pour le modèle du perceptron global (algorithme de Viterbi). 
+
+\paragraph{La solution par décomposition explicite du score}
+Le détail de l'autre solution présentée ici (à ne pas utiliser en pratique) permet de mieux comprendre comment le score d'un \ac{crf} se décompose.
+L'idée est de reformuler le score non normalisé d'une séquence par un produit comme suit~: 
+\begin{displaymath}
+\text{exp}\left(\sum_{i=1}^m \mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)\right)
+\end{displaymath}
+devient~:
+\begin{displaymath}
+\prod_{i=1}^m \text{exp}\left(\mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)\right)
+\end{displaymath}
+On peut donc remarquer qu'on peut reformuler le score d'une séquence par un produit de réels strictement positifs appelés potentiels (et notés $\psi(\mathbf{x},y_{i-1},y_i)$). La conséquence est que l'algorithme de Viterbi pour \ac{crf} a exactement la même forme que pour \ac{hmm}~:
+les scores de séquences sont des produits de potentiels et les séquences sont comparées par la fonction maximum. Plus généralement, la reformulation de (\ref{eq-crf-predict}) par 
+\begin{equation}
+P(\mathbf{Y} = \mathbf{y} \,|\, \mathbf{x},\mathbf{w}) = \frac{\prod_{i=1}^m\text{exp}\left( \mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)\right)}
+{\sum_{\mathbf{y}'\in \mathbf{Y}}
+\prod_{i=1}^m \text{exp}\left(\mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y^{'}_{i-1},y^{'}_i)\right)}
+\end{equation}
+permet de tirer parti de toute l'algorithmique de programmation dynamique déjà développée pour \ac{hmm}.
+
+\section{\`A la découverte des \ac{dag}s de programmation dynamique}
+
+On se propose dans cette section d'étudier par l'exemple quelques propriétés des \ac{dags}
+de programmation dynamique qui seront déterminantes pour résoudre le problème d'estimation des paramètres d'un \ac{crf}. 
+\begin{center}
+\begin{tikzpicture}[xscale=2,yscale=3]
+\node[shape=circle,draw=black,double=red] (S) at (0,0.5) {S};
+\node[shape=circle,draw=black,double=red] (E) at (3,0.5) {E};
+\node[shape=circle,draw=black] (1) at (1,0) {A};
+\node[shape=circle,draw=black] (2) at (1,1) {B};
+\node[shape=circle,draw=black] (3) at (2,0) {A};
+\node[shape=circle,draw=black] (4) at (2,1) {B};
+
+\draw [->,opacity=0.75](S) -- (1) node[midway,fill=white]{5};
+\draw [->,opacity=0.75](S) -- (2) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](1) -- (3) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](1) -- (4) node[near end,fill=white]{4};
+\draw [->,opacity=0.75](2) -- (3) node[near end,fill=white]{7};
+\draw [->,opacity=0.75](2) -- (4) node[midway,fill=white]{4};
+\draw [->,opacity=0.75](3) -- (E) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](4) -- (E) node[midway,fill=white]{3};
+\end{tikzpicture}
+\end{center}
+Le \ac{dag} ci-dessus va nous servir d'exemple de départ. Il encode un problème qui correspond à  probabiliser toutes les séquences possibles de 2 tags, pris dans le jeu de tags $Y=\{A,B\}$, pour une séquence de deux mots. On ajoute un état source unique $S$ et un état de but à atteindre $E$. La pondération des arcs correspond à des valeurs possibles pour des potentiels $\psi(\mathbf{x},y_{i-1},y_{i})$ strictement positifs.
+ 
+En termes de notations, on notera $s_i$ un noeud du \ac{dag} où $s\in Y$ est un tag et $i$ sa position. Chaque chemin $\pi = s_1,s_2\ldots s_{k-1},s_k$ dans le \ac{dag} a un score noté $\sigma(\pi)$.  
+
+%\item On a $\sigma(\pi)$, score d'un chemin.
+%\item On a $\alpha(s_i)$, somme des scores de tous les chemins qui mènent à $s_i$ depuis l'origine.
+%\item On a $\beta(s_i)$, somme des scores de tous les chemins qui mènent à $s_i$ depuis le but.
+%\item $\psi(s_i,s_{i+1})$, score d'un arc
+
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{Forward}{S,V,s}
+\State \Call{TriTopologique}{$S,V,s$}
+\State $\delta(s) \gets 1$
+\ForAll {$s \in  S$ (suivant ordre topologique)}
+\State $\delta(s) \gets 0$
+\ForAll {$(s',s) \in AE(s)$}
+\State  $\delta(s) \gets \Call{Max}{\delta(s) , \delta(s')  \times \psi(\mathbf{x},s',s) $}
+\EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-viterbi-crf}Algorithme de Viterbi pour \ac{crf}}
+\end{algorithm}
+ 
+\begin{exo}[Viterbi]
+Simuler l'exécution de l'algorithme de Viterbi (Algorithme \ref{algo-viterbi-crf}) sur l'exemple illustratif. Quel est le poids du meilleur chemin ? Quel est ce chemin ? 
+\end{exo}
+
+\begin{exo}[Viterbi]
+Dans la section précédente, on suggère une "solution du paresseux" pour trouver le meilleur chemin dans un \ac{crf}.  L'algorithme \ref{algo-viterbi-crf} est-il directement utilisable dans ce contexte ? Si la réponse est négative, quelles modifications faudrait-il lui apporter ?
+\end{exo}
+
+
+
+
+\subsubsection{Algorithme avant} Quelle est la somme des scores qui mènent à un état $s_i$ depuis la source ? C'est la question à laquelle répond l'algorithme avant.
+Notons $\alpha(s_i)$ la quantité qui correspond à la somme des scores de tous les chemins qui mènent à $s_i$ depuis la source. Par exemple $\alpha(B_2) = (2\times 4) + (5\times 4) = 28$.
+
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{Forward}{S,V,s}
+\State \Call{TriTopologique}{$S,V,s$}
+\State $\alpha(s) \gets 1$
+\ForAll {$s \in  S$ (suivant ordre topologique)}
+\State $\alpha(s) \gets 0$
+\ForAll {$(s',s) \in AE(s)$}
+\State  $\alpha(s) \gets \alpha(s) + (\alpha(s')  \times \psi(\mathbf{x},s',s) ) $
+\EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-forward}Algorithme Avant}
+\end{algorithm}
+
+On peut automatiser ce type de calcul à l'aide de l'algorithme avant qui est une variante, à demi-anneau près, de l'algorithme de Viterbi. Celle-ci est donnée en algorithme \ref{algo-forward}. La récurrence de cet algorithme est la suivante~: 
+\begin{equation}
+\label{eq-forward}
+\alpha(s_i) = \left\{ 
+\begin{array}{ll}
+1 & \text{si }  i = 0\\
+\sum_{(s',s_i)\in AE(s_i)}  \alpha(s') \times \psi(\mathbf{x},s',s_i)&\text{sinon}
+\end{array}
+\right.
+\end{equation}
+On peut remarquer que la quantité $\alpha(E)$ correspond au facteur de normalisation $Z$, c'est-à-dire la somme des scores de tous les chemins qui mènent de la source jusqu'à la destination (toutes les séquences de tags possibles). Autrement dit, l'algorithme avant permet de résoudre en temps polynomial le problème de sommation de scores pour un nombre exponentiel de séquences de tags. Formellement on a donc que~: 
+\begin{displaymath}
+\alpha(s_i) = \sum_{y_1\ldots y_i \in \mathbf{Y^i}}\prod_{j=1}^{j=i} \psi(\mathbf{x},y_{j-1},y_j)
+\end{displaymath}
+et pour la cas spécifique des séquences complètes~: 
+\begin{displaymath}
+\alpha(s_{m+1}) = Z = \sum_{\mathbf{y}\in \mathbf{Y}}\prod_{j=1}^{j=m} \psi(\mathbf{x},y_{j-1},y_j)
+\end{displaymath}
+
+
+\begin{exo}[Probabilité d'une séquence]
+Utiliser les propriétés de l'algorithme avant pour 
+calculer $P(S_0,B_1,A_2,E_3)$ la probabilité de la séquence $S,B,A,E$ dans le \ac{dag} exemple.
+\end{exo}
+
+\begin{exo}[Probabilité de toutes les séquences]
+Calculer la probabilité de tous les chemins qui mènent de la source à la destination dans le \ac{dag} exemple. Vérifier que ces probabilités somment à 1 et que la séquence qui a la plus haute probabilité correspond à celle que vous avez trouvé avec l'algorithme de Viterbi.
+\end{exo}
+
+\subsubsection{Algorithme arrière} Quelle est la somme des scores qui mènent à un état $s_i$ depuis la destination ?
+C'est la question à laquelle répond l'algorithme arrière.
+On notera $\beta(s_i)$ la quantité qui correspond à la somme des scores de tous les chemins qui mènent à $s_i$ depuis la destination. Par exemple $\beta(B_1) = (2\times 3) + (3\times 4) = 18$. Il s'agit essentiellement d'une variante miroir de l'algorithme avant. La récurrence est la suivante~:
+\begin{equation}
+\label{eq-backward}
+\beta(s_i) = \left\{ 
+\begin{array}{ll}
+1 & \text{si }  i = m+1\\
+\sum_{(s_i,s')\in AS(s_i)}  \beta(s') \times \psi(\mathbf{x},s_i,s')&\text{sinon}
+\end{array}
+\right.
+\end{equation}
+En tant que tel cet algorithme arrière n'a pas beaucoup d'intérêt. C'est en combinaison avec l'algorithme avant que l'on peut faire émerger son utilité.
+
+\begin{exo}[Pseudo-code]
+Donner un pseudo code pour l'algorithme arrière.
+\end{exo}
+
+\subsubsection{Combiner les quantités avant et arrière}
+Utilisées en combinaison, les quantités $\alpha(s_i)$ et $\beta(s_i)$ permettent de donner des probabilités à des sous-chemins dans un \ac{dag}.
+
+\begin{figure}[htbp]
+\begin{center}
+\begin{tikzpicture}[xscale=2,yscale=3]
+\def\x{0.0}
+\def\y{0.2}
+\node[shape=circle,draw=black,double=red] (S) at (0,0.5) {S};
+\node[shape=circle,draw=black,double=red] (E) at (4,0.5) {E};
+\node[shape=circle,draw=black] (1) at (1,0) {A};
+\node[shape=circle,draw=black] (2) at (1,1) {B};
+\node[shape=circle,draw=black] (3) at (2,0) {A};
+\node[shape=circle,draw=black] (4) at (2,1) {B};
+\node[shape=circle,draw=black] (5) at (3,0) {A};
+\node[shape=circle,draw=black] (6) at (3,1) {B};
+
+\draw [->,opacity=0.75](S) -- (1) node[midway,fill=white]{5};
+\draw [->,opacity=0.75](S) -- (2) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](1) -- (3) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](1) -- (4) node[near end,fill=white]{4};
+\draw [->,opacity=0.75](2) -- (3) node[near end,fill=white]{7};
+\draw [->,opacity=0.75](2) -- (4) node[midway,fill=white]{4};
+\draw [->,opacity=0.75](3) -- (5) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](3) -- (6) node[near end,fill=white]{3};
+\draw [->,opacity=0.75](4) -- (5) node[near end,fill=white]{2};
+\draw [->,opacity=0.75](4) -- (6) node[midway,fill=white]{1};
+\draw [->,opacity=0.75](5) -- (E) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](6) -- (E) node[midway,fill=white]{3};
+
+%alphas
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (0+\x,0.5+\y){1};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (4+\x,0.5+\y){573};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,0+\y){5};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,1+\y){2};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,0+\y){29};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,1+\y){28};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,0+\y){114};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,1+\y){115};
+%betas
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (0+\x,0.5-\y){573};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (4+\x,0.5-\y){1};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (1+\x,0-\y){67};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (1+\x,1-\y){119};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (2+\x,0-\y){13};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (2+\x,1-\y){7};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (3+\x,0-\y){2};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (3+\x,1-\y){3};
+\end{tikzpicture}
+\end{center}
+\caption{\label{fig-fb-trellis}Treillis de programmation dynamique annoté par $\alpha$ et $\beta$}
+\end{figure}
+
+L'exemple donné en figure \ref{fig-fb-trellis} illustre les quantités $\alpha(s_i)$, notées en bleu sur chaque noeud, et les quantités $\beta(s_i)$ sont notées en rouge.
+On peut commencer par observer que la  quantité $\alpha(E_4) = 573$ correspond au facteur $Z$. 
+On obtient la probabilité d'un chemin (d'une séquence de tags) comme par exemple le chemin $S_0,A_1,B_2,B_3,E_4$ en réalisant la division suivante~:
+\begin{displaymath}
+P(S_0,A_1,B_2,B_3,E_4) = \frac{5\times 4\times 1\times 3}{573} = \frac{60}{573}
+\end{displaymath}
+En utilisant la quantité $\alpha(s_i)$, on peut déterminer la probabilité d'un séquence de tags qui termine par $B,B,E$ de la manière suivante~:
+\begin{displaymath}
+P(\lhd,B_2,B_3,E_4) = \frac{\alpha(B_2)\times \psi(\mathbf{x},B_2,B_3)\times\psi(\mathbf{x},B_3,E_4)}{Z} = \frac{28\times 1\times 3}{573} = \frac{84}{573} 
+\end{displaymath}
+En continuant le raisonnement on peut calculer la probabilité de suivre une transition (par exemple $A_1,B_2$ représente la probabilité de tagguer le premier mot $A$ et le second mot $B$) en utilisant les quantités $\alpha(s_i)$ et $\beta(s_i)$~:
+\begin{displaymath}
+P(\lhd,A_1,B_2,\rhd) = \frac{\alpha(A_1)\times \psi(\mathbf{x},A_1,B_2)\times \beta(B_2)}{Z} = \frac{5\times 4 \times 7}{543}=\frac{140}{543}
+\end{displaymath}
+En résumé, et comme illustré dans les exercices qui suivent, on peut en réalité transformer un graphe de programmation dynamique en calculette.
+
+Ce dernier exemple introduit une quantité clé qui est réutilisée par la méthode d'estimation des paramètres par descente de gradient qui est~:
+\begin{equation}
+P(\lhd,s_i,s_{i+1},\rhd | \mathbf{x};\mathbf{w}) = 
+\frac{\alpha(s_i)\times \psi(\mathbf{x},s_i,s_{i+1}) \times \beta(s_{i+1})}
+{Z}
+\end{equation}
+Celle-ci correspond à la probabilité de suivre une transition entre deux tags consécutifs. Utiliser les quantités avant et arrière pour calculer ces probabilités de transition, c'est utiliser l'\kw{algorithme avant/arrière}. Formellement, on peut remarquer que $P(\lhd,s_i,s_{i+1},\rhd | \mathbf{x})$ correspond à :
+\begin{eqnarray}
+P(\lhd,s_i,s_{i+1},\rhd | \mathbf{x})&=& \frac{1}{Z} \sum_{y_1\ldots y_{i-1}}\prod_{j=1}^{j={i-1}} \psi(\mathbf{x},y_{i-1},y_{i})\\
+&\times &\psi(\mathbf{x},y_{i-1},y_i)\\
+&\times &\sum_{y_i\ldots y_m}\prod_{j={i+1}}^{j=m} \psi(\mathbf{x},y_{j-1},y_{j})
+\end{eqnarray}
+
+
+\begin{exo}
+\`A partir de la figure \ref{fig-fb-trellis},
+donner la probabilité que le second mot soit taggué $B$, c'est-à-dire, $P(\lhd,B_2,\rhd)$.
+\end{exo}
+
+\begin{exo}
+Observer que $P(\lhd,B_2,\rhd) + P(\lhd,A_2,\rhd) = 1$
+à partir de la figure \ref{fig-fb-trellis}.
+Expliquer informellement pourquoi.
+\end{exo}
+
+\section{Estimation des paramètres}
+
+L'estimation des paramètres d'un \ac{crf} consiste à déterminer les valeurs du vecteur de paramètres $\mathbf{w}$ à partir d'un corpus annoté.
+
+On suppose qu'un corpus annoté $C =\mathop{(\mathbf{x}_i,\mathbf{y}_i)\}}_{i=1}^N$ est un exemplaire de $N$ phrases. Chaque exemple annoté est un couple $(\mathbf{x}_i,\mathbf{y}_i)$ qui représente une séquence de mots $\mathbf{x}=x_1\ldots x_m$ et une séquence de tags de référence $\mathbf{y} = y_1\ldots y_m$ de même longueur.
+
+Comme pour la régression logistique multinomiale,
+on présente ici l'estimation des paramètres par maximum de (log-) vraisemblance conditionnelle. 
+\begin{equation}
+L(\mathbf{w}) = \sum_{i=1}^N \log P(\mathbf{y}_i | \mathbf{x}_i;\mathbf{w})
+\end{equation}
+Autrement dit on cherche à résoudre le problème d'optimisation suivant~:
+\begin{equation}
+\hat{\mathbf{w}} =  \mathop{\text{argmax}}_{\mathbf{w}\in\mathbb{R}^d} \sum_{i=1}^N \log P(\mathbf{y}_i | \mathbf{x}_i;\mathbf{w})
+\end{equation}
+En substituant la probabilité $P(\mathbf{y}_i | \mathbf{x}_i;\mathbf{w})$ par sa définition en équation (\ref{eq-crf-predict}), on optimise~:
+\begin{equation}
+\hat{\mathbf{w}} =  \mathop{\text{argmax}}_{\mathbf{w}\in\mathbb{R}^d} \sum_{i=1}^N \log\frac{\text{exp}\left(\sum_{i=1}^m \mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)\right)}
+{\sum_{\mathbf{y}'\in \mathbf{Y}}
+\text{exp}\left(\sum_{i=1}^m \mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y^{'}_{i-1},y^{'}_i)\right)}
+\end{equation}
+Les dérivées partielles ont la même allure que pour la régression logistique multinomiale~:
+\begin{equation}
+\label{eq-crf-derivative}
+\frac{\partial L(\mathbf{w})}{\partial w_k} 
+= \sum_{i=1}^N C_k(\mathbf{x}_i,\mathbf{y}_i)
+- \sum_{i=1}^N \sum_{\mathbf{y}\in \mathbf{Y}} P(\mathbf{y}|\mathbf{x}_i,\mathbf{w}) C_k(\mathbf{x}_i,\mathbf{y})
+\end{equation}
+où l'abbréviation $C_k(\mathbf{x},\mathbf{y})$
+représente le comptage de la feature $\phi_k$
+dans une séquence de référence, c'est-à-dire~:
+\begin{displaymath}
+C_k(\mathbf{x}_i,\mathbf{y}_i) = \sum_{j=1}^m \phi_k(\mathbf{x}_i,y_{j-1}^i,y_j^i)
+\end{displaymath}
+Le calcul du premier terme en (\ref{eq-crf-derivative}) consiste à compter les occurrences de $\phi_k$ dans l'ensemble des séquences du corpus de référence.
+
+En ce qui concerne le second terme en (\ref{eq-crf-derivative}), il faut compter les occurrences de $\phi_k$ 
+--~dans toutes les séquence de tags possibles~-- en pondérant chaque occurrence par la probabilité de la séquence de tags dans laquelle elle apparait. 
+Naïvement, ce calcul demande d'énumérer
+l'ensemble exponentiel $\mathbf{Y}$ 
+de toutes les séquences de tags $\mathbf{y}\in\mathbf{Y}$ possibles pour chaque exemple du jeu de données.
+
+Le développement qui suit consiste à montrer comment utiliser les techniques de programmation dynamique présentées précédemment pour réaliser ce calcul de manière efficace.  Le second terme de la formule (\ref{eq-crf-derivative}) nous dit que pour chaque exemple dans les données il faut calculer~:
+\begin{align}
+&\sum_{\mathbf{y}\in \mathbf{Y}} P(\mathbf{y}|\mathbf{x},\mathbf{w}) \sum_{j=1}^m \phi_k(\mathbf{x},y_{j-1},y_j)\\
+&=\sum_{\mathbf{y}\in \mathbf{Y}} \sum_{j=1}^m P(\mathbf{y}|\mathbf{x},\mathbf{w})  \phi_k(\mathbf{x},y_{j-1},y_j)\\
+&= \sum_{j=1}^m \sum_{\mathbf{y}\in \mathbf{Y}} P(\mathbf{y}|\mathbf{x},\mathbf{w})  \phi_k(\mathbf{x},y_{j-1},y_j)\\
+&=  \sum_{j=1}^m \sum_{y_{j-1}}\sum_{y_j} P(\lhd,y_{j-1},y_j,\rhd|\mathbf{x},\mathbf{w})  \phi_k(\mathbf{x},y_{j-1},y_j)
+\end{align}
+Au terme de cette reformulation, l'évaluation du second terme revient à compter les occurrences de la feature $\phi_k$ --~pondérées par les probabilités de transitions où elles apparaissent~-- dans le \ac{dag} de programmation dynamique, et ce pour l'ensemble des exemples du jeu de données.
+
+
+
+
+{\color{red} Développement un peu sloppy en l'état, voir par ex.
+\url{http://perso.telecom-paristech.fr/~essid/teach/CRF_tutorial_ISMIR-2013.pdf}
+pour des détails supplémentaires.}
+
+
+\section{Fonctions features et potentiels}
+
+
+
+\appendix
+\chapter{Représentations pour les modèles creux}
+\section{Représentation des matrices de poids}
+
+\subsection{Représentation explicite de la matrice de poids}
+
+Pour des modèles multiclasses à features,
+l'opération primitive consiste à scorer chaque classe de l'ensemble $\{a,b,c\ldots\}$ à l'aide du vecteur creux de features $\boldsymbol\Phi(x)$ et du vecteur de poids $\mathbf{w}_i$ correspondant à la classe $i$. Ainsi le score de la classe $i$ sera calculé comme suit~:
+\begin{displaymath}
+s_i =  \mathbf{w}_i \cdot \boldsymbol\Phi(x)
+\end{displaymath}
+Comme on souhaite en général donner un score à toutes les classes, on peut organiser les poids en matrice $\mathbf{W}$ dont chaque ligne représente les poids destinés à donner la pondération spécifique à une classe donnée, de telle sorte que le vecteur de scores $\mathbf{s} = \mathbf{W}\cdot \boldsymbol\Phi(x)$ se calcule en une opération.
+On illustre cette représentation ci-dessous~:
+\begin{center}
+\begin{tikzpicture}
+\matrix(S)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]} ] at (0,0)
+{
+	s_a\\s_b\\s_c\\
+};
+\node[shape=circle,draw=white] (X) at (1.25,0) {=};
+\matrix(A)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]}] at (4,0)
+{
+ w_{a1} & w_{a2} & \ldots & w_{ap}\\
+ w_{b1} & w_{b2} & \ldots & w_{bp}\\
+ w_{c1} & w_{c2} & \ldots & w_{cp}\\
+};
+\matrix(V)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]}] at (8,0)
+{
+ \phi_{1}(x) \\ \phi_{2}(x) \\ \vdots \\ \phi_{p}(x)\\
+};
+\end{tikzpicture}
+\end{center}
+On aura alors que le score $s_i$ de la classe $i$ sera donné en position $i$ dans $\mathbf{s}$.
+
+Il faut remarquer que le vecteur $\boldsymbol\Phi(x) = \phi_1(x) \ldots \phi_p(x)$ est valué par des fonctions features qui valent 0 dans la plupart des cas et 1 dans de rares cas. 
+Par  conséquent $\boldsymbol\Phi(x)$ est un vecteur creux.
+
+
+
+\subsection{Représentation de la matrice de poids par un vecteur}
+
+Dans un contexte ou le vecteur $\boldsymbol\Phi(x)$
+est un vecteur creux de très grande dimensionnalité, 
+on utilise couramment une représentation alternative qui consiste à coder la matrice $\mathbf{W}$ dans un vecteur $\mathbf{w}$ unique. Dans ce contexte le vecteur 
+de features sera valué à 1 uniquement pour certaines features de la forme $\phi_{y1},\phi_{y2}\ldots \phi_{yp}$ qui correspondent aux poids de la classe $y$ pour la feature $i$. Dans ce contexte le vecteur de features est noté $\boldsymbol\Phi(x,y)$ où $y$ indique la classe pour laquelle on calcule le score.
+Ainsi pour calculer le score $s_a$ de la classe $a$,  on réalisera un produit scalaire avec une représentation du type~:
+\begin{center}
+\begin{tikzpicture}
+\matrix(W)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]}] at (-1,0)
+{
+ w_{a1} & w_{a2} & \ldots & w_{ap}& w_{b1} & w_{b2} & \ldots & w_{bp}&  w_{c1} & w_{c2} & \ldots & w_{cp}\\
+};
+\matrix(V)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]} ]at (5.5,0)
+{
+ \phi_{a1}(x) \\ \phi_{a2}(x) \\ \vdots \\ \phi_{ap}(x)\\
+};
+\end{tikzpicture}
+\end{center}
+où seules certaines features de la forme $\phi_{a\cdot}$ sont valuées à 1 alors que les features de la forme $\phi_{b\cdot}$ et $\phi_{c\cdot}$ sont implicitement valuées à 0.
+
+\section{Exemple de structure de données}
+
+Une large classe de modèles d'apprentissage utilisés en \ac{tal}
+fait intervenir des modèles creux. Il s'agit de modèles où le vecteur 
+$\boldsymbol\Phi(x,y) \in \{0,1\}^d$ est un vecteur booléen de très grande dimension.
+Les scores calculés par ces modèles sont essentiellement des produits scalaires de la forme :
+\begin{displaymath}
+s = \mathbf{w}\cdot \boldsymbol\Phi(x,y)
+\end{displaymath}
+où $\mathbf{w} \in \mathbb{R}^d$ est un vecteur de poids de dimension identique à $\boldsymbol\Phi(x,y)$. Dans ce contexte l'évaluation d'un produit scalaire revient à sommer les poids des features actives (mises à 1). 
+
+Les autres opérations importantes est la mise à jour des poids lors de la descente de gradient, ce qui demande d'additionner (ou de soustraire) le vecteur de poids courant avec le vecteur gradient.
+
+La structure de données ci-dessous exprimée en python apporte une fonction de produit scalaire ({\sl dot}) à partir des valeurs discrètes de $(x,y)$. Pour les mises à jour, elle propose une fonction de codage {\sl code$\_$phi} qui code une liste de valeurs discrète $x$ et renvoie $\boldsymbol\Phi(x)$ ainsi que des opérateurs arithmétiques de vecteurs et de scalaires ($+,-,\times, / , +=$).
+Celle-ci peut-être étendue à d'autres usages, par exemple la surcharge d'opérateurs arithmétiques pour vecteurs et scalaires peut être complétée.
+
+La structure de donnée reste néanmoins exprimée dans le but pédagogique de rester facile à lire et à modifier mais réalise la plupart des opérations de manière peu efficace.  Pour privilégier l'efficacité, il est suggéré de s'appuyer sur des librairies numériques qui supportent les opérations creuses ou de réaliser des interfaces avec du code {\sl C} ou {\sl C++} spécialisé pour réaliser les opérations sur des vecteurs creux.
+
+
+\begin{minted}{python}
+from collections import defaultdict
+
+class SparseWeightVector:
+
+    def  __init__(self):
+    
+        self.weights = defaultdict(int)   
+
+    def __call__(self,x_key,y_key):
+        """
+        This returns the weight of a feature couple (x,y)
+        Enables an  x = w('a','b') syntax.
+        
+        @param x_key: a tuple of observed values
+        @param y_key: a string being a class name
+        @return : the weight of this feature
+        """
+        return self.weights[(x_key,y_key)]
+
+    def dot(self,xvec_keys,y_key):
+        """
+        This computes the dot product : w . Phi(x,y).
+        Phi(x,y) is implicitly  generated by the function given (x,y)
+        @param xvec_keys: a list (vector) of x values
+        @param y_key    : a y class name
+        @return  w . Phi(x,y)
+        """
+        return sum([self.weights[(x_key,y_key)] for x_key in xvec_keys])
+        
+    @staticmethod
+    def code_phi(xvec_keys,ykey):
+        """
+        Explictly generates a sparse boolean Phi(x,y) vector from (x,y) values
+        @param xvec_keys:  a list of symbols
+        @param ykey: a y class name
+        """
+        w = SparseWeightVector()
+        for xkey in xvec_keys:
+            w[(xkey,ykey)] = 1.0
+        return w
+
+    def __getitem__(self,key):
+        """
+        This returns the weight of feature couple (x,y) given as value.
+        Enables the 'x = w[]' syntax.	
+        
+        @param key: a couple (x,y) of observed and class value
+        @return : the weight of this feature
+        """
+        return self.weights[tuple(key)]
+
+    def __setitem__(self,key,value):
+        """
+        This sets the weight of a feature couple (x,y) given as key.
+        Enables the 'w[] = ' syntax.	
+        @param key:   a couple (x,y) of observed value and class value
+        @param value: a real
+        """
+        self.weights[key] = value
+
+    def __add__(self,other):
+	    """
+        Vector addition
+        """
+        weights =  self.weights.copy() 
+        for key,value in other.weights.items() :
+            weights[key] += value
+        w = SparseWeightVector()
+        w.weights = weights
+        return w
+        
+    def __sub__(self,other):
+    	"""
+        Vector substraction
+        """
+        weights =  self.weights.copy() 
+        for key,value in other.weights.items() :
+            weights[key] -= value
+        w = SparseWeightVector()
+        w.weights = weights
+        return w
+        
+    def __mul__(self,scalar):
+    	"""
+        Scalar multiplication
+        """
+        weights =  self.weights.copy() 
+        for key,value in self.weights.items() :
+            weights[key] *= scalar
+        w = SparseWeightVector()
+        w.weights = weights
+        return w
+
+    def __rmul__(self,scalar):
+    	"""
+        commutativity of scalar multiplication
+        """
+        return self.__mul__(scalar)
+        
+        
+    def __truediv__(self,scalar):
+    	"""
+        Python 3 division '/'
+        """
+        weights =  self.weights.copy() 
+        for key,value in self.weights.items() :
+            weights[key] /= scalar
+        w = SparseWeightVector()
+        w.weights = weights
+        return w
+
+    
+    def __iadd__(self,other):    
+        """
+        Sparse Vector inplace addition. Enables the '+=' operator.	
+        @param  other: a  SparseVectorModel object
+        """
+        for key,value in other.weights.items():
+            self.weights[key] += value
+        return self
+    def __isub__(self,other):    
+        """
+        Sparse Vector inplace substraction. Enables the '-=' operator.	
+        @param  other: a  SparseVectorModel object
+        """
+        for key,value in other.weights.items():
+            self.weights[key] -= value
+        return self
+            
+    def load(self,istream):
+        """
+        Loads a model parameters from a text stream
+        @param istream: an opened text stream
+        """
+        self.weights =  defaultdictionary(int)
+        for line in istream:
+            fields = line.split() 	
+            key,value = tuple(fields[:-1]),float(fields[-1])
+            self.weights[key] =  value
+        
+    def save(self,ostream):
+        """
+        Saves model parameters to a text stream
+        @param ostream: an opened text output stream
+		"""
+        for key,value in self.weights.items():
+            print(' '.join(list(key)+[str(value)]),file=ostream)
+
+    def __str__(self):
+        """
+        Pretty prints the weights vector on std output.
+        May crash if vector is too wide/full
+        """
+        s = ''
+        for key,value in self.weights.items():
+            X,Y = key
+            if isinstance(X,tuple):
+                s += 'phi(%s,%s) = 1 : w = %f\n'%('&'.join(X),Y,value)
+            else:
+                s += 'phi(%s,%s) = 1 : w = %f\n'%(key,Y,value)
+        return s
+\end{minted}
+
+
+\end{document}

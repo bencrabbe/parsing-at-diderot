@@ -131,6 +131,7 @@ class LinearChainCRF:
                     backward[i,j] += backward[i+1,succ] * self.score(self.Y[j],self.Y[succ],sentence[i+1])
         Z = sum([self.score(self.source_tag,self.Y[succ],sentence[0]) *  backward[0,succ] for succ in range(K)])
         return (backward,Z)
+
     
     def train(self,dataset,step_size=0.1,max_epochs=100):
         """
@@ -145,7 +146,6 @@ class LinearChainCRF:
             for x,y in zip(xwords,ytags_bigrams):
                 delta_ref += SparseWeightVector.code_phi(x,y)
 
-                
         for e in range(max_epochs):
             
             loss = 0.0
@@ -175,19 +175,20 @@ class LinearChainCRF:
 
             
     def test(self,dataset):
-
         N       = 0.0
         correct = 0.0
+        
         for ytags,xwords in dataset:
             N += len(ytags)
             ypreds = self.tag(xwords)
             correct += sum([ref == pred for ref,pred in zip(ytags,ypreds)])
         return correct / N
 
+    
 if __name__ == '__main__':           
     corpus = ['Le/D chat/N mange/V la/D souris/N ./PONCT','La/D souris/N danse/V ./PONCT','Il/Pro la/Pro voit/V dans/P la/D cour/N ./PONCT','Le/D chat/N la/Pro mange/V ./PONCT',"Le/D chat/N la/Pro mange/V",'Il/Pro est/V grand/A ./PONCT',"Il/Pro se/Pro dirige/V vers/P l'/D est/N ./PONCT"]
     D = make_dataset(corpus)
 
     crf = LinearChainCRF()
-    crf.train(D)
+    crf.train(D,max_epochs=100)
     print(crf.test(D))

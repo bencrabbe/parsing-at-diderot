@@ -124,7 +124,8 @@ class StructuredPerceptron:
             correct += sum([ref == pred for ref,pred in zip(ytags,ypreds)])
         return correct / N
 
-if __name__ == '__main__':           
+if __name__ == '__main__':
+    
     corpus = ['Le/D chat/N mange/V la/D souris/N ./PONCT','La/D souris/N danse/V ./PONCT','Il/Pro la/Pro voit/V dans/P la/D cour/N ./PONCT','Le/D chat/N la/Pro mange/V ./PONCT',"Le/D chat/N la/Pro mange/V",'Il/Pro est/V grand/A ./PONCT',"Il/Pro se/Pro dirige/V vers/P l'/D est/N ./PONCT"]
     D = make_dataset(corpus)
 
