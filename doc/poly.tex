@@ -7,6 +7,7 @@
 \usepackage{booktabs}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{amsfonts}
 \usepackage{latexsym}
 \usepackage{algpseudocode}
@@ -14,6 +15,7 @@
 \usepackage{tikz}
 \usetikzlibrary{snakes}
 \usetikzlibrary{matrix}
+\usetikzlibrary{shapes}
 \usepackage{comment}
 \usepackage{minted}
 
@@ -67,10 +69,9 @@
 \end{description}
  
 
-\chapter{Traitement automatique des langues et prédiction structurée}
+\chapter{Aspects algorithmiques}
 
-
-\section{Prédiction structurée}
+\section{Prédiction de séquences}
 Un nombre important de problèmes de traitement automatique des langues (\ac{Tal}) peuvent se formaliser comme des problèmes de recherche de chemin le plus long (ou parfois le plus court) dans un graphe acyclique orienté (\ac{Dag}).
 
 Un exemple intuitif est le problème d'étiquetage de séquences appelé étiquetage morphosyntaxique. \'{E}tant donnée une séquence de $n$ mots $w_1\ldots w_n$,  on se donne pour tâche de prédire leurs parties de discours $t_1\ldots t_n$. 
@@ -128,9 +129,9 @@ peut s'exprimer sous la forme générale d'un problème de recherche~:
 \item Un ensemble $F\subseteq Q$ d'états finaux qui indique les états dans lequel le tagger a terminé.
 \item Un ensemble $A$ d'actions, dans le cas d'un tagger la seule action possible est de tagguer le mot suivant. On définit un ensemble d'actions $A$ pour lequel chaque élément représente l'attribution d'un tag au mot suivant dans la phrase.
 \item Un ensemble $T\subseteq Q\times Q \times A$ de transitions qui induit une structure d'arbre.
-\item Une fonction de coût $\sigma$ ou de score qui représente le score d'une séquence d'états calculé depuis l'état initial. On suppose que toute transition  $(q_i,q_{i+1},a_i) \in T$ se voit attribuer un coût $s(q_i,q_{i+1},a_i)$ par une fonction $s: T \mapsto \mathbb{R}$. On pose par convention que le coût de la séquence de transitions qui mène à l'état $q_k$ est le produit des coûts des transitions qui la composent~: 
+\item Une fonction de coût $\sigma$ ou de score qui représente le score d'une séquence d'états calculé depuis l'état initial. On suppose que toute transition  $(q_i,q_{i+1},a_i) \in T$ se voit attribuer un coût $\psi(q_i,q_{i+1},a_i)$ par une fonction $\psi: T \mapsto \mathbb{R}$. On pose par convention que le coût de la séquence de transitions qui mène à l'état $q_k$ est le produit des coûts des transitions qui la composent~: 
 \begin{displaymath}
-\sigma(q_k) = \bigotimes_{0\leq i < k} s(q_i,q_{i+1},a_i)
+\sigma(q_k) = \bigotimes_{0\leq i < k} \psi(q_i,q_{i+1},a_i)
 \end{displaymath}
 \end{itemize}
 \begin{figure}[htbp]
@@ -195,10 +196,10 @@ On peut illustrer la  structure d'un problème de recherche par un arbre comme e
 \begin{algorithmic}[1]
 \Function{MaxSearch}{S,B,$\sigma$}
 \If{$B \not = \epsilon$}
-\State maxscore $\gets -\infty$
+\State maxscore $\gets \bar{0}$
 \ForAll{$t \in T$}
-	\State pscore $\gets \sigma + s(S,B,t)$
-	\State maxscore $\gets $\Call{Max}{}(maxscore,\Call{MaxSearch}{$S|t$,$_{\ominus}$B,pscore})
+	\State pscore $\gets \sigma \otimes \psi(S,B,t)$
+	\State maxscore $\gets $\Call{$\oplus$}{}(maxscore,\Call{MaxSearch}{$S|t$,$_{\ominus}$B,pscore})
 \EndFor
 \State\Return maxscore
 \Else
@@ -240,13 +241,13 @@ entre états qui satisfait le critère suivant~:
 (S,b_0|B) \stackrel{t}{\Rightarrow}(S|t,B)\qquad (t \in A)
 \end{displaymath}
 Ce qui signifie que le premier mot de $B$ est enlevé; le tag qui correspond à l'action exécutée est ajouté à $S$.
-\item Le coût local d'une transition $s(S,B,t)$ est calculé par un modèle d'apprentissage approprié. 
+\item Le coût local d'une transition $\psi(S,B,t)$ est calculé par un modèle d'apprentissage approprié. 
 \end{itemize}
 
 Notons que les systèmes de transitions peuvent servir à exprimer des automates et des transducteurs à nombre finis d'états ou des contreparties d'automates à pile. Mais il est commun en \ac{tal} de ne pas limiter l'usage des systèmes de transition au seul encodage de ce type de machines.
 
 \begin{exo}
-Définir une variante de ce système de transition qui permet à un tagger d'accéder également aux mots qui précèdent dans la phrase avec la fonction de score $s(S,B,t)$ ou une de ses variantes. 
+Définir une variante de ce système de transition qui permet à un tagger d'accéder également aux mots qui précèdent dans la phrase avec la fonction de score $\psi(S,B,t)$ ou une de ses variantes. 
 \end{exo}
 \begin{exo}
 Réécrire l'algorithme de parcours d'un arbre de recherche pour qu'il renvoie le poids de la solution de poids maximal à l'aide du système de transitions donné ci-dessus.
@@ -255,10 +256,10 @@ Réécrire l'algorithme de parcours d'un arbre de recherche pour qu'il renvoie l
 \begin{algorithmic}
 \Function{MaxSearch}{S,B,$\sigma$}
 \If {B $\not = \epsilon$}
-\State maxscore $\gets -\infty$
+\State maxscore $\gets \bar{0}$
 \ForAll{$t \in A$}
-\State pscore $\gets \sigma + s(S,B,t)$ 
-\State maxscore $\gets$ \Call{Max}{}(maxscore,\Call{MaxSearch}{$S|t$,$_\ominus B$,pscore})
+\State pscore $\gets \sigma \otimes \psi(S,B,t)$ 
+\State maxscore $\gets$ \Call{$\oplus$}{}(maxscore,\Call{MaxSearch}{$S|t$,$_\ominus B$,pscore})
 \EndFor
 \State\Return maxscore
 \Else
@@ -350,7 +351,7 @@ Soit un noeud $x\in V$, l'ensemble $AS(x) = \{(x,y) \,|\, (x,y) \in E , y \in V 
 \begin{definition}[Chemin]
 Un chemin de longeur $n$ est une séquence de noeuds $\pi \in V^n$ de la forme $\pi = v_1 v_2\ldots v_n$ tel que $(v_i,v_{i+1}) \in E$ pour tout $1\leq i < n$. Le score $\sigma(\pi)$ d'un chemin est le produit :
 \begin{displaymath}
-\sigma(\pi) = \bigotimes_{i=1}^{n-1} s(v_i,v_{i+1}) 
+\sigma(\pi) = \bigotimes_{i=1}^{n-1} \psi(v_i,v_{i+1}) 
 \end{displaymath}
 \end{definition}
 
@@ -393,8 +394,8 @@ Notons $\sigma(x)$ le coût d'un chemin entre le noeud initial du \ac{dag} et un
 \label{eq-bellmann}
 \delta(x) = \left\{ 
 \begin{array}{ll}
-0 & \text{si }  x = q_0\\
-\oplus \left[ \alpha(x_{-1}) \otimes s(x_{-1},x), \ldots ,\alpha(x_{-k}) \otimes s(x_{-k},x) \right] &\text{sinon}
+\bar{0} & \text{si }  x = q_0\\
+\oplus \left[ \alpha(x_{-1}) \otimes \psi(x_{-1},x), \ldots ,\alpha(x_{-k}) \otimes \psi(x_{-k},x) \right] &\text{sinon}
 \end{array}
 \right.
 \end{equation}
@@ -410,17 +411,17 @@ Plusieurs techniques pour réaliser la mémorisation seront présentées mais ce
 
 Une solution simple et directe pour exprimer ce qui précède est la technique de \kw{mémoisation}. Celle-ci repose sur l'usage de \kw{mémo-fonctions}. L'idée est de mémoriser la solution $\delta(x)$ dans une table dès que celle-ci est déterminée. Cette table est alors consultée dans les étapes ultérieures de l'algorithme de telle sorte que la valeur mémorisée est réutilisée au lieu de réexécuter l'appel récursif.
 
-L'algorithme \ref{algo-searchMemo} illustre le principe de la mémoisation. On suppose que le \ac{dag} a un état final $q_f$, et que la table {\sl memo} est initialisée à $\delta(x) = -\infty$ pour tout  $x\in V$ (sauf $\delta(q_0) = 0$). La fonction est initialement appelée avec le paramètre $q_f$.  
+L'algorithme \ref{algo-searchMemo} illustre le principe de la mémoisation. On suppose que le \ac{dag} a un état final $q_f$, et que la table {\sl memo} est initialisée à $\delta(x) = \bar{0}$ pour tout  $x\in V$ (sauf $\delta(q_0) = \bar{1}$). La fonction est initialement appelée avec le paramètre $q_f$.  
 
 \begin{algorithm}[htbp]
 \begin{algorithmic}[1]
 \Function{MaxSearchMemo}{x}
-\If{$\text{memo}[x] \not = -\infty$}
+\If{$\text{memo}[x] \not = \bar{0}$}
 \Comment{Score mémoisé}
 \State\Return memo[x]
 \EndIf
 \ForAll{$y \in AE(x)$}
-\State memo[x] $\gets$ \Call{Max}{}(memo[x],\Call{MaxSearchMemo}{y} + s(y,x))
+\State memo[x] $\gets$ \Call{$\oplus$}{}(memo[x],\Call{MaxSearchMemo}{y} $\otimes \psi(y,x)$)
 \EndFor
 \State\Return memo[x]
 \EndFunction
@@ -463,9 +464,95 @@ L'algorithme mémoisé présenté dans la section précédente peut se reformule
 \begin{definition}[Ordre topologique] Un ordre topologique sur un \ac{dag} $G=(V,E)$ est tout ordre total sur les noeuds $V$ de ce \ac{dag} tel que pour tout couple de noeuds $(x,y) \in E$,  $x \prec y$. Il existe en général plusieurs ordres topologiques valides pour un \ac{dag} donné.
 \end{definition}
 
+L'algorithme de Viterbi est un algorithme de recherche du chemin de
+poids maximal dans un \ac{dag} (Figure \ref{algo-viterbi-general}). 
+ En supposant un noeud source $s$ unique dont le poids $\delta(s)$ est
+ initialisé à 1, l'algorithme parcourt le \ac{dag} en suivant l'ordre
+ topologique. Chaque noeud est à son tour valué par le poids
+ $\delta(s)$ du chemin maximal qui mène de la source jusqu'à ce
+ noeud. Toute l'idée de l'algorithme consiste à mémoriser les poids
+ $\delta(s)$ au fur et à mesure qu'ils sont calculés pour les
+ réutiliser lors de calculs ultérieurs.
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{Viterbi}{S,V,s}
+\State \Call{TriTopologique}{$S,V,s$}
+\State $\delta(s) \gets \bar{1}$
+\ForAll {$s \in  S$ (suivant ordre topologique)}
+\State $\delta(s) \gets \bar{0}$
+\ForAll {$(s',s) \in AE(s)$}
+\State  $\delta(s) \gets \Call{$\oplus$}{\delta(s) , \delta(s')  \otimes \psi(s',s) $}
+\EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-viterbi-general}Algorithme de Viterbi}
+\end{algorithm}
+
+On donne en figure \ref{fig-viterbi-general-dag} un exemple de
+résultat de l'exécution de l'algorithme sur un cas concret. Chacun des
+noeuds du \ac{dag} est annoté (case bleue) par la valeur du $\delta(x)$
+qui lui correspond.
 
 \begin{figure}[htbp]
-\begin{tikzpicture}[xscale=2,yscale=2]
+\begin{center}
+\begin{tikzpicture}[xscale=2,yscale=3]
+\def\x{0.0}
+\def\y{0.2}
+\node[shape=circle,draw=black,double=red] (S) at (0,0.5) {S};
+\node[shape=circle,draw=black,double=red] (E) at (4,0.5) {E};
+\node[shape=circle,draw=black] (1) at (1,0) {A};
+\node[shape=circle,draw=black] (2) at (1,1) {B};
+\node[shape=circle,draw=black] (3) at (2,0) {A};
+\node[shape=circle,draw=black] (4) at (2,1) {B};
+\node[shape=circle,draw=black] (5) at (3,0) {A};
+\node[shape=circle,draw=black] (6) at (3,1) {B};
+
+\draw [->,opacity=0.75](S) -- (1) node[midway,fill=white]{5};
+\draw [->,opacity=0.75](S) -- (2) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](1) -- (3) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](1) -- (4) node[near end,fill=white]{4};
+\draw [->,opacity=0.75](2) -- (3) node[near end,fill=white]{7};
+\draw [->,opacity=0.75](2) -- (4) node[midway,fill=white]{4};
+\draw [->,opacity=0.75](3) -- (5) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](3) -- (6) node[near end,fill=white]{3};
+\draw [->,opacity=0.75](4) -- (5) node[near end,fill=white]{2};
+\draw [->,opacity=0.75](4) -- (6) node[midway,fill=white]{1};
+\draw [->,opacity=0.75](5) -- (E) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](6) -- (E) node[midway,fill=white]{3};
+
+%deltas
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (0+\x,0.5+\y){1};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (4+\x,0.5+\y){135};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,0+\y){5};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,1+\y){2};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,0+\y){15};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,1+\y){20};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,0+\y){40};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,1+\y){45};
+\end{tikzpicture}
+\end{center}
+\caption{\label{fig-viterbi-general-dag}\ac{dag} annoté par $\delta(x)$}
+\end{figure}
+
+
+\begin{exo}[Limitation aux \ac{dags}]
+L'algorithme de Viterbi ne peut pas être utilisé si le graphe contient
+au moins un cycle (le graphe n'est pas un \ac{dag}). Expliquer
+pourquoi par un exemple.
+\end{exo}
+\begin{exo}[Extraction de la séquence de poids maximal]
+Donner une extension de l'algorithme donné en figure
+\ref{algo-viterbi-general} qui permet de renvoyer comme résultat non
+seulement le score du chemin de poids maximal (plus long chemin) mais
+aussi la séquence de tags de ce chemin.
+\end{exo}
+
+
+\begin{figure}[htbp]
+\begin{center}
+\begin{tikzpicture}[xscale=1.5,yscale=1.5]
     \node[shape=circle,draw=black] (A1) at (1,1) {D};
     \node[shape=circle,draw=black] (B1) at (1,2) {N};
     \node[shape=circle,draw=black] (C1) at (1,3) {A};
@@ -632,10 +719,1091 @@ L'algorithme mémoisé présenté dans la section précédente peut se reformule
  \draw [->,ultra thick,opacity=0.5] (E5) -- (E);
 
 \end{tikzpicture}
-\caption{Graphe acyclique orienté pour énumérer les solutions de manière compacte}
+\end{center}
+\caption{\label{fig-pos-dag}Graphe acyclique orienté pour énumérer les solutions de manière compacte}
 \end{figure}
 
+
+\paragraph{Viterbi pour l'étiquetage morphosyntaxique}
+Dans le cas de l'étiquetage morphosyntaxique en \ac{tal}, le \ac{dag}
+de programmation dynamique est conventionnellement construit comme
+illustré en figure \ref{fig-pos-dag}. Pour chaque occurrence de mot
+$w_i$ dans la phrase, on construit un noeud correspondant à chacun des tags possibles.
+Chacun de ces noeuds est connecté par un arc à l'ensemble des noeuds
+de la position suivante $w_{i+1}$ dans la phrase. 
+
+
+
+En utilisant cette représentation, évaluer successivement les noeuds
+de gauche à droite,  c'est-à-dire en valuant l'ensemble des mots de
+$w_i$  avant ceux de $w_{i+1}$ revient à valuer le graphe suivant un
+ordre topologique valide.
+
+Dans ce contexte spécifique, il est classique de stocker les quantités
+$\delta(s)$ dans une matrice $\Delta$ à $i$ colonnes et $j$ lignes.
+Chaque ligne correspond à un pos tag parmi un ensemble de $K$ tags et chaque colonne à une position
+dans une phrase de $N$ mots. Ainsi $\delta(i,j)$ correspond au score du noeud en
+position $i$ taggué par le tag $j$. L'algorithme prend alors la forme
+donnée en Algorithme \ref{algo-viterbi-table} où on choisit de 
+ne pas expliciter l'état cible noté $E$ dans les exemples précédents.
+
+Cette dernière version permet également de mettre en évidence que la complexité
+de l'algorithme est en ${\cal O}(NK^2)$.  
+Autrement dit la méthode de programmation dynamique permet de
+donner une solution en temps polynomial à un problème dont la
+résolution naïve est en temps exponentiel.
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{Viterbi}{$N$,$K$,$s$}
+\For{$j \leq 0 < K $}\Comment{Initialisation}
+\State $\delta(0,j) \gets \psi(s ,[0,j]$) 
+\EndFor
+\For {$0 < i <  N$}\Comment{Recurrence}
+    \For{$j \leq 0 < K $}
+        \State $\delta(i,j) \gets \bar{0}$
+        \For {$0\leq  k < K$}
+        \State  $\delta(i,j) \gets \Call{$\oplus$}{\delta(i,j) ,
+          \delta(i-1,k)  \otimes \psi([i-1,k] ,[i,j]) $}
+\EndFor
+\EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-viterbi-table}Algorithme de Viterbi (version tabulaire)}
+\end{algorithm}
+
+Ce type de formulation est fréquemment utilisée dans les
+implémentations. Signalons que dans un contexte d'implémentation il est d'usage de
+ne pas représenter explicitement les arcs du \ac{dag} mais plutôt de
+construire directement la matrice de scores $\Delta$.
+
+\begin{exo}[Historique de dérivation]
+Augmenter l'algorithme \ref{algo-viterbi-table} pour qu'il renvoie
+également la séquence de tags de score maximal.
+\end{exo}
+
+\section{Abstractions algébriques}
+\label{sec-semi-ring}
+
+Les algorithmes que nous présentons ici sont destinés à être utilisés
+en combinaison avec une méthode d'apprentissage.
+C'est cette dernière
+qui donne une méthode pour valuer la fonction $\psi$ et pour estimer
+les éventuels paramètres qui lui sont associés.
+
+L'algorithme de Viterbi est un algorithme qui ne fait rien
+d'autre que de calculer un {\sl max} ou un {\sl argmax} pour un
+très grand ensemble de séquences.
+
+Or chaque méthode d'apprentissage manipule des poids qui se combinent
+différemment. Par exemple pour calculer le poids d'une séquence avec
+un \ac{hmm} il faut réaliser une multiplication alors qu'avec un
+perceptron il faut réaliser une addition. L'algorithme de Viterbi peut
+être réutilisé pour chacun de ces paradigmes mais avec les ajustements
+nécessaires au système de pondération du paradigme en question.
+
+Nous introduisons ici la notion de demi-anneau
+car elle permet de spécifier l'interface entre les
+algorithmes présentés ici et des
+modèles d'apprentissage variés. 
+Plus spécifiquement cette notion aide à caractériser
+les conditions d'utilisation d'un algorithme de recherche (notamment
+celui de Dijkstra) pour un
+un modèle d'apprentissage. En second lieu elle donne des points de
+repères sur les paramètres à considérer pour adapter les algorithmes
+aux problèmes d'apprentissage traités. Et finalement cela permet de
+dériver de nouvelles utilisations pour un algorithme donné.
+
+Un \kw{demi-anneau} est une structure algébrique abstraite qui
+permet de généraliser le calcul avec des nombres naturels (ensemble
+$\mathbb{N}$)\footnote{Le calcul avec des entiers (ou des réels) se
+  généralise par une structure d'\kw{anneau}. C'est-à-dire qu'on a
+  nécessairement des
+additifs inverses.}.
+Le calcul suppose deux opérations~: l'addition qui est commutative et
+qui a un élément neutre noté $\bar{0}$, la multiplication qui peut
+être commutative et qui a un élément neutre noté
+$\bar{1}$. De plus la multiplication distribue sur l'addition et
+$\bar{0}$ est absorbant pour la multiplication.
+Contrairement aux \kw{anneaux}, les demi-anneaux n'ont pas
+nécessairement un additif inverse tel que $a \oplus -a = \bar{0}$.
+
+Un demi anneau est un quintuple $(E,\oplus,\otimes,\bar{0},\bar{1})$
+où $E$ est un ensemble, 
+$\oplus$ l'opération d'addition, $\otimes$ l'opération de multiplication, $\bar{0}$ le neutre pour l'addition et
+$\bar{1}$ le neutre pour la multiplication.  
+
+L'intérêt d'utiliser cette généralisation dans la spécification des
+algorithmes est de donner une formulation unique d'un algorithme qu'il
+ne reste plus qu'à instancier avec le demi-anneau correspondant au
+problème d'apprentissage à traiter. On donne en figure \ref{fig-semirings} quelques exemples de
+demi-anneaux qui sont utilisés dans ce cours.
+
+\begin{figure}[htbp]
+\begin{center}
+\scalebox{0.85}{
+\begin{tabular}{llccccl}\toprule
+Nom   &Ensemble&$\oplus$&$\otimes$&$\bar{0}$&$\bar{1}$&Usage possible\\\midrule
+Viterbi& $[0,1]$    & max&$\times$&0&1&meilleure séquence
+(\ac{hmm})\\
+Viterbi-\ac{crf}& $\mathbb{R}^+$  & max&$\times$&0&1&meilleure
+séquence (\ac{crf})\\
+Viterbi-réel& $\mathbb{R}\cup\{-\infty\} $ &max&+&$-\infty$&0&meilleure
+séquence (perceptron)\\
+Tropical& $\mathbb{R}^+\cup \{-\infty\}$&min&+&$-\infty$&0&plus court chemin ($-log(p)$)\\
+Avant    &$[0,1]$ &+&$\times$&0&1&Algorithme avant (\ac{hmm})\\
+Avant-\ac{crf} &$\mathbb{R}^+$ &+&$\times$&0&1&Algorithme avant (\ac{crf})\\
+Comptage&$\mathbb{N}$ &+&$\times$&0&1&Compte le nombre de séquences\\
+\bottomrule
+\end{tabular}}
+\end{center}
+\caption{\label{fig-semirings}Quelques demi-anneaux utilisés dans ce cours}
+\end{figure}
+
+On termine par donner quelques définitions et propriétés qui seront
+utiles notamment dans les sections suivantes.  Un demi-anneau
+$(E,\oplus,\otimes,\bar{0},\bar{1})$ 
+est \kw{idempotent} si $e \oplus e = e \qquad (\forall e \in E)$.
+Si le demi-anneau est idempotent, on peut alors définir la relation
+d'ordre partiel $\leq$ comme suit~:
+\begin{displaymath}
+a \leq b \,\Leftrightarrow\,  (a\oplus b) = a
+\end{displaymath}
+appelée ordre naturel de $E$. On dit qu'un demi-anneau a la propriété
+de \kw{supériorité} si pour tout couple $a,b \in E$:
+\begin{displaymath}
+a\leq a \otimes b, \qquad b \leq a\otimes b
+\end{displaymath}
+Ce qui revient à dire que combiner par multiplication deux quantités
+$a,b$ renvoie comme résultat une valeur plus grande. Cette propriété est
+requise pour utiliser l'algorithme de Dijkstra ou ses dérivés (y
+compris l'algorithme de Knuth) dans un contexte de prédiction structurée.
+
+
+
+
+\begin{exo}[Algorithme somme produit]
+Instancier l'algorithme de Viterbi (Algorithme
+\ref{algo-viterbi-general}) en utilisant le demi anneau 
+appelé Avant-\ac{crf} (Figure \ref{fig-semirings}). Simuler ce nouvel
+algorithme à l'aide de l'exemple  de \ac{dag} donné en figure
+\ref{fig-viterbi-general-dag}. Donner en français une explication de
+ce que cet algorithme calcule. 
+\end{exo}
+
+
+\section{Algorithme de Dijkstra et recherche A$\star$}
+
+Dans certains cas, il est possible de reformuler le problème de recherche de la séquence
+de poids maximal dans un \ac{dag} comme un problème du plus court
+chemin dans un graphe de telle sorte que le problème se résoud avec
+l'algorithme de Dijkstra.
+ 
+Intuitivement l'algorithme de Dijkstra peut s'utiliser dans un
+contexte de tagging lorsque les scores associés aux arcs
+s'interprètent comme des mesures dites de surprise (\cite{hale}) que l'on obtient à partir
+de probabilités $(\text{surprise} =  -\log_2(p))$.
+
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{Dijsktra}{$S$,$E$,source,but}
+\State $ \delta(s) \gets +\infty$\qquad$(\forall s \in S)$ 
+\State $ \delta(\text{source}) \gets \bar{1}$ 
+\State $Q \gets s$
+\State $V \gets \emptyset$
+\While {$Q \not = \emptyset$}
+    \State $s \gets$ \Call{Extraire-Min}{$Q$} 
+    \State $V \gets V \cup \{s\}$
+    \If{$s =$ but}
+        \State\Return $\delta(s)$
+    \EndIf
+    \ForAll{$(s,s') \in AS(s)$}
+    \If{$s'\not \in V$}
+        \State localscore $\gets \delta(s) \otimes \psi(s,s')$
+        \If{localscore $<\delta(s')$}
+              \State $\delta(s') \gets$ localscore
+              \State \Call{ReordonnerClé}{Q,s'}
+        \EndIf
+       \EndIf
+    \EndFor
+\EndWhile
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-dijkstra-general}Algorithme de Dijkstra}
+\end{algorithm}
+
+
+Commençons par rappeler le fonctionnement de l'algorithme de Dijkstra
+dans le cas classique. On suppose un graphe dont les arcs sont
+pondérés par des distances entre des stations de métro. Le problème est de trouver le
+plus court chemin entre deux stations, la première est appelée la
+source, la seconde la destination.
+
+L'algorithme suppose un graphe $G= \langle S,E \rangle$ une file de priorité $Q$. Une file de priorité
+est une structure de donnée qui maintient ses arguments triés. On peut
+ainsi lui ajouter des éléments pondérés et extraire l'élément de
+poids minimal\footnote{On suppose que les poids des éléments
+  définissent la relation d'ordre.}.
+
+L'algorithme de Dijkstra, détaillé en Algorithme
+\ref{algo-dijkstra-general}, est conceptuellement très simple. 
+L'invariant se résume comme suit.
+L'algorithme procède en évaluant comment progresser à partir du noeud
+$s$ du graphe qui est le plus proche de la source.
+Aucun chemin alternatif plus court ne peut mener à $s$ sinon ce serait
+un noeud sur ce chemin alternatif qui serait
+sélectionné à la place de $s$. L'algorithme termine quand le noeud $s$
+est le but à atteindre.
+
+Il faut remarquer que l'algorithme de Dijkstra fonctionne uniquement
+si les poids des chemins sont positifs. Dans le cas où certains
+chemins ont des poids négatifs, l'algorithme donne un résultat incorrect.
+
+\begin{figure}
+\scalebox{0.7}{
+\begin{tikzpicture}[xscale=2.5,yscale=2.5]
+    \node[shape=ellipse,draw=black] (C) at (-0.5,0.3) {Châtelet};
+    \node[shape=ellipse,draw=black] (E) at (-2.5,1) {Etoile};
+    \node[shape=ellipse,draw=black] (N) at (3,0) {Nation};
+    \node[shape=ellipse,draw=black] (S) at (-1.5,2.5) {Saint-Lazare};
+    \node[shape=ellipse,draw=black] (R) at (1,1) {République};
+    \node[shape=ellipse,draw=black] (B) at (0.75,-0.25) {Bastille};
+    \node[shape=ellipse,draw=black] (M) at (-1.4,-1.5) {Montparnasse};
+    \node[shape=ellipse,draw=black] (O) at (-1,1) {Opéra};
+    \node[shape=ellipse,draw=black] (I) at (0.75,-2) {Pl. Italie};
+
+
+    \node[shape=rectangle,fill=white] (X) at (-0.55,1.5) {3};
+    \node[shape=rectangle,fill=white] (Y) at (-0.25,2.4) {22};
+
+    \draw [-,opacity=1] (C) -- (O) node[midway,fill=white]{3};
+    \draw [-,opacity=1] (C) -- (B) node[midway,fill=white]{3};
+    \draw [-,opacity=1] (C) -- (R) node[near end,fill=white]{4};
+    \draw [-,opacity=1] (C) -- (E) node[midway,fill=white]{7};
+    \draw [-,opacity=1] (C) -- (M) node[midway,fill=white]{7};
+    \draw [-,opacity=1] (C) -- (I) node[midway,fill=white]{7};
+    \draw [-,opacity=1] (C) -- (I) node[midway,fill=white]{6};
+    \draw [-,opacity=1] (C) to [out=30,in=-70] (S);
+    \draw [-,opacity=1] (E) -- (M) node[midway,fill=white]{11};
+    \draw [-,opacity=1] (M) -- (I) node[midway,fill=white]{7};
+    \draw [-,opacity=1] (B) -- (I) node[midway,fill=white]{5};
+    \draw [-,opacity=1] (B) -- (R) node[midway,fill=white]{4};
+    \draw [-,opacity=1] (N) -- (I) node[midway,fill=white]{9};
+    \draw [-,opacity=1] (N) -- (B) node[midway,fill=white]{3};
+    \draw [-,opacity=1] (N) -- (R) node[midway,fill=white]{6};
+    \draw [-,opacity=1] (O) -- (R) node[near end,fill=white]{5};
+    \draw [-,opacity=1] (O) -- (E) node[midway,fill=white]{3};
+    \draw [-,opacity=1] (S) -- (M) node[near end,fill=white]{9};
+    \draw [-,opacity=1] (S) -- (O) node[midway,fill=white]{2};
+    \draw [-,opacity=1] (S) -- (R) node[midway,fill=white]{9};
+    \draw [-,opacity=1] (E) to [out=70,in=90] (N);
+\end{tikzpicture}
+}
+\caption{\label{fig-ratp}Plan simplifié du métro parisien}
+\end{figure}
+
+\begin{exo}[De \'Etoile à Nation]
+Simuler l'algorithme de Dijkstra pour calculer le plus court chemin
+entre \'Etoile et Nation sur le plan du métro parisien donné en Figure \ref{fig-ratp}.
+\end{exo}
+\begin{exo}[De place d'Italie à Saint-Lazare]
+Simuler l'algorithme de Dijkstra pour calculer le plus court chemin
+entre Place d'Italie et Saint-Lazare sur le plan du métro parisien donné en Figure \ref{fig-ratp}.
+\end{exo}
+\begin{center}
+\scalebox{0.7}{
+\begin{tabular}{cl}\toprule
+Itération&File de priorité ($Q$)\\\midrule
+1& Italie(0)\\
+2& Bastille(5) $\prec$ Chatelet(6) $\prec$ Montparnasse(7) $\prec$ Nation(9)\\
+3& Chatelet(6) $\prec$ Montparnasse(7) $\prec$ Nation(8) $\prec$ République(9)\\
+4& Montparnasse(7) $\prec$ Nation(8) $\prec$ Saint-Lazare(9) $\prec$ Opéra(9) $\prec$ Republique(10) $\prec$ Etoile(13)\\
+5 & Nation(8) $\prec$ Saint-Lazare(9) $\prec$ Opéra(9) $\prec$ Republique(10) $\prec$ Etoile(13)\\
+6 & {\bf Saint-Lazare(9)} $\prec$ Opéra(9) $\prec$ Republique(10) $\prec$ Etoile(13)\\\bottomrule
+\end{tabular}}
+\end{center}
+
+\begin{exo}[Historique]
+Donner une extension au pseudo-code en figure
+\ref{algo-dijkstra-general} pour renvoyer également le plus court
+chemin et pas seulement sa valeur.
+\end{exo}
+\begin{exo}[Invariant de l'algorithme et poids négatifs]
+Donner un exemple de graphe comportant au moins un arc de poids
+négatif pour lequel une exécution naïve de l'algorithme de Dijkstra
+renvoie un résultat incorrect.
+\end{exo}
+\begin{exo}[Graphe acyclique orienté]
+En faisant l'hypothèse que le graphe est un \ac{dag}, proposez une
+simplification de l'algorithme \ref{algo-dijkstra-general}
+\end{exo}
+
+\paragraph{Application de l'algorithme de Dijkstra en \ac{tal}} 
+ Pour les problèmes de \ac{tal} comme le tagging, le problème peut se
+ reformuler comme un problème de recherche du plus court chemin
+ lorsque le modèle d'apprentissage produit des poids qui s'apparentent
+ à des probabilités.  Dans le cadre de ce cours, cet algorithme sera donc approprié pour
+être utilisé en combinaison avec des modèles d'apprentissage tels que
+\ac{hmm}, \ac{memm} et des modèles neuronaux qui généralisent \ac{memm}.
+
+L'algorithme peut ainsi être réutilisé en représentant le problème par
+un graphe identique aux \ac{dags} de programmation dynamique manipulés
+par l'algorithme de Viterbi. Contrairement à l'algorithme
+de Viterbi, l'algorithme de Dijkstra cherche explicitement un court
+chemin, ce qui demande de remplacer la fonction de pondération
+probabiliste par une fonction de pondération qui calcule des scores
+qui se comportent de manière analogue aux distances entre stations de métro.
+
+Il est d'usage, notamment pour \ac{hmm},
+d'utiliser des log-probabilités dans les implémentations pour éviter
+les problèmes de manque de précision dans la manipulation de réels
+trop proches de 0.  Ici on réutilise cette pratique allègrement~:  si
+$p$ est une probabilité de transition, on peut interpréter $-\log(p)$ comme l'effort (ou une longueur de chemin ou encore une surprise) qui permet
+d'avancer dans la séquence. Dans ce cas suivre un chemin de très haute
+probabilité ($p\approx 1.0$) aura un coût très faible ($-\log(1.0)\approx 0$)
+alors que suivre un chemin de très basse probabilité ($p\approx 0.0$)
+aura un coût énorme ($-\log(0.0) \approx +\infty$). 
+Autrement dit, on suppose que fonction de score $\psi(s_i,s_{i+1}) =
+-\log(p)$ où $p$ est une probabilité de transition.
+Dans ce contexte, utiliser l'algorithme de Dijkstra revient à chercher
+le chemin pour lequel l'effort (ou la surprise) global est le plus
+faible\footnote{On verra en section \ref{sec-semi-ring} que ces
+  intuitions se formalisent explicitement en termes algébriques. 
+L'algorithme de Dijkstra est utilisable lorsque le demi-anneau utilisé pour combiner les
+  scores possède une propriété dite de supériorité. Celle-ci
+  généralise l'idée que lorsque deux chemins sont combinés la distance
+  augmente. Le demi-anneau décrit informellement ici est en fait le demi-anneau tropical.
+}.
+
+On peut illustrer cela par un exemple. Considérons les séquence de tags 
+$t_1,t_2,t_3,t_4$ et $t_1,t_2,t_3,t_5$. Supposons que $P(t_1) = 0.2, P(t_2|t_1) = 0.8,
+P(t_3|t_2) = 0.1,P(t_4|t_3) = 0.5, P(t_5|t_3) = 0.2$. En termes de surprise cumulée, 
+on a que~:
+\begin{displaymath}
+\sigma(t_1,t_2,t_3,t_4) = \sum_{i} \psi(t_{i}, t_{i-1}) = 1.61 + 0.22 + 2.30 + 0.69 
+\end{displaymath}
+\begin{displaymath}
+\sigma(t_1,t_2,t_3,t_5) = \sum_{i} \psi(t_{i} , t_{i-1})  = 1.61 + 0.22 + 2.30 + 1.61 
+\end{displaymath}
+On voit que la surprise cumulée augmente lors de chaque transition.
+et que la séquence de plus haute probabilité aura la plus petite
+surprise cumulée. 
+
+On peut démontrer que dans le pire des cas, l'algorithme de Dijkstra a
+une complexité un peu plus élevée que l'algorithme de Viterbi. 
+La complexité additionnelle est liée à l'usage de la file de priorité
+$Q$. 
+Par
+contre l'algorithme de Viterbi explore en largeur l'ensemble des
+noeuds du graphe alors que l'algorithme de Dijkstra est un exemple
+d'algorithme d'exploration en profondeur (meilleur d'abord). 
+Il est susceptible dans certains cas de
+trouver la solution en explorant moins de noeuds. 
+C'est ce qui motive l'extension de cet algorithme connue sous le nom d'heuristique \kw{A$\star$}.
+
+\subsection{Algorithme A$\star$}
+
+L'algorithme $A\star$ est un algorithme de recherche du plus court
+chemin qui est à voir comme une extension de l'algorithme de Dijkstra.
+L'invariant de l'algorithme de
+Dijkstra est conservé~: \`a chaque itération c'est le noeud $s$ qui a
+le coût $\delta(s)$ le plus faible qui est sélectionné pour la suite de l'exploration.
+
+Par contre l'algorithme $A\star$ change la méthode d'évaluation du
+coût. Ce n'est plus uniquement $\delta(s)$ qui représente le coût mais la
+combinaison~:
+\begin{displaymath}
+\phi(s) = \delta(s)+h(s)
+\end{displaymath}
+Cette fois-ci, le coût $c(s)$ est la somme du coût $\delta(s)$ du
+chemin déjà parcouru et d'une heuristique $h(n)$ qui estime le coût du
+chemin qui reste à parcourir.  Ainsi l'algorithme de Dijkstra classique est un algorithme $A\star$
+pour lequel $h(s) = 0\, (\forall s \in S)$. 
+
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{A-star}{$S$,$E$,source,but}
+\State $ \phi(s) \gets +\infty$\qquad$(\forall s \in S)$ 
+\State $ \phi(\text{source}) \gets \bar{1}$ 
+\State $Q \gets \text{source}$
+\State $V \gets \emptyset$
+\While {$Q \not = \emptyset$}
+    \State $s \gets$ \Call{Extraire-Min}{$Q$} 
+    \State $V \gets V \cup s$
+    \If{$s =$ but}
+        \State\Return $\delta(s)$
+    \EndIf
+    \ForAll{$(s,s') \in AS(s)$}
+      \If{$s' \not \in V$}
+        \State localscore $\gets \delta(s) \otimes \psi(s,s') \otimes h(s')$        
+        \If{localscore $<\phi(s')$}
+              \State $\phi(s') \gets$ localscore
+              \State $\delta(s') \gets \delta(s) \otimes \psi(s,s')$ 
+              \State \Call{ReordonnerClé}{Q,s'}
+        \EndIf
+        \EndIf
+    \EndFor
+\EndWhile
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-astar-general}Algorithme A$\star$}
+\end{algorithm}
+
+
+\paragraph{Conception de l'heuristique} La difficulté lors de la
+conception d'un algorithme $A\star$ consiste à définir une heuristique
+qui permette d'obtenir une \kw{solution optimale}. 
+Un algorithme de recherche de court chemin qui renvoie une solution
+optimale est un algorithme qui renvoie effectivement comme résultat la
+valeur du plus court chemin entre deux points. C'est ce que garantit
+l'algorithme de Dijkstra.
+
+Si l'heuristique $h(s)$ est mal définie l'algorithme $A\star$ n'est
+pas garanti de renvoyer la solution optimale. On propose d'illustrer
+ce point par l'exemple de la recherche du court chemin entre {\sl Place
+d'Italie} et {\sl Saint Lazare} à partir du graphe \ref{fig-ratp}.
+en comparant l'effet des heuristiques $h_1(s)$ et $h_2(s)$ suivantes
+sur la procédure de recherche~:
+\begin{center}
+\begin{tabular}{lll}\\\toprule
+  $s$ & $h_1(s)$&$h_2(s)$\\\midrule
+Châtelet& 1&11\\
+Bastille&5&12\\
+Opéra & 1&1\\
+Montparnasse&4&4\\
+Nation & 12&12\\
+Etoile & 1&1\\
+Autres & 0&0\\\bottomrule
+\end{tabular}
+\end{center}
+\begin{center}
+\scalebox{0.65}{
+\begin{tabular}{cl}\toprule
+Itération&File de priorité ($Q$) pour l'heuristique $h_1$\\\midrule
+1& Italie(0)\\
+2 & Chatelet(7) $\prec$ Bastille(10)  $\prec$ Montparnasse(11) $\prec$ Nation(21)\\
+3 & Bastille(10)  $\prec$ Montparnasse(11) $\prec$ Nation(21)\\
+4 & {\bf Saint Lazare(9)} $\prec$ Opéra(10) $\prec$ Republique(10) $\prec$
+Montparnasse(11) $\prec$ Etoile(13) $\prec$  Nation(21)\\\bottomrule
+\end{tabular}}
+\end{center}
+
+\begin{center}
+\scalebox{0.8}{
+\begin{tabular}{cl}\toprule
+Itération&File de priorité ($Q$) pour l'heuristique $h_2$\\\midrule
+1& Italie(0)\\
+2&Montparnasse(11) $\prec$ Bastille(17) $\prec$ Chatelet(17) $\prec$ Nation(21)\\ 
+3&{\bf Saint-Lazare(16)} $\prec$ Etoile(17) $\prec$  Bastille(17) $\prec$ Chatelet(17) $\prec$ Nation(21)\\\bottomrule
+\end{tabular}}
+\end{center}
+On peut constater que l'heuristique $h_1$ renvoie effectivement la solution
+optimale en moins d'itérations que l'algorithme de Dijkstra
+classique. 
+Par contre l'heuristique $h_2$ renvoie une solution non
+optimale (en peu d'itérations également).
+La cause de la non optimalité de $h_2$ vient essentiellement du fait que l'algorithme
+fait -- à tort -- l'hypothèse qu'il est très couteux de rejoindre la
+destination en passant par Châtelet~: l'heuristique $h_2$ indique un coût de
+11 pour rejoindre la destination alors que le coût réel est de 3.
+
+Une heuristique $h$ est dite \kw{admissible} si pour tout $s\in S$ 
+la distance estimée $h(s)$ n'est jamais strictement supérieure à la distance
+minimale réelle qu'il reste à parcourir pour atteindre la destination
+depuis $s$.
+
+La seconde condition que l'heuristique $h$ doit 
+satisfaire pour garantir l'optimalité de l'algorithme est la condition
+de \kw{monotonie} (ou de consistance)~:
+\begin{displaymath} 
+h(s) \leq \psi(s,s') + h(s') \qquad \forall (s,s') \in AS(s) 
+\end{displaymath}
+Ce qui revient à dire que l'estimation du coût pour arriver à
+destination depuis $n$ doit être inférieur au coût pour arriver à
+destination à partir de chacun de ses successeurs dans le graphe. C'est une
+généralisation de la condition excluant les chemins de poids négatif
+pour l'algorithme de Dijkstra. On peut alternativement reformuler
+cette condition en incluant le terme $\delta(s)$~:
+\begin{displaymath} 
+\delta(s) + h(s) \leq \delta(s) + \psi(s,s') + h(s') \qquad \forall (s,s') \in AS(s) 
+\end{displaymath}
+pour exprimer explicitement que la longueur d'un chemin ne peut pas
+raccourcir.
+En général satisfaire l'une des deux conditions permet de satisfaire
+l'autre. Mais ce n'est pas toujours vrai.
+
+En \ac{tal} la recherche $A\star$ a surtout été utilisée dans des
+contextes d'analyse syntaxique automatique (comme extensions de
+l'algorithme de Knuth).
+
+En résumé, la conception d'une bonne heuristique $A\star$ est non
+triviale. L'heuristique évidente $h(s) = 0$ n'aide pas à réaliser une
+meilleure recherche que l'algorithme de Dijkstra. Une heuristique plus informative qui préserve
+l'optimalité demande de vérifier des propriétés qui ne sont pas
+triviales à satisfaire en pratique. Pour cette raison, on trouve
+souvent dans la littérature des heuristiques approximatives qui sacrifient l'optimalité de la solution.
+
+
+\subsection{Recherche en largeur et en profondeur}
+mettre commentaires sur complexité -> depth first plus haute
+complexité pire des cas mais espoir d'atteindre la solution plus rapidement.
+
+\section{Les méthodes de recherche approximatives}
+
+Tant l'algorithme de Viterbi que l'algorithme de Dijsktra (et
+A$\star$) sont conçus pour donner une solution optimale au problème de
+recherche du chemin de poids maximal (resp. minimal).
+
+Bien que ces algorithmes ont une complexité polynomiale --~considérée
+comme acceptable~-- ces algorithmes sont potentiellement lents lorsque
+les phrases sont longues où lorsque l'espace des états est de taille
+considérables. Par exemple, Viterbi a une complexité en ${\cal
+  O}(NK^2)$, lorsque la taille du jeu de tags $K$ est importante (ce
+qui est notamment le cas pour des modèles dont l'historique est très riche)
+les temps de calcul deviennent potentiellement prohibitifs.
+
+Dans ce type de situation, on peut faire le choix d'utiliser des
+méthodes de recherche de solutions qui ne garantissent pas
+l'optimalité, comme la recherche gloutonne ou la recherche par
+faisceau. Il s'agit de méthodes qui n'explorent qu'une petite partie
+de l'espace de solutions et qui sont en général très efficaces.
+
+Comme il s'agit de méthodes qui n'explorent qu'une toute petite
+partie de l'espace des solutions (séquences de tags possibles)
+celle-ci sont généralement utilisées en combinaison avec une fonction
+de score très bien informée sur le problème à traiter de telle sorte que la
+partie de l'espace explorée a, par hypothèse, de grandes chances de contenir la
+solution optimale. 
+
+On présente ici deux méthodes couramment utilisées~:  la recherche
+gloutonne et la recherche par faisceau (beam) comme des variantes de
+la méthode de recherche dans un arbre de solutions (Algorithme
+\ref{algo-searchtree}) pour des systèmes de transitions. 
+Mais ces méthodes pourraient également se formuler dans un contexte où l'espace de
+recherche est représenté par un graphe.
+
+\subsection{Recherche gloutonne}
+
+La méthode de recherche gloutonne est le cas dégénéré de la méthode de
+recherche du meilleur d'abord. \`A chaque itération, l'algorithme évalue
+le score de tous les successeurs d'un état. C'est l'unique successeur
+de meilleur score qui est sélectionné pour la suite de la recherche
+(Algorithme \ref{algo-greedy-tree}).
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{GreedySearch}{S,B,$\sigma$}
+\If{$B \not = \epsilon$}
+\State maxscore $\gets \bar{0}$
+\ForAll{$t \in T$}
+	\State localscore $\gets \sigma \otimes \psi(S,B,t)$
+        \State maxscore $\gets$ \Call{$\oplus$}{maxscore,localscore}
+\EndFor
+\State\Return \Call{GreedySearch}{$S|t$,$_{\ominus}$B, maxscore}
+\Else
+  \State\Return $\sigma$
+\EndIf
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-greedy-tree}Algorithme de recherche glouton}
+\end{algorithm}
+Il est évident que cet algorithme donne des solutions approximatives
+et sans garantie d'optimalité. Par contre la complexité de cet
+algorithme, en ${\cal O}(n K)$,  est linéaire en temps. Autrement dit,
+cet algorithme est très efficace à l'usage.
+
+L'aspect approximatif de cet algorithme peut être contrebalancé
+en utilisant des scores locaux  très bien choisis pour guider la recherche vers une solution proche de
+l'optimum global. Ce
+scénario est très utilisé à l'heure actuelle par les systèmes pondérés
+par des réseaux de neurones profonds. Ceux-ci  obtiennent
+empiriquement de très
+bons résultats.
+
+\begin{exo}
+Augmenter l'algorithme \ref{algo-greedy-tree} pour qu'il renvoie
+non seulement le score du chemin de poids maximal, mais aussi
+la séquence de tags de ce chemin.
+\end{exo}
+\begin{exo}
+Comparer le meilleur chemin renvoyé par l'algorithme glouton avec
+celui 
+renvoyé par l'algorithme de Viterbi à partir de l'exemple \ref{fig-viterbi-general-dag}.
+\end{exo}
+
+\subsection{Recherche par faisceau}
+
+La recherche par faisceau est une extension de la méthode par recherche gloutonne.
+La recherche par faisceau est un algorithme qui progresse
+essentiellement en largeur dans l'arbre de recherche. \`A chaque itération il avance en
+profondeur dans $|\mathcal{B}|$ branches de l'arbre jusqu'à atteindre les
+feuilles, et ce sans jamais faire marche arrière.
+
+Les $|\mathcal{B}|$ branches sélectionnées pour continuer l'exploration à l'étape
+suivante constituent le faisceau. 
+Le choix des branches destinées à continuer l'exploration 
+est heuristique. Généralement on choisit les $|\mathcal{B}|$ branches qui ont le
+plus haut score. 
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{BeamSearch}{$\mathcal{B}$}
+\State $\mathcal{B}' \gets \emptyset$
+\ForAll {$\langle S,B,\sigma\rangle \in \mathcal{B}$}
+\If {$B = \epsilon$}
+\State \Return $\sigma$
+\EndIf
+\ForAll{$t \in T$}
+	\State localscore $\gets \sigma \otimes \psi(S,B,t)$
+        \State $\mathcal{B'} \gets \mathcal{B}' \cup \{\langle
+        S|t,_\ominus B,\text{localscore}\rangle\}$
+\EndFor
+\EndFor
+\State $\mathcal{B} \gets$ \Call{$\mathcal{B}$-Select}{$\mathcal{B'}$}
+\State \Return \Call{BeamSearch}{$\mathcal{B}$}
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-beam-tree}Algorithme de recherche en faisceau}
+\end{algorithm}
+L' algorithme est donné en Algorithme \ref{algo-beam-tree}.
+Notons que la fonction \ac{$\mathcal{B}$-Select} est chargée de sélectionner $|\mathcal{B}|$ éléments dans un
+ensemble. Il s'agit dans la très grande généralité des cas
+ de sélectionner les $|\mathcal{B}|$ éléments de scores les plus élevés (ou plus faibles)
+ mais des variantes sont envisageables. Par exemple la recherche par faisceau
+ stochastique consiste à sélectionner $|\mathcal{B}|$ éléments aléatoirement
+ proportionnellement à leur score. 
+
+L'intérêt de cette méthode est son efficacité~: la complexité reste faible~:
+${\cal O}(n K |\mathcal{B}|)$, c'est-à-dire essentiellement linéaire.
+
+On peut penser que le faisceau peut corriger les faiblesses de la méthode
+gloutonne mais en pratique on observe souvent que les faisceaux
+contiennet des hypothèses très similaires.
+Comme la méthode gloutonne, l'algorithme de recherche en faisceau ne
+garantit pas de renvoyer une solution optimale. 
+En effet, une solution optimale qui a un mauvais score préfixe lors
+des premières itérations ne sera plus jamais considérée. 
+
+Il faut bien garder à l'esprit que cette méthode renvoie un
+pseudo-résultat maximal, ce qui peut avoir des conséquences non
+négligeables dans certains contextes d'utilisation
+(comme illustré en chapitre XX)
+
+\begin{exo}
+Augmenter l'algorithme \ref{algo-beam-tree} pour qu'il renvoie
+non seulement le score du chemin de poids maximal, mais aussi
+la séquence de tags de ce chemin.
+\end{exo}
+
 \chapter{Rappels de classification non structurée}
+
+= modèles + descente de (sous-) gradient.
+
+\section{Minimum d'une fonction strictement convexe}
+
+%$f(\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N)$
+
+
+\begin{algorithm}
+\begin{algorithmic}
+\Function{GradientDescent}{$\alpha$,$f(\mathbf{w})$}
+\State $\mathbf{w} \gets \mathbf{0}$
+\While{non convergence}
+\State $\mathbf{w} \gets \mathbf{w} - \alpha \nabla f(\mathbf{w})$
+\EndWhile
+\State\Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{Algorithme de descente de gradient}
+\end{algorithm}
+
+Maximum d'une fonction strictement concave.
+
+\section{Régression logistique}
+{\bf discuter du virage du biais}
+
+\begin{equation}
+ P(y_i|\mathbf{x}_i; \mathbf{w}) =\frac{e^{\mathbf{w}^T \mathbf{x}}}{1+e^{\mathbf{w}^T \mathbf{x}}}
+\end{equation}
+
+Objective = max de vraisemblance:
+\begin{equation}
+f(\mathbf{w}) = \prod_{i=1}^N P(y_i|\mathbf{x}_i; \mathbf{w}) 
+\end{equation}
+
+On maximise la log-vraisemblance :
+\begin{eqnarray}
+\hat{\mathbf{w}} &=& \mathop{\text{argmax}}_{\mathbf{w} \in
+  \mathbb{R}^d} \prod_{i=1}^N P(y_i|\mathbf{x}_i; \mathbf{w})\\
+&=&\mathop{\text{argmax}}_{\mathbf{w} \in  \mathbb{R}^d} \sum_{i=1}^N
+\log P(y_i|\mathbf{x}_i; \mathbf{w})\\
+&=&\mathop{\text{argmax}}_{\mathbf{w} \in  \mathbb{R}^d} \sum_{i=1}^N
+ [ \mathbf{w}^T \mathbf{x}_i ] - \log [ 1+e^{\mathbf{w}^T
+  \mathbf{x}_i} ]
+\end{eqnarray}
+
+Dérivée partielle de $w_j$ au point $\mathbf{w}$:
+\begin{eqnarray}
+\frac{\partial f(\mathbf{w})}{\partial w_j}&=&\frac{\partial \sum_{i=1}^N
+ [ \mathbf{w}^T \mathbf{x}_i ] - \log [ 1+e^{\mathbf{w}^T
+  \mathbf{x}_i} ]}{\partial w_j}\\
+&=&\sum_{i=1}^N x_{ij} - \frac{\partial \log [ 1+e^{\mathbf{w}^T
+  \mathbf{x}_i} ] }{\partial w_j}\\
+&=&\sum_{i=1}^N x_{ij} - 
+\frac{\frac{\partial e^{\mathbf{w}^T  \mathbf{x}_i} }{\partial
+    w_j}}{1+ e^{\mathbf{w}^T  \mathbf{x}_i}}\\
+&=&\sum_{i=1}^N x_{ij} - 
+\frac{e^{\mathbf{w}^T  \mathbf{x}_i} x_{ij}} {1+ e^{\mathbf{w}^T  \mathbf{x}_i}}\\
+&=&\sum_{i=1}^N x_{ij} - [ P(y_i | \mathbf{x}_i,\mathbf{w}) \, x_{ij} ]
+\end{eqnarray}
+
+On note le gradient $\nabla f(\mathbf{w}) = \frac{\partial f}{\partial w_1} \ldots
+\frac{\partial f}{\partial w_d}$.
+
+\paragraph{SGD} Observons que le calcul de $\nabla f(\mathbf{w})$ prend la forme~:
+\begin{displaymath}
+\nabla f(\mathbf{w}) = \sum_{i=1}^N [ \mathbf{x}_i -
+P(y_i|\mathbf{x}_i;\mathbf{w}) \mathbf{x}_i ]
+\end{displaymath} 
+ou plus généralement en ML (beyond logistic)
+\begin{displaymath}
+\nabla f(\mathbf{w}) = \sum_{i=1}^N \ell(y_i,\mathbf{x}_i; \mathbf{w})
+\end{displaymath} 
+
+L'idée de SGD c'est :
+\begin{displaymath}
+\nabla f(\mathbf{w}) \approx \ell(y_i,\mathbf{x}_i; \mathbf{w}) \qquad
+({i \sim \text{\sc Uniform}(1,N)})
+\end{displaymath} 
+
+
+\paragraph{ASGD} 
+Le problème de SGD c'est que si un tirage est mauvais en fin de
+procédure, ça peut détruire le gradient.
+L'idée de ASGD c'est de retenir la valeur moyenne du gradient.
+
+\begin{algorithm}
+\begin{algorithmic}
+\Function{BatchGradientDescent}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\While{non convergence}
+\State $\mathbf{w} \gets \mathbf{w} - \alpha \sum_{i=1}^N \ell (y_i,\mathbf{x}_i;\mathbf{w})$
+\EndWhile
+\State\Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{Algorithme de descente de gradient (batch)}
+\end{algorithm}
+
+
+\begin{algorithm}
+\begin{algorithmic}
+\Function{StochasticGradientDescent}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\While{non convergence}
+\State $i \sim$ \Call{Uniform}{1,N}
+\State $\mathbf{w} \gets \mathbf{w} - \alpha\, \ell (y_i,\mathbf{x}_i;\mathbf{w})$
+\EndWhile
+\State\Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{Algorithme de descente de gradient (SGD)}
+\end{algorithm}
+
+\begin{algorithm}
+\begin{algorithmic}
+\Function{AveragedStochasticGradientDescent}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\State $\bar{\mathbf{w}} \gets \mathbf{0}$
+\State $C \gets 0$
+\While{non convergence}
+\State $i \sim$ \Call{Uniform}{1,N}
+\State $\mathbf{w} \gets \mathbf{w} - \alpha\, \ell (y_i,\mathbf{x}_i;\mathbf{w})$
+\State $\bar{\mathbf{w}} \gets \bar{\mathbf{w}} + \mathbf{w}$
+\State $C \gets C+1$
+\EndWhile
+\State\Return $\bar{\mathbf{w}}/C$
+\EndFunction
+\end{algorithmic}
+\caption{Algorithme de descente de gradient moyennée (ASGD)}
+\end{algorithm}
+
+\section{Régression logistique multinomiale}
+{\bf Discuter le codage des features et recommencer}
+
+Modèle : 
+\begin{equation}
+P(y|\mathbf{x};\mathbf{w}) =  \frac{\text{exp}(\mathbf{w}^T
+    \boldsymbol\Phi(\mathbf{x},y)) }{\sum_{y'\in Y} \text{exp}(\mathbf{w}^T
+    \boldsymbol\Phi(\mathbf{x},y'))}
+\end{equation}
+
+Objective (Max vraisemblance)
+
+\begin{equation}
+f(\mathbf{w}) =  \prod_{i=1}^N P(y_i|\mathbf{x}_i;\mathbf{w})
+\end{equation}
+
+Dérivée partielle : 
+
+\begin{equation}
+\frac{\partial f(\mathbf{w})}{\partial w_j} =  \sum_{i=1}^N \left[\phi_j(\mathbf{x}_{i},y) -
+\sum_{y'\in Y} P(y'|\mathbf{x}_i,\mathbf{W}) \phi_j(\mathbf{x}_i,y') \right]
+\end{equation}
+
+\begin{displaymath}
+\ell(y_i,\mathbf{x}_i,\mathbf{w}) = \boldsymbol\Phi(\mathbf{x}_{i},y)
+-  \sum_{y'\in Y} P(y'|\mathbf{x}_i;\mathbf{w}) \boldsymbol\Phi(\mathbf{x}_i,y') 
+\end{displaymath}
+
+
+\section{Perceptron multiclasse}
+    
+Modèle : 
+\begin{equation}
+\text{score}(y,\mathbf{x};\mathbf{w}) =  \mathbf{w}^T \,
+    \boldsymbol\Phi(\mathbf{x},y)
+\end{equation}
+
+Objective (miniser l'erreur): 
+
+\begin{equation}
+f(\mathbf{w}) = \sum_{i=1}^N \mathbf{1}[ y_i \not = \mathop{\text{argmax}}_{y' \in Y} \mathbf{w}^T \,
+    \boldsymbol\Phi(\mathbf{x}_i,y') ]
+\end{equation}
+
+Sous-dérivée partielle : 
+
+soit:
+\begin{displaymath}
+\hat{y}_i = \mathop{\text{argmax}}_{y' \in
+  Y} \mathbf{w}^T \,
+   \boldsymbol\Phi(\mathbf{x}_i,y') 
+\end{displaymath}
+alors:
+\begin{equation}
+\frac{\partial f(\mathbf{w})}{\partial w_j} =  
+\sum_{i=1}^N \left\{
+\begin{array}{ll}
+\phi_j(\mathbf{x}_{i},y_i) - \phi_j(\mathbf{x}_{i},\hat{y}_i) &\text{si } y_i
+\not = \hat{y}_i\\
+0&\text{sinon}
+\end{array}\right.
+\end{equation}
+
+
+\begin{displaymath}
+\ell(y_i,\mathbf{x}_i,\mathbf{w}) = 
+\left\{
+\begin{array}{ll}
+\boldsymbol\Phi(\mathbf{x}_{i},y_i)
+- \boldsymbol\Phi(\mathbf{x}_i,\hat{y}_i)&\text{si } y_i \not = \hat{y}_i \\
+ \mathbf{0}& \text{sinon}
+\end{array}\right.
+\end{displaymath}
+
+
+
+\section{Large marge multiclasse}
+hinge loss
+montrer que le gradient est celui du perceptron 
+perceptron = large marge avec marge nulle en SGD
+
+
+\section{Réseau de neurones}
+    word vectors
+    SGD
+
+
+\chapter{Perceptron structuré}
+
+Le modèle du perceptron structuré est initialement dû à \cite{collins-2002}.
+
+\section{Généralisation du modèle du perceptron}
+
+Le perceptron structuré est un modèle qui généralise le modèle du
+perceptron au cas des données structurées. 
+Dans ce chapitre, on donne une présentation pour la modélisation de
+séquences. On généralisera ce cas à la prédiction d'arbres dans les
+chapitres suivants.
+
+Un perceptron multiclasse est un modèle statistique qui prédit le
+score $\psi(y)$ d'une donnée $y\in Y$ de manière linéaire~:
+\begin{equation}
+\psi(y) = \mathbf{w}^T \boldsymbol\Phi(\mathbf{x},y)
+\end{equation}
+Comme $\mathbf{w} \in \mathbb{R}^d$ et $\boldsymbol\Phi(\mathbf{x},y)
+\in \{0,1\}^d$, on a que $\psi(y) \in \mathbb{R}$. 
+Ce modèle est habituellement utilisé dans un contexte de prise de
+décision, il s'agit de sélectionner parmi un ensemble $Y$ d'hypothèses, 
+l'hypothèse $y\in Y$ de score maximal~:
+\begin{equation}
+\hat{y} =   \mathop{\text{argmax}}_{y\in Y} \mathbf{w}^T \boldsymbol\Phi(\mathbf{x},y)
+\end{equation}
+
+Dans le cas où $Y$ est un ensemble de structures, comme un ensemble de
+séquences, la taille de cet ensemble croît exponentiellement en
+fonction de la longueur de la phrase. 
+L'idée d'un modèle de perceptron structuré est de permettre la
+décomposition du calcul du score des séquences de telle sorte qu'il
+soit possible de partager des sous-calculs entre des sous-séquences communes.
+Ainsi une séquence de tags $\mathbf{y} = y_1,y_2\ldots y_m\ldots $
+sera évaluée par la fonction de score suivante~:
+\begin{equation}
+\Psi(\mathbf{y}) = \sum_{i=1}^m \mathbf{w}^T \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)
+\end{equation}
+Autrement dit, le score d'une séquence est la somme des scores
+attribués à tous les couples de tags qui la composent. Lorsqu'il
+s'agit de donner un score à un ensemble de séquences, il est ainsi
+possible de représenter le problème dans un \ac{dag} de programmation
+dynamique et de réutiliser l'algorithmique décrite dans les chapitres précédents.
+
+
+\section{Recherche de la meilleure analyse}
+
+\subsection{Fonctions features}
+
+
+\begin{exo}[Algorithme de Dijkstra ?]
+Est-il possible d'adapter l'algorithme de Dijkstra pour prédire la
+meilleure séquence de tags avec un modèle de perceptron structuré ?
+si oui comment ? si non, justifiez.
+\end{exo}
+
+\section{Estimation des paramètres}
+
+On suppose qu’un corpus annoté $C = \mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$ est un
+exemplaire de $N$ phrases. 
+Chaque exemple annoté est un couple $(x_i , y_i )$ qui représente une
+séquence de mots $x = x_1 \ldots x_m$ et une séquence de tags de
+référence $y = y_1 \ldots y_m$ de même longueur.
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{train-perceptron}{$\mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$,$E$}
+\State $\mathbf{w} \gets \bar{\mathbf{0}}$
+\For{$1\leq e \leq E $}
+\For{$1\leq i \leq N$}
+\State
+$\hat{\mathbf{y}} \gets \mathop{\text{argmax}}_{\mathbf{y}\in \mathbf{Y}} \mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,\mathbf{y})$
+\Comment{Tagging}
+\label{algoline-pseudoargmax}
+\If{$\hat{\mathbf{y}} \not = \mathbf{y}_i$}
+     \State $\mathbf{w} \gets  \mathbf{w} +
+     \left[\boldsymbol\Phi(\mathbf{x}_i,\mathbf{y}_i) 
+       - \boldsymbol\Phi(\mathbf{x}_i,\hat{\mathbf{y}})  \right]$ 
+     \label{algoline-update}
+\EndIf
+\EndFor
+\EndFor
+\State \Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-perceptron-train}Estimation des paramètres d'un
+  perceptron}
+\end{algorithm}
+
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{train-perceptron}{$\mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$,$E$}
+\State $\mathbf{w} \gets \mathbf{0}$
+\State $\bar{\mathbf{w}} \gets \mathbf{0}$
+\For{$1\leq e \leq E $}
+\For{$1\leq i \leq N$}
+\State $\hat{\mathbf{y}} \gets \mathop{\text{argmax}}_{\mathbf{y}\in \mathbf{Y}} \mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,\mathbf{y})$
+\Comment{Tagging}
+\If{$\hat{\mathbf{y}} \not = \mathbf{y}_i$}
+     \State $\mathbf{w} \gets  \mathbf{w} +
+     \left[\boldsymbol\Phi(\mathbf{x}_i,\mathbf{y}_i) 
+       - \boldsymbol\Phi(\mathbf{x}_i,\hat{\mathbf{y}})  \right]$ 
+\EndIf
+\State $\bar{\mathbf{w}} \gets \bar{\mathbf{w}}+\mathbf{w}$
+\EndFor
+\EndFor
+\State \Return $\bar{\mathbf{w}}/N$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-perceptron-train-avg}Estimation des paramètres d'un
+  perceptron moyenné}
+\end{algorithm}
+
+SGD + ASGD
+ASGD
+
+\section{Estimation des paramètres et approximations}
+
+Pour certains types de problèmes ou de représentations, il n'est pas
+possible d'évaluer un \ac{dag} de programmation dynamique exhaustivement.
+En pratique, les temps de calcul deviennent prohibitifs.
+Pour cette raison, on peut souhaiter utiliser une méthode de recherche
+approximative en faisceau, y compris lors de l'apprentissage.
+
+Dans le contexte d'un problème d'estimation des paramètres,
+l'utilisation d'un faisceau pose un problème au niveau de la procédure
+de prédiction (Algorithme  \ref{algo-perceptron-train}, ligne \ref{algoline-pseudoargmax})
+Le problème posé par ce type de méthode est que les méthodes en
+faisceau renvoient un {\sl pseudo-argmax} qui a pour origine
+l'inexactitude de l'algorithme de recherche de solutions.
+Cela signifie que $\hat{\mathbf{y}}$ est potentiellement sous-optimal,
+ce qui fausse la mise à jour (ligne \ref{algoline-update}) et peut
+causer la divergence de la procédure d'estimation.
+
+\paragraph{Mise à jour d'un modèle à large marge}
+Pour comprendre le problème, on commence par reformuler la procédure 
+de mise à jour dans le cas exact (sans utiliser un faisceau). Notons  $\mathbf{y}^*$ la séquence
+incorrecte à laquelle le modèle attribue le meilleur score, c'est-à-dire~:
+\begin{displaymath}
+\mathbf{y}^* = \mathop{\text{argmax}}_{\mathbf{y} \in
+  \mathbf{Y}\backslash \{\mathbf{y}\}} \mathbf{w}^T \boldsymbol\Phi(\mathbf{x},\mathbf{y})
+\end{displaymath}
+Il y a nécessairement mise à jour lorsque le score de la meilleure séquence
+incorrecte est supérieur au score de la séquence correcte~: $\Psi(\mathbf{y}^*) \geq \Psi(\mathbf{y})$.
+Lorsque $\Psi(\mathbf{y}^*) <\Psi(\mathbf{y})$ il n'y a pas de mise à
+jour. Cette reformulation se jsutifie par le fait que le perceptron
+peut être vu comme un cas particulier de modèle à large marge
+(Chapitre XXX). 
+
+\paragraph{Généralisation aux méthodes en faisceau}
+Dans un contexte où on utilise un faisceau ($\mathbf{Y}' \subsetneqq \mathbf{Y}$), la meilleure prédiction dans le
+beam $\tilde{\mathbf{y}} = \text{argmax}_{\mathbf{y} \in \mathbf{Y'}}
+\mathbf{w}^T \boldsymbol\Phi(\mathbf{x},\mathbf{y})$ ne correspond pas nécessairement à
+la meilleure séquence optimale $\hat{\mathbf{y}} = \text{argmax}_{\mathbf{y} \in \mathbf{Y}}
+\mathbf{w}^T \boldsymbol\Phi(\mathbf{x},\mathbf{y})$ qui a pu être écartée du faisceau prématurément.  
+Le cas suivant devient désormais possible~:
+\begin{displaymath}
+\Psi(\tilde{\mathbf{y}}) < \Psi(\mathbf{y}) \text{ alors que } \hat{\mathbf{y}} = \mathbf{y}
+\end{displaymath}
+Une telle configuration entraine la mise à jour des paramètres du perceptron. Dans
+ce cas on parle de mise à jour invalide. Il a été démontré
+\cite{huang-2012} qu'une mise à jour valide respecte nécessairement la
+condition suivante~: 
+\begin{displaymath}
+\Psi(\tilde{\mathbf{y}}_{1\ldots k}^*) > \Psi(\mathbf{y}_{1\ldots k})
+\end{displaymath}
+où $\tilde{\mathbf{y}}_{1\ldots k}^*$ dénote la sous séquence préfixe
+de tags incorrecte de meilleur score dans le beam et  $\mathbf{y}_{1\ldots k}$
+dénote une sous séquence préfixe de tags de référence.
+Si cette condition est respectée, la convergence de la procédure d'estimation des paramètres
+est garantie. On peut remarquer que cette condition revient à
+généraliser le déclenchement de la mise à jour pour les modèles à
+large marge au cas des sous-séquences.
+
+Dans la pratique, il est courant depuis \cite{collins-2004} 
+de réaliser la mise à jour dès que la séquence de référence sort du
+beam pendant l'étape de parsing.
+C'est ce qu'on appelle la mise à jour rapide (\kw{early update}).
+D'autres méthodes sont possibles. Par exemple, en définissant la marge d'erreur
+$\Delta_k =  \Psi(\tilde{\mathbf{y}}_{1\ldots k}^*) -
+\Psi(\mathbf{y}_{1\ldots k})$, et en sélectionnant l'indice $k =
+\text{argmax}_{1\leq k \leq m} \Delta_k$ on obtient la mise à jour
+dite à \kw{violation maximale}. 
+
+{\bf Dire que c'est utilisé par les systèmes de transitions qui
+  utilisent un historique très riche}
+
 
 
 \chapter{Champs conditionnels aléatoires}
@@ -751,7 +1919,7 @@ En termes de notations, on notera $s_i$ un noeud du \ac{dag} où $s\in Y$ est un
 
 \begin{algorithm}[htbp]
 \begin{algorithmic}
-\Function{Forward}{S,V,s}
+\Function{Viterbi}{S,V,s}
 \State \Call{TriTopologique}{$S,V,s$}
 \State $\delta(s) \gets 1$
 \ForAll {$s \in  S$ (suivant ordre topologique)}
@@ -999,6 +2167,14 @@ pour des détails supplémentaires.}
 \section{Fonctions features et potentiels}
 
 
+\chapter{Approximations par modèles locaux}
+
+Motivation = réduire temps d'entrainement.
+
+\section{Modèles markoviens à maximum d'entropie}
+\section{Perceptrons locaux}
+\section{Modèles à oracles dynamiques}
+
 
 \appendix
 \chapter{Représentations pour les modèles creux}
@@ -1040,6 +2216,10 @@ Par  conséquent $\boldsymbol\Phi(x)$ est un vecteur creux.
 
 
 \subsection{Représentation de la matrice de poids par un vecteur}
+
+{\bf dire que ce cas s'applique aux problèmes structurés où
+  l'ensemble $Y$ est très large ou infini (récursivement énumérable)}
+
 
 Dans un contexte ou le vecteur $\boldsymbol\Phi(x)$
 est un vecteur creux de très grande dimensionnalité, 
