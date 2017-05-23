@@ -111,8 +111,8 @@ if __name__ == '__main__':
     print('Internal test accurracy :',m.test(D))
 
     #plotting(uncomment if pandas and pyplot are installed)    
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    df = pd.DataFrame({'Batch':objBatch,'SGD':objSGD})
-    df.plot()
-    plt.show()
+    #import pandas as pd
+    #import matplotlib.pyplot as plt
+    #df = pd.DataFrame({'Batch':objBatch,'SGD':objSGD})
+    #df.plot()
+    #plt.show()
