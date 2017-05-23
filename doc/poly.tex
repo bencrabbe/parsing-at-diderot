@@ -1592,47 +1592,101 @@ qui permet de déterminer numériquement son maximum.
 
 
 \section{Régression logistique}
-{\bf discuter du virage du biais}
 
+Les modèles logistiques sont des modèles qui permettent de prédire une
+variable binaire $Y =  \{0,1\}$ à partir d'un certain nombre de
+prédicteurs notés $\mathbf{x}\in \mathbb{R}^d$ et de paramètres $\mathbf{w}\in \mathbb{R}^d$.
+Il s'agit d'une brique de base pour plusieurs modèles de classification plus complexes.
+
+\paragraph{Modèle} Supposons que l'on ait observé les résultats de
+deux tests d'un étudiant au contrôle continu. 
+Celui-ci obtient la note $x_1 = 6$ et la note $x_2 = 7$, ce qui
+constitue le vecteur d'observations $\mathbf{x}$.
+Un modèle logistique permet par exemple de donner une probabilité de succès (de réussite à l'examen)
+$P(Y=1| \mathbf{x};\mathbf{w})$ à l'aide de la formule suivante~:
 \begin{equation}
- P(y_i|\mathbf{x}_i; \mathbf{w}) =\frac{e^{\mathbf{w}^T \mathbf{x}}}{1+e^{\mathbf{w}^T \mathbf{x}}}
+ P(Y=1|\mathbf{x}; \mathbf{w}) =\frac{e^{\mathbf{w}^T
+     \mathbf{x}}}{1+e^{\mathbf{w}^T \mathbf{x}}}
 \end{equation}
-
-Objective = max de vraisemblance:
-\begin{equation}
-f(\mathbf{w}) = \prod_{i=1}^N P(y_i|\mathbf{x}_i; \mathbf{w}) 
-\end{equation}
-
-Notons que :
+où le vecteur de poids $\mathbf{w}$ est supposé estimé depuis un jeu
+de données. Comme $Y =  \{0,1\}$, on peut remarquer que~:
 \begin{displaymath}
-P(1|x) = \frac{exp(a+bx)}{1+exp(a+bx)}
+P(Y=0|\mathbf{x};\mathbf{w}) = 1 - P(Y=1| \mathbf{x};\mathbf{w})
 \end{displaymath}
+ce qu'il est utile de développer analytiquement pour la suite~:
 \begin{eqnarray}
-P(0|x) &=& 1 - \frac{exp(a+bx)}{1+exp(a+bx)}\\
-               &=&     \frac{1+ exp(a+bx) - exp(a+bx)}{1+exp(a+bx)}\\
-                &=&  \frac{1}{1+exp(a+bx)}
+P(1|\mathbf{x};\mathbf{w}) &=&\frac{\text{exp}(\mathbf{w}^T
+     \mathbf{x})}{1+\text{exp}(\mathbf{w}^T
+     \mathbf{x})}\label{eq-logistic-positive}\\
+P(0|\mathbf{x};\mathbf{w}) &=& 1 - \frac{\text{exp}(\mathbf{w}^T
+     \mathbf{x})}{1+\text{exp}(\mathbf{w}^T \mathbf{x})}\\
+&=&\frac{1+\text{exp}(\mathbf{w}^T \mathbf{x})}{1+\text{exp}(\mathbf{w}^T \mathbf{x})} - \frac{\text{exp}(\mathbf{w}^T
+     \mathbf{x})}{1+\text{exp}(\mathbf{w}^T \mathbf{x})}\\
+&=&\frac{1}{1+\text{exp}(\mathbf{w}^T \mathbf{x})}\label{eq-logistic-negative}
 \end{eqnarray}
-Donc :
-\begin{displaymath}
-P(y |x) = \frac{exp(y(a+bx))}{1+exp(a+bx)}
-\end{displaymath}
 
-On maximise la log-vraisemblance :
+\paragraph{Estimation des paramètres}
+Un mini jeu de données pour estimer des paramètres d'un modèle de
+régression logistique aura par exemple l'allure suivante~:
+\begin{center}
+\begin{tabular}{llll}\toprule
+$y$&$x_0$&$x_1$&$x_2$\\\midrule
+1   & 1       &    7   &  9 \\
+1   &    1    &    6    &8\\
+0   & 1       &    4    & 5\\
+0  & 1        &   3      &   4\\
+1  &  1       &  9    &6\\\bottomrule
+\end{tabular}
+\end{center}
+où $y$ dénote le résultat binaire observé (comme la réussite à
+l'examen pour un étudiant donné), la colonne $x_0$ dénote le biais 
+et chacune des autres colonnes $x_i$ dénotera par exemple le résultat
+de chaque étudiant aux tests intermédiaires. On note un jeu de données 
+comme suit~: $D= \mathop{(\mathbf{x}_i,y_i)}_{i=1}^N$ pour dire que le
+jeu de données comporte $N$ lignes qui apparient chacune un vecteur de données
+$\mathbf{x}_i$ et une prédiction observée $y_i$.
+
+L'objectif de la méthode d'estimation des paramètres par \kw{maximum
+  de vraisemblance} consiste à trouver la valeur du vecteur
+$\mathbf{w}$ telle que~:
+\begin{displaymath}
+\mathbf{w} = \mathop{\text{argmax}}_{\mathbf{w} \in \mathbb{R}^d} \prod_{i=1}^N P(y_i|\mathbf{x}_i; \mathbf{w}) 
+\end{displaymath}
+où la fonction de vraisemblance $f(\mathbf{w}) =  \prod_{i=1}^N P(y_i|\mathbf{x}_i; \mathbf{w})$
+est ce qu'on appelle la \kw{fonction objective} du problème d'optimisation.
+Le facteur $P(y_i|\mathbf{x}_i; \mathbf{w})$ dénote la probabilité que
+le modèle donne à la ligne de donnée $i$ avec une certaine valeur de
+paramètres $\mathbf{w}$. Cette probabilité prendra la forme
+$P(1|\mathbf{x}_i;\mathbf{w})$ si $y_i$ vaut 1 et la forme 
+$P(0|\mathbf{x}_i;\mathbf{w})$ si $y_i$ vaut 0. Pour éviter de
+manipuler les deux formules (\ref{eq-logistic-positive}) et (\ref{eq-logistic-negative}) dans ce qui suit,
+on utilise la formule synthétique (et équivalente) suivante~:
+\begin{displaymath}
+P(y_i |\mathbf{x}_i;\mathbf{w}) = \frac{\text{exp}(y_i(\mathbf{w}^T\mathbf{x}))}{1+\text{exp}(\mathbf{w}^T+\mathbf{x})}
+\end{displaymath}
+où $y_i\in \{1,0\}$ prend la valeur de la ligne qui lui correspond dans le jeu de données.
+
+Comme la fonction de (log-)vraisemblance est une fonction strictement
+concave, il ne reste
+plus qu'à obtenir une forme analytique du gradient de cette fonction
+pour réaliser la maximisation par montée de gradient.
+Pour simplifier les calculs, on commence par utiliser la version
+logarithmique de la fonction objective~:
 \begin{eqnarray}
 \hat{\mathbf{w}} &=& \mathop{\text{argmax}}_{\mathbf{w} \in
   \mathbb{R}^d} \prod_{i=1}^N P(y_i|\mathbf{x}_i; \mathbf{w})\\
 &=&\mathop{\text{argmax}}_{\mathbf{w} \in  \mathbb{R}^d} \sum_{i=1}^N
 \log P(y_i|\mathbf{x}_i; \mathbf{w})\\
 &=&\mathop{\text{argmax}}_{\mathbf{w} \in  \mathbb{R}^d} \sum_{i=1}^N
-y_i [ \mathbf{w}^T \mathbf{x}_i ] - \log [ 1+e^{\mathbf{w}^T
-  \mathbf{x}_i} ]
+y_i ( \mathbf{w}^T \mathbf{x}_i )- \log ( 1+e^{\mathbf{w}^T
+  \mathbf{x}_i} )
 \end{eqnarray}
-
-Dérivée partielle de $w_j$ au point $\mathbf{w}$:
+Dont chacune des dérivées partielles $\frac{\partial f}{\partial w_j}(\mathbf{w})$ au point $\mathbf{w}$
+s'obtient comme suit~:
 \begin{eqnarray}
 \frac{\partial f(\mathbf{w})}{\partial w_j}&=&\frac{\partial \sum_{i=1}^N
-y_i [ \mathbf{w}^T \mathbf{x}_i ] - \log [ 1+e^{\mathbf{w}^T
-  \mathbf{x}_i} ]}{\partial w_j}\\
+y_i ( \mathbf{w}^T \mathbf{x}_i ) - \log ( 1+e^{\mathbf{w}^T
+  \mathbf{x}_i} )}{\partial w_j}\\
 &=&\sum_{i=1}^N y_i  x_{ij} - \frac{\partial \log [ 1+e^{\mathbf{w}^T
   \mathbf{x}_i} ] }{\partial w_j}\\
 &=&\sum_{i=1}^N y_i  x_{ij} - 
@@ -1640,11 +1694,12 @@ y_i [ \mathbf{w}^T \mathbf{x}_i ] - \log [ 1+e^{\mathbf{w}^T
     w_j}}{1+ e^{\mathbf{w}^T  \mathbf{x}_i}}\\
 &=&\sum_{i=1}^N y_i  x_{ij} - 
 \frac{e^{\mathbf{w}^T  \mathbf{x}_i} x_{ij}} {1+ e^{\mathbf{w}^T  \mathbf{x}_i}}\\
-&=&\sum_{i=1}^N y_i  x_{ij} - [ P( 1 | \mathbf{x}_i,\mathbf{w}) \, x_{ij} ]
+&=&\sum_{i=1}^N y_i  x_{ij} - [ P( 1 | \mathbf{x}_i,\mathbf{w}) \, x_{ij} ]\\
+&=&\sum_{i=1}^N x_{ij} \, [ y_i  - P( 1 | \mathbf{x}_i,\mathbf{w}) ]
 \end{eqnarray}
-
-On note le gradient $\nabla f(\mathbf{w}) = \frac{\partial f}{\partial w_1} \ldots
-\frac{\partial f}{\partial w_d}$.
+Autrement dit, le gradient $\nabla f(\mathbf{w})$ au point
+$\mathbf{w}$ correspond au vecteur $(\frac{\partial f}{\partial w_1}(\mathbf{w}) \ldots
+\frac{\partial f}{\partial w_d}(\mathbf{w}))$.
 
 \paragraph{SGD} Observons que le calcul de $\nabla f(\mathbf{w})$ prend la forme~:
 \begin{displaymath}
@@ -1886,7 +1941,7 @@ des modèles à large marge.
 \paragraph{Régularisation}
 Si maintenant on ajoute un terme de régularisation à l'objectif (\ref{eq-largemargin-objective}), celui-ci prend la forme suivante~:
 \begin{equation}
-f(\mathbf{w}) = \frac{\lambda}{2}||\mathbf{w}||^2 +
+f(\mathbf{w}) = \frac{\lambda}{2}||\mathbf{w}||_2^2 +
 \frac{1}{N}\sum_{i=1}^N \text{max}(0, 1 + 
 \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
 \end{equation}
