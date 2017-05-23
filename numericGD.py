@@ -4,6 +4,7 @@ import numpy as np
 import random
 
 
+
 def optimise_basic(step_size=0.4,max_epochs=30):
     """
     Optimizes f(x) = (x-3)^2 (strictly convex)
@@ -13,19 +14,23 @@ def optimise_basic(step_size=0.4,max_epochs=30):
         x  -= step_size * 2*(x-3) #f'(x) = 2(x-3)
         obj = (x-3)**2
         print(x,obj)
-
+    return x
  
 
-def make_dataset(istream):
+
+def make_dataset(istream,add_bias=True):
     """
-    Adds a bias dummy variable
+    Also adds a bias dummy variable
     """
     header = istream.readline()
 
     dataset = []
     for line in istream:
         fields = line.split()
-        (y,X) = float(fields[-1]),np.array([1.0,float(fields[0]),float(fields[1])])
+        if add_bias:
+            (y,X) = float(fields[-1]),np.array([1.0,float(fields[0]),float(fields[1])])
+        else:
+            (y,X) = float(fields[-1]),np.array([float(fields[0]),float(fields[1])])            
         dataset.append((y,X))
     return dataset
 
@@ -99,7 +104,6 @@ if __name__ == '__main__':
     
     #gradient descent : try with step_size: 0.1,0.4; (0.01,2.0)
     optimise_basic(step_size=3)
-
 
     #simple logistic 
     istream = open('data/logistic.dat')
