@@ -13,9 +13,11 @@
 \usepackage{algpseudocode}
 \usepackage{algorithm}
 \usepackage{tikz}
+\usepackage{pgfplots}
 \usetikzlibrary{snakes}
 \usetikzlibrary{matrix}
 \usetikzlibrary{shapes}
+\usetikzlibrary{calc}
 \usepackage{comment}
 \usepackage{minted}
 
@@ -1405,6 +1407,156 @@ la séquence de tags de ce chemin.
 
 %$f(\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N)$
 
+\subsection{Fonctions monovariées}
+
+
+Si on sait que la fonction est strictement convexe (resp. concave) ---~
+ ce qui est le cas pour tous les modèles d'apprentissage décrits dans
+ ce cours~--- (à l'exception des réseaux de neurones), alors il existe
+ un minimum (resp. maximum) unique.
+On trouve ce minimum en résolvant :
+\begin{equation}
+\label{eq-derivative}
+\frac{\delta f(x)}{\delta x} = 0 
+\end{equation}
+Par exemple si $f(x) = (x-3)^2$, on a que $\frac{\delta f(x)}{\delta
+  x} = 2(x-3)$. En résolvant $2(x-3) = 0$, on trouve $x=3$. Comme la
+fonction est convexe, on sait que $x=3$ est le minimum unique.
+Cette méthode de résolution est appelée méthode analytique.
+
+\begin{figure}[htbp]
+\begin{center}
+\scalebox{0.5}{
+\begin{tikzpicture}
+\foreach \x in {-1,0,1,2,3,4,5,6}
+    {        
+      \coordinate (A\x) at ($(0,0)+(\x*0.5cm,0)$) {};
+      \draw ($(A\x)+(0,5pt)$) -- ($(A\x)-(0,5pt)$);
+      \node at ($(A\x)+(0,-3ex)$) {\x};
+    }
+    \draw[->] (-1,0) -- (5,0) node[right] {$x$};
+    \draw[->] (0,-0.25) -- (0,6) node[above] {$f(x)$};
+    \draw[scale=0.5,domain=-0.3:6.3,smooth,variable=\x,blue] plot({\x},{(\x -3) * (\x -3)});
+\end{tikzpicture}
+}
+\end{center}
+\caption {Graphe de la fonction : $f(x) = (x-3)^2$}
+\end{figure}
+
+Pour la très grande majorité  des fonctions utilisées par les modèles
+d'apprentissage utilisés en \ac{tal},
+résoudre (\ref{eq-derivative}) n'est pas possible analytiquement. On
+utilise plutôt une méthode de résolution numérique appelée \kw{descente de gradient}.
+\'Etant donnée une première hypothèse $x_0 = c$, la méthode de
+descente de gradient consiste à calculer une suite d'hypothèses
+$x_0,x_1,\ldots x_k$ qui approchent progressivement la solution.
+La dérivée en un point $x_i$, $\frac{\delta f(x_i)}{\delta x}$ nous donne
+la pente de la tangente en $x_i$. On sait que pour se rapprocher de la
+solution, il faut choisir un point $x_{i+1} = x_i - \frac{\delta
+  f(x_i)}{\delta x}$. Pour se déplacer plus ou moins vite dans une
+direction, on utilise généralement un pas de gradient noté $\alpha$ de
+telle sorte qu'on choisit $x_{i+1}$ comme suit~:
+\begin{displaymath}
+x_{i+1} = x_i - \alpha   \frac{\delta
+  f(x_i)}{\delta x}
+\end{displaymath}
+Prenons l'exemple  de la fonction $f(x) = (x-3)^2$ et supposons $x_0
+= 0$ et $\alpha =  0.1$, le début de la suite $x_0,x_1,x_2\ldots$ prend la forme suivante~:
+\begin{center}
+\begin{tabular}{cc}\toprule
+$x_i$& $\alpha\,  2(x-3)$\\\midrule
+0&$0.1\times 2\times (0-3) = -0.6$\\
+0.6&$0.1\times 2\times (0.6-3) = -0.48$\\
+1.08&$0.1\times 2\times  (1.08-3) = -0.384$\\
+1.464&\ldots\\\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Fonctions de plusieurs variables}
+
+La méthode de descente de gradient se généralise au cas de fonctions de plusieurs variables, 
+de la forme $f(\mathbf{w})$, où $\mathbf{w}$ est un vecteur de
+variables ($\mathbf{w}\in \mathbb{R}^d$).
+\begin{displaymath}
+\mathbf{w}_{i+1} = \mathbf{w}_i - \alpha   \nabla f(\mathbf{w})
+\end{displaymath}
+où $\nabla f(\mathbf{w})$ est le \kw{vecteur gradient} au point $\mathbf{w}$. 
+Un vecteur gradient est un vecteur de dérivées
+partielles tel que $\nabla f(\mathbf{w}) = \frac{\partial f}{\partial
+  w_1}(\mathbf{w}) \ldots \frac{\partial f}{\partial w_d}(\mathbf{w})$. 
+Pour trouver le minimum d'une fonction strictement convexe $f(\mathbf{w})$, il faut alors
+résoudre $\nabla f(\mathbf{w})= \mathbf{0}$, c'est-à-dire un système
+d'équations de la forme~:
+\begin{displaymath}
+\begin{array}{lll}
+ \frac{\partial f}{\partial
+  w_1}(\mathbf{w})&=&0\\
+\vdots&\vdots&\vdots\\
+ \frac{\partial f}{\partial
+  w_d}(\mathbf{w})&=&0
+\end{array}
+\end{displaymath}
+Prenons l'exemple de la fonction de deux variables $f(w_1,w_2) =
+w_1^2+w_2^2+2w_1+8w_2$ dont le graphe est représenté en figure \ref{fig-bivariate}.
+On a que  $\frac{\partial f}{\partial w_1}(\mathbf{w}) = 2w_1+2$ et que  $\frac{\partial f}{\partial
+  w_2}(\mathbf{w}) = 2w_2+ 8$. Pour annuler le gradient, il faut donc résoudre
+analytiquement
+le système d'équations~:
+\begin{displaymath}
+\begin{array}{lll}
+2w_1+ 2&=&0\\
+2w_2+ 8&=&0
+\end{array}
+\end{displaymath}
+ce qui donne $(w_1,w_2) = (-1,-4)$ et ce qui nous permet de déterminer
+que sa valeur au minimum est $-1^2-4^2-2-32 =-17$. 
+Par la suite on utilisera la notation suivante pour référencer ces deux valeurs~:
+\begin{eqnarray*}
+(-1,-4)&=&\mathop{\text{argmin}}_{\mathbf{w}\in\mathbb{R}^2} f(\mathbf{w})\\
+-17 &=&\text{min} f(\mathbf{w})
+\end{eqnarray*}
+La résolution par la méthode
+numérique suit le même principe que précédemment. Pour le déroulé de
+l'exemple, on suppose que
+$\mathbf{w}_0=(0,0)$ et $\alpha=0.1$.
+\begin{center}
+\scalebox{0.9}{
+\begin{tabular}{lll}\toprule
+$\mathbf{w}_i$& $\alpha\,  (2w_1+2))$&$\alpha\,  (2w_2+8))$\\\midrule
+(0,0)&$0.1\times (2\times 0 + 2) = 0.2$&$0.1\times (2\times 0+8) = 0.8$\\
+(-0.2,-0.8)&$0.1\times (2\times -0.2 + 2) = 0.16$&$0.1\times (2\times -0.8+8) = 0.64$\\
+(-0.36,-1.44)&$0.1\times (2\times -0.36 + 2) = 0.128$&$0.1\times (2\times -1.44+8) = 0.512$ \\
+(-0.488,-1.952)&\ldots&\ldots\\\bottomrule
+\end{tabular}
+}
+\end{center}
+
+La méthode de résolution numérique pour fonctions strictement convexes
+de plusieurs variables se résume par un algorithme dit de descente de
+gradient qui est explicité en Algorithme \ref{algo-GD}. Le critère
+d'arrêt est en général un test de convergence de la forme
+$f(\mathbf{w}_{i+1}) \approx f(\mathbf{w}_{i})$. On peut
+également donner une borne sur le nombre maximal d'itérations si la
+précision de la solution n'est pas essentielle.
+
+
+\begin{figure}[htbp]
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}
+[
+    %title={$f(w_1,w_2) = w_1^2+w_2^2+2w_1+8w_2$},
+    view={0}{90}
+]
+\addplot3[
+    contour gnuplot={levels={0,-5,-10, -15, -16.5}}
+]
+{x^2+y^2+2*x+8*y};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\caption{\label{fig-bivariate}Contour de la fonction $f(w_1,w_2)= w_1^2+w_2^2+2w_1+8w_2$}
+\end{figure}
 
 \begin{algorithm}
 \begin{algorithmic}
@@ -1416,10 +1568,28 @@ la séquence de tags de ce chemin.
 \State\Return $\mathbf{w}$
 \EndFunction
 \end{algorithmic}
-\caption{Algorithme de descente de gradient}
+\caption{\label{algo-GD}Algorithme de descente de gradient}
 \end{algorithm}
 
-Maximum d'une fonction strictement concave.
+
+Un des points difficile concerne le choix du pas de gradient $\alpha$.
+Trop petit, l'algorithme progresse trop lentement vers la solution,
+trop grand, l'algorithme risque de diverger. Il existe un très grand
+nombre de méthodes de descente de gradient qui traitent les problèmes
+mentionnés ici et qui ont fait l'objet d'études considérables en
+calcul numérique et en optimisation. 
+Les méthodes utilisées en \ac{tal}, et abordées dans ce cours restent en général particulièrement
+simples et approximatices. Celles-ci sont adaptées au traitement de jeux de données (1) de très
+grande dimensionalité et (2) comportant un très grand nombre d'exemples.
+Ceci dit, dans certains cas, il peut être utile de s'appuyer sur des librairies de
+calcul numérique comme {\tt scipy.optimize}.
+
+\begin{exo}[Montée de gradient]
+La fonction $f(w_1,w_2)= -(w_1^2+w_2^2+2w_1+8w_2)$ est
+strictement concave. Calculer son gradient et définissez un algorithme de montée de gradient
+qui permet de déterminer numériquement son maximum.
+\end{exo}
+
 
 \section{Régression logistique}
 {\bf discuter du virage du biais}
@@ -1543,6 +1713,21 @@ L'idée de ASGD c'est de retenir la valeur moyenne du gradient.
 \end{algorithmic}
 \caption{Algorithme de descente de gradient moyennée (ASGD)}
 \end{algorithm}
+
+\subsection{Instabilités numériques}
+
+$exp(x)$ peut créer un overflow si $x$ trop grand.
+Or on a l'équivalence suivante
+\begin{eqnarray}
+\frac{e^x}{1+e^x} &= &\frac{e^x}{1+e^x} \frac{e^{-x}}{e^{-x}}\\
+&=&\frac{1}{(1+e^x)e^{-x}}\\
+\label{eq-logisitic-positive}&=&\frac{1}{e^{-x}+1}
+\end{eqnarray}
+Utiliser (\ref{eq-logisitic-positive}) lorsque $x$ est positif permet
+d'éviter l'overflow. Utiliser $\frac{e^x}{1+e^x}$ lorsque $x$ est
+négatif permet d'éviter l'underflow.
+
+
 
 \section{Régression logistique multinomiale}
 {\bf Discuter le codage des features et recommencer}

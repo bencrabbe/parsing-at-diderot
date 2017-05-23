@@ -5,7 +5,7 @@ import random
 
 
 
-def optimise_basic(step_size=0.4,max_epochs=30):
+def optimise_univariate(step_size=0.4,max_epochs=30):
     """
     Optimizes f(x) = (x-3)^2 (strictly convex)
     """    
@@ -15,7 +15,21 @@ def optimise_basic(step_size=0.4,max_epochs=30):
         obj = (x-3)**2
         print(x,obj)
     return x
- 
+
+def optimise_bivariate(step_size=0.4,max_epochs=30):
+    """
+    Optimizes f(x) = x^2+y^2+2x+8y (strictly convex)
+    """    
+    (x,y) = (0,0)
+    for e in range(max_epochs):
+        obj = x**2+y**2+2*x+8*y
+        print((x,y),obj)
+        x,y = (x-step_size*(2*x+2),y-step_size*(2*y+8))
+
+    obj = x**2+y**2+2*x+8*y
+    print((x,y),obj)
+    return (x,y)
+
 
 
 def make_dataset(istream,add_bias=True):
@@ -103,11 +117,12 @@ class LogisticModel:
 if __name__ == '__main__':
     
     #gradient descent : try with step_size: 0.1,0.4; (0.01,2.0)
-    optimise_basic(step_size=3)
-
+    optimise_univariate(step_size=0.4)
+    optimise_bivariate(step_size=0.1)
+    sys.exit(0)
     #simple logistic 
     istream = open('data/logistic.dat')
-    D = make_dataset(istream)
+    D = make_dataset(istream,add_bias=False)
     istream.close()
     m = LogisticModel()
     objSGD   = m.trainSGD(D,step_size=0.03)
