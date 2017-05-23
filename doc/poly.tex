@@ -1433,6 +1433,20 @@ Objective = max de vraisemblance:
 f(\mathbf{w}) = \prod_{i=1}^N P(y_i|\mathbf{x}_i; \mathbf{w}) 
 \end{equation}
 
+Notons que :
+\begin{displaymath}
+P(1|x) = \frac{exp(a+bx)}{1+exp(a+bx)}
+\end{displaymath}
+\begin{eqnarray}
+P(0|x) &=& 1 - \frac{exp(a+bx)}{1+exp(a+bx)}\\
+               &=&     \frac{1+ exp(a+bx) - exp(a+bx)}{1+exp(a+bx)}\\
+                &=&  \frac{1}{1+exp(a+bx)}
+\end{eqnarray}
+Donc :
+\begin{displaymath}
+P(y |x) = \frac{exp(y(a+bx))}{1+exp(a+bx)}
+\end{displaymath}
+
 On maximise la log-vraisemblance :
 \begin{eqnarray}
 \hat{\mathbf{w}} &=& \mathop{\text{argmax}}_{\mathbf{w} \in
@@ -1440,23 +1454,23 @@ On maximise la log-vraisemblance :
 &=&\mathop{\text{argmax}}_{\mathbf{w} \in  \mathbb{R}^d} \sum_{i=1}^N
 \log P(y_i|\mathbf{x}_i; \mathbf{w})\\
 &=&\mathop{\text{argmax}}_{\mathbf{w} \in  \mathbb{R}^d} \sum_{i=1}^N
- [ \mathbf{w}^T \mathbf{x}_i ] - \log [ 1+e^{\mathbf{w}^T
+y_i [ \mathbf{w}^T \mathbf{x}_i ] - \log [ 1+e^{\mathbf{w}^T
   \mathbf{x}_i} ]
 \end{eqnarray}
 
 Dérivée partielle de $w_j$ au point $\mathbf{w}$:
 \begin{eqnarray}
 \frac{\partial f(\mathbf{w})}{\partial w_j}&=&\frac{\partial \sum_{i=1}^N
- [ \mathbf{w}^T \mathbf{x}_i ] - \log [ 1+e^{\mathbf{w}^T
+y_i [ \mathbf{w}^T \mathbf{x}_i ] - \log [ 1+e^{\mathbf{w}^T
   \mathbf{x}_i} ]}{\partial w_j}\\
-&=&\sum_{i=1}^N x_{ij} - \frac{\partial \log [ 1+e^{\mathbf{w}^T
+&=&\sum_{i=1}^N y_i  x_{ij} - \frac{\partial \log [ 1+e^{\mathbf{w}^T
   \mathbf{x}_i} ] }{\partial w_j}\\
-&=&\sum_{i=1}^N x_{ij} - 
+&=&\sum_{i=1}^N y_i  x_{ij} - 
 \frac{\frac{\partial e^{\mathbf{w}^T  \mathbf{x}_i} }{\partial
     w_j}}{1+ e^{\mathbf{w}^T  \mathbf{x}_i}}\\
-&=&\sum_{i=1}^N x_{ij} - 
+&=&\sum_{i=1}^N y_i  x_{ij} - 
 \frac{e^{\mathbf{w}^T  \mathbf{x}_i} x_{ij}} {1+ e^{\mathbf{w}^T  \mathbf{x}_i}}\\
-&=&\sum_{i=1}^N x_{ij} - [ P(y_i | \mathbf{x}_i,\mathbf{w}) \, x_{ij} ]
+&=&\sum_{i=1}^N y_i  x_{ij} - [ P( 1 | \mathbf{x}_i,\mathbf{w}) \, x_{ij} ]
 \end{eqnarray}
 
 On note le gradient $\nabla f(\mathbf{w}) = \frac{\partial f}{\partial w_1} \ldots
@@ -1559,6 +1573,9 @@ Dérivée partielle :
 \end{displaymath}
 
 
+{\bf Dire de faire attention au problème d'explosion du score lors de
+  la prédicion : exp(trop grand nombre)}
+
 \section{Perceptron multiclasse}
     
 Modèle : 
@@ -1587,7 +1604,7 @@ alors:
 \frac{\partial f(\mathbf{w})}{\partial w_j} =  
 \sum_{i=1}^N \left\{
 \begin{array}{ll}
-\phi_j(\mathbf{x}_{i},y_i) - \phi_j(\mathbf{x}_{i},\hat{y}_i) &\text{si } y_i
+\phi_j(\mathbf{x}_{i},\hat{y}_i) -\phi_j(\mathbf{x}_{i},y_i) &\text{si } y_i
 \not = \hat{y}_i\\
 0&\text{sinon}
 \end{array}\right.
@@ -1598,21 +1615,129 @@ alors:
 \ell(y_i,\mathbf{x}_i,\mathbf{w}) = 
 \left\{
 \begin{array}{ll}
-\boldsymbol\Phi(\mathbf{x}_{i},y_i)
-- \boldsymbol\Phi(\mathbf{x}_i,\hat{y}_i)&\text{si } y_i \not = \hat{y}_i \\
+\boldsymbol\Phi(\mathbf{x}_i,\hat{y}_i)-\boldsymbol\Phi(\mathbf{x}_{i},y_i)
+&\text{si } y_i \not = \hat{y}_i \\
  \mathbf{0}& \text{sinon}
 \end{array}\right.
 \end{displaymath}
-
-
 
 \section{Large marge multiclasse}
 hinge loss
 montrer que le gradient est celui du perceptron 
 perceptron = large marge avec marge nulle en SGD
+dériver SVM
 
 
-\section{Réseau de neurones}
+Modèle : 
+\begin{equation}
+\text{score}(y,\mathbf{x};\mathbf{w}) =  \mathbf{w}^T \,
+    \boldsymbol\Phi(\mathbf{x},y)
+\end{equation}
+
+%Soit $\hat{\mathbf{y}} =  
+%\mathop{\text{argmax}}_{y\in Y} \mathbf{w}^T \,
+%    \boldsymbol\Phi(\mathbf{x},y)$
+
+Soit $y^* = 
+\mathop{\text{argmax}}_{y'\in Y\backslash\{y\}} \mathbf{w}^T \,
+    \boldsymbol\Phi(\mathbf{x},y')$ (meilleur concurrent)
+
+Objective (miniser l'erreur): 
+
+\begin{equation}
+\label{eq-largemargin-objective}
+f(\mathbf{w}) = \frac{1}{N}\sum_{i=1}^N \text{max}(0,
+1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
+\end{equation}
+
+Sous-dérivée partielle :
+\begin{equation}
+\frac{\partial f(\mathbf{w})}{\partial w_j} =  
+\sum_{i=1}^N \left\{
+\begin{array}{ll}
+\phi_j(\mathbf{x}_{i},y^*_i) -\phi_j(\mathbf{x}_{i},y_i) &\text{si }
+[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
+0&\text{sinon}
+\end{array}\right.
+\end{equation}
+
+\begin{displaymath}
+\ell(y_i,\mathbf{x}_i,\mathbf{w}) = 
+\left\{
+\begin{array}{ll}
+ \boldsymbol\Phi(\mathbf{x}_i,{y}^*_i)-
+\boldsymbol\Phi(\mathbf{x}_{i},y_i)&\text{si }
+[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
+ \mathbf{0}& \text{sinon}
+\end{array}\right.
+\end{displaymath}
+
+\paragraph{Large marge et perceptron}
+
+On peut voir l'algorithme du perceptron comme un cas particulier des
+modèles à large marge. En posant que la marge est nulle, l'objectif à
+large marge devient~:
+\begin{equation}
+f(\mathbf{w}) = \frac{1}{N}\sum_{i=1}^N \text{max}(0,
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
+\end{equation}
+dont le sous-gradient devient~:
+\begin{equation}
+\frac{\partial f(\mathbf{w})}{\partial w_j} =  
+\sum_{i=1}^N \left\{
+\begin{array}{ll}
+\phi_j(\mathbf{x}_{i},y^*_i) -\phi_j(\mathbf{x}_{i},y_i) &\text{si }
+[ \text{score}(y_i) - (\text{score}(y^*_i) ) ]\leq 0\\
+0&\text{sinon}
+\end{array}\right.
+\end{equation}
+Si l'algorithme utilisé pour estimer les paramètres est \ac{sgd}
+(Algorithme ??), on peut observer que la méthode correspond exactement
+à l'algorithme du \kw{ perceptron multiclasse}.
+
+On peut donc voir l'algorithme du perceptron comme un cas particulier
+des modèles à large marge.
+
+\paragraph{Régularisation}
+Si maintenant on ajoute un terme de régularisation à l'objectif (\ref{eq-largemargin-objective}), celui-ci prend la forme suivante~:
+\begin{equation}
+f(\mathbf{w}) = \frac{\lambda}{2}||\mathbf{w}||^2 +
+\frac{1}{N}\sum_{i=1}^N \text{max}(0, 1 + 
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
+\end{equation}
+Cet objectif correspond à celui d'une \kw{machine à vecteurs de support}
+(\ac{svm}) linéaire. On peut indiquer que les modèles à large marge
+ont pour origine les travaux sur \ac{svm}, même si ceux-ci ont été
+initialement formulés de manière très différente (en apparence). 
+
+On peut optimiser cet objectif avec les
+algorithmes de descente de gradient et de descente de gradient
+stochastique moyennée présentés dans ce chapitre.
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{BatchSVM}{$\alpha,\lambda,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\While{non convergence}
+\State
+\scalebox{0.8}{$\mathbf{w} \gets \mathbf{w} - \alpha \left( \lambda \mathbf{w} + 
+\frac{1}{N}\sum_{i=1}^N
+\left\{
+\begin{array}{ll}
+\boldsymbol\Phi(\mathbf{x}_{i},y_i) - \boldsymbol\Phi(\mathbf{x}_i,{y}^*_i)
+&\text{si }
+[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
+ \mathbf{0}& \text{sinon}
+\end{array}\right. \right)$}
+\EndWhile
+\State\Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{Algorithme de descente de gradient pour \ac{svm} linéaire (batch)}
+\end{algorithm}
+
+
+\section{Réseaux de neurones}
     word vectors
     SGD
 
