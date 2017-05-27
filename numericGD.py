@@ -4,7 +4,6 @@ import numpy as np
 import random
 
 
-
 def optimise_univariate(step_size=0.4,max_epochs=30):
     """
     Optimizes f(x) = (x-3)^2 (strictly convex)
@@ -31,7 +30,6 @@ def optimise_bivariate(step_size=0.4,max_epochs=30):
     return (x,y)
 
 
-
 def make_dataset(istream,add_bias=True):
     """
     Also adds a bias dummy variable
@@ -51,15 +49,19 @@ def make_dataset(istream,add_bias=True):
 
 class LogisticModel:
 
+    
     def __init__(self):
         self.weights = np.zeros(1)
 
-    def predict(self,x):
+    def predict(self,x,weights=None):
         """
         Prob of success
         """
-        #this code attempts to avoid overflows/underflows
-        score = np.dot(self.weights,x)
+        if weights is None:
+            weights = self.weights
+            
+        #this coding attempts to avoid overflows/underflows
+        score = np.dot(weights,x)
         if score >= 0:
             return 1/(1+exp(-score))
         else:
@@ -69,25 +71,57 @@ class LogisticModel:
     def train(self,dataset,step_size=1.0,max_epochs=500,epsilon=0.0001):
 
         D = len(dataset[0][1])
-        self.weights = np.zeros(D)
+        weights = np.zeros(D)
 
         objective_history = [0.0]*max_epochs
-        
+                 
         for e in range(max_epochs):
-            loglik = 0.0
-            grad = np.zeros(D)
-            for (y,X) in dataset:
-                ysucc = self.predict(X)
-                grad += X * (y - ysucc)
-                loglik += log(ysucc+sys.float_info.epsilon) if y else log(1+sys.float_info.epsilon-ysucc)
-            #self.weights += step_size*grad
-            self.weights += (step_size/(e+1))*grad
-            print('LogLikelihood = ', loglik)
+            weights -= (step_size/(e+1))*self.batch_gradient(weights,dataset)
+            loglik = -self.loglikelihood(weights,dataset)
+            #print('LogLikelihood = ', loglik)
             objective_history[e] = loglik
+        self.weights = weights
+        print(self.weights)
+        print('LogLikelihood = ', loglik)
         return objective_history
-            
-    def trainSGD(self,dataset,step_size=1.0,max_epochs=500,epsilon=0.0001):
 
+    def loglikelihood(self,weights,dataset):
+        """
+        Computes the negative loglikelihood (objective function) on a dataset
+        """
+        loglik = 0
+        for (y,X) in dataset:
+            ysucc = self.predict(X,weights)
+            loglik += log(ysucc+sys.float_info.epsilon) if y else log(1-ysucc+sys.float_info.epsilon)
+        return -loglik
+
+    def batch_gradient(self,weights,dataset):
+        """
+        Returns a negative gradient (suited for gradient descent)
+        """
+        D = len(dataset[0][1])
+        grad = np.zeros(D)
+        for (y,X) in dataset:
+            ysucc = self.predict(X,weights)
+            grad += X * (y - ysucc)
+        return -grad
+    
+    def trainBFGS(self,dataset):
+        """
+        Trains the model with the BFGS method
+        """
+        from scipy.optimize import minimize
+        D = len(dataset[0][1])
+
+        res = minimize(self.loglikelihood,np.zeros(D),args=(dataset,),jac=self.batch_gradient,method="BFGS")
+        self.weights = np.array(res.x)
+        print('Estimate:',res.x)
+        print('LogLikelihood:',res.fun)
+        
+    def trainSGD(self,dataset,step_size=1.0,max_epochs=500,epsilon=0.0001):
+        """
+        Trains the model with the SGD method
+        """
         D = len(dataset[0][1])
         self.weights = np.zeros(D)
         objective_history = [0.0]*max_epochs
@@ -99,12 +133,12 @@ class LogisticModel:
                 grad = X* (y - ysucc)
                 self.weights += (step_size/(e+1))*grad
                 #self.weights += step_size*grad
-                loglik += log(ysucc+sys.float_info.epsilon) if y else log(1+sys.float_info.epsilon-ysucc)
-            print('LogLikelihood = ', loglik)
+                loglik += log(ysucc+sys.float_info.epsilon) if y else log(1-ysucc+sys.float_info.epsilon)
+            #print('LogLikelihood = ', loglik)
             objective_history[e] = loglik
+        print(self.weights)
         return objective_history
-
-            
+        
     def test(self,dataset):
         c = 0
         for (y,X) in dataset:
@@ -119,16 +153,25 @@ if __name__ == '__main__':
     #gradient descent : try with step_size: 0.1,0.4; (0.01,2.0)
     optimise_univariate(step_size=0.4)
     optimise_bivariate(step_size=0.1)
-    sys.exit(0)
+
+    #istream = open('data/logistic.dat')
+    #D = make_dataset(istream,add_bias=True)
+    #istream.close()
+    #m = LogisticModel()
+    #m.plot_bivariate_loglikelihood(D)
+    #sys.exit(0)
     #simple logistic 
     istream = open('data/logistic.dat')
-    D = make_dataset(istream,add_bias=False)
+    D = make_dataset(istream,add_bias=True)
     istream.close()
     m = LogisticModel()
-    objSGD   = m.trainSGD(D,step_size=0.03)
-    objBatch = m.train(D,step_size=0.03)
+    objSGD   = m.trainSGD(D,step_size=5)
     print('Internal test accurracy :',m.test(D))
-
+    objBatch = m.train(D,step_size=5.0)
+    print('Internal test accurracy :',m.test(D))
+    objBFGS = m.trainBFGS(D)
+    print('Internal test accurracy :',m.test(D))
+    
     #plotting(uncomment if pandas and pyplot are installed)    
     #import pandas as pd
     #import matplotlib.pyplot as plt

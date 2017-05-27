@@ -1413,7 +1413,7 @@ la séquence de tags de ce chemin.
 Si on sait que la fonction est strictement convexe (resp. concave) ---~
  ce qui est le cas pour tous les modèles d'apprentissage décrits dans
  ce cours~--- (à l'exception des réseaux de neurones), alors il existe
- un minimum (resp. maximum) unique.
+ un minimum (resp. maximum) global unique.
 On trouve ce minimum en résolvant :
 \begin{equation}
 \label{eq-derivative}
@@ -1427,6 +1427,7 @@ Cette méthode de résolution est appelée méthode analytique.
 \begin{figure}[htbp]
 \begin{center}
 \scalebox{0.5}{
+\begin{tabular}{cc}
 \begin{tikzpicture}
 \foreach \x in {-1,0,1,2,3,4,5,6}
     {        
@@ -1438,9 +1439,23 @@ Cette méthode de résolution est appelée méthode analytique.
     \draw[->] (0,-0.25) -- (0,6) node[above] {$f(x)$};
     \draw[scale=0.5,domain=-0.3:6.3,smooth,variable=\x,blue] plot({\x},{(\x -3) * (\x -3)});
 \end{tikzpicture}
+&
+\begin{tikzpicture}
+\foreach \x in {-1,0,1,2,3,4,5,6}
+    {        
+      \coordinate (A\x) at ($(0,0)+(\x*0.5cm,0)$) {};
+      \draw ($(A\x)+(0,5pt)$) -- ($(A\x)-(0,5pt)$);
+      \node at ($(A\x)+(0,-3ex)$) {\x};
+    }
+    \draw[->] (-1,0) -- (5,0) node[right] {$x$};
+    \draw[->] (0,-0.25) -- (0,6) node[above] {$f(x)$};
+    \draw[scale=0.5,domain=-0.3:6.3,smooth,variable=\x,blue] plot({\x},{10+-(\x -3) * (\x -3)});
+\end{tikzpicture}\\
+$f(x) = (x-3)^2$&$f(x) = -(x-3)^2 + 10$
+\end{tabular}
 }
 \end{center}
-\caption {Graphe de la fonction : $f(x) = (x-3)^2$}
+\caption {Fonctions strictement convexe (gauche) et concave (droite)}
 \end{figure}
 
 Pour la très grande majorité  des fonctions utilisées par les modèles
@@ -1488,13 +1503,13 @@ Pour trouver le minimum d'une fonction strictement convexe $f(\mathbf{w})$, il f
 résoudre $\nabla f(\mathbf{w})= \mathbf{0}$, c'est-à-dire un système
 d'équations de la forme~:
 \begin{displaymath}
-\begin{array}{lll}
+\left[\begin{array}{lll}
  \frac{\partial f}{\partial
   w_1}(\mathbf{w})&=&0\\
 \vdots&\vdots&\vdots\\
  \frac{\partial f}{\partial
   w_d}(\mathbf{w})&=&0
-\end{array}
+\end{array}\right]
 \end{displaymath}
 Prenons l'exemple de la fonction de deux variables $f(w_1,w_2) =
 w_1^2+w_2^2+2w_1+8w_2$ dont le graphe est représenté en figure \ref{fig-bivariate}.
@@ -1503,10 +1518,10 @@ On a que  $\frac{\partial f}{\partial w_1}(\mathbf{w}) = 2w_1+2$ et que  $\frac{
 analytiquement
 le système d'équations~:
 \begin{displaymath}
-\begin{array}{lll}
+\left[\begin{array}{lll}
 2w_1+ 2&=&0\\
 2w_2+ 8&=&0
-\end{array}
+\end{array}\right]
 \end{displaymath}
 ce qui donne $(w_1,w_2) = (-1,-4)$ et ce qui nous permet de déterminer
 que sa valeur au minimum est $-1^2-4^2-2-32 =-17$. 
@@ -1662,7 +1677,7 @@ $P(0|\mathbf{x}_i;\mathbf{w})$ si $y_i$ vaut 0. Pour éviter de
 manipuler les deux formules (\ref{eq-logistic-positive}) et (\ref{eq-logistic-negative}) dans ce qui suit,
 on utilise la formule synthétique (et équivalente) suivante~:
 \begin{displaymath}
-P(y_i |\mathbf{x}_i;\mathbf{w}) = \frac{\text{exp}(y_i(\mathbf{w}^T\mathbf{x}))}{1+\text{exp}(\mathbf{w}^T+\mathbf{x})}
+P(y_i |\mathbf{x}_i;\mathbf{w}) = \frac{\text{exp}(y_i(\mathbf{w}^T\mathbf{x}_i))}{1+\text{exp}(\mathbf{w}^T\mathbf{x}_i)}
 \end{displaymath}
 où $y_i\in \{1,0\}$ prend la valeur de la ligne qui lui correspond dans le jeu de données.
 
@@ -1699,45 +1714,59 @@ y_i ( \mathbf{w}^T \mathbf{x}_i ) - \log ( 1+e^{\mathbf{w}^T
 \end{eqnarray}
 Autrement dit, le gradient $\nabla f(\mathbf{w})$ au point
 $\mathbf{w}$ correspond au vecteur $(\frac{\partial f}{\partial w_1}(\mathbf{w}) \ldots
-\frac{\partial f}{\partial w_d}(\mathbf{w}))$.
-
-\paragraph{SGD} Observons que le calcul de $\nabla f(\mathbf{w})$ prend la forme~:
+\frac{\partial f}{\partial w_d}(\mathbf{w}))$ qui prend la forme suivante~:
 \begin{displaymath}
-\nabla f(\mathbf{w}) = \sum_{i=1}^N [ \mathbf{x}_i -
-P(y_i|\mathbf{x}_i;\mathbf{w}) \mathbf{x}_i ]
-\end{displaymath} 
-ou plus généralement en ML (beyond logistic)
-\begin{displaymath}
-\nabla f(\mathbf{w}) = \sum_{i=1}^N \ell(y_i,\mathbf{x}_i; \mathbf{w})
-\end{displaymath} 
-
-L'idée de SGD c'est :
-\begin{displaymath}
-\nabla f(\mathbf{w}) \approx \ell(y_i,\mathbf{x}_i; \mathbf{w}) \qquad
-({i \sim \text{\sc Uniform}(1,N)})
-\end{displaymath} 
-
-
-\paragraph{ASGD} 
-Le problème de SGD c'est que si un tirage est mauvais en fin de
-procédure, ça peut détruire le gradient.
-L'idée de ASGD c'est de retenir la valeur moyenne du gradient.
-
+\nabla f(\mathbf{w}) = \sum_{i=1}^n  \mathbf{x}_{i} \, [ y_i  - P( 1 | \mathbf{x}_i,\mathbf{w}) ]
+\end{displaymath}
+Dans ce contexte l'algorithme de descente de gradient  (ici de montée)  prend la forme
+donnée en algorithme \ref{algo-logistic-gradient}.
 \begin{algorithm}
 \begin{algorithmic}
-\Function{BatchGradientDescent}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\Function{BatchGradientAscent}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
 \State $\mathbf{w} \gets \mathbf{0}$
 \While{non convergence}
-\State $\mathbf{w} \gets \mathbf{w} - \alpha \sum_{i=1}^N \ell (y_i,\mathbf{x}_i;\mathbf{w})$
+\State $\mathbf{w} \gets \mathbf{w} + \alpha \sum_{i=1}^N \ell (y_i,\mathbf{x}_i;\mathbf{w})$
 \EndWhile
 \State\Return $\mathbf{w}$
 \EndFunction
 \end{algorithmic}
-\caption{Algorithme de descente de gradient (batch)}
+\caption{\label{algo-logistic-gradient}Algorithme de montée  de gradient (batch)}
 \end{algorithm}
+Le cas de la régression logistique n'est pas isolé. En fait dans la
+plupart des modèles d'apprentissage, le gradient prend la forme
+générale suivante~:
+\begin{equation}
+\label{eq-sgd-gradient}
+\nabla f(\mathbf{w}) = \sum_{i=1}^n  \ell(y_i, \mathbf{x}_{i} ,\mathbf{w})
+\end{equation}
+où $\ell(y_i, \mathbf{x}_{i} ,\mathbf{w})$ représente une fonction qui
+compare la prédiction du modèle étant donné la valeur courante de $\mathbf{w}$
+pour un exemple $i$ à la valeur de référence observée dans les données $y_i$.
+
+\subsection{Descente de gradient stochastique}
+
+Dans un contexte d'apprentissage artificiel pour le \ac{tal}, la
+taille $N$ du jeu de données est en général considérable.
+De telle sorte que l'algorithme de descente (ou de montée) de gradient
+peut devenir un processus très coûteux en temps de par la nécessité à
+chaque itération de parcourir tout le jeu de données pour évaluer le
+gradient.
 
 
-\begin{algorithm}
+La méthode de \kw{descente de gradient stochastique} (\ac{sgd}) cherche à
+corriger ce problème en posant l'hypothèse simplificatrice suivante~:
+\begin{displaymath}
+\nabla f(\mathbf{w}) \approx \ell(y_i,\mathbf{x}_i; \mathbf{w}) \qquad
+({i \sim \text{\sc Uniform}(1,N)})
+\end{displaymath} 
+Celle-ci consiste à approximer le gradient, en principe calculé à
+partir de tout le jeu de données par  un gradient tiré au sort sur un
+seul exemple. L'idée est qu'après un nombre suffisant d'itérations, la
+très grande majorité des exemples du jeu de données auront été tirés
+au sort. On donne la variante \ac{sgd} de l'algorithme de
+descente\footnote{Pour la régression logistique il faut utiliser la montée.} de
+gradient en algorithme \ref{algo-gradient-sgd}.
+\begin{algorithm}[htbp]
 \begin{algorithmic}
 \Function{StochasticGradientDescent}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
 \State $\mathbf{w} \gets \mathbf{0}$
@@ -1748,10 +1777,54 @@ L'idée de ASGD c'est de retenir la valeur moyenne du gradient.
 \State\Return $\mathbf{w}$
 \EndFunction
 \end{algorithmic}
-\caption{Algorithme de descente de gradient (SGD)}
+\caption{\label{algo-gradient-sgd}Algorithme de descente de gradient stochastique}
+\end{algorithm}
+Vu que les mises à jour du gradient sont dans ce nouveau contexte
+beaucoup plus fréquentes, on espère que le processus global convergera
+plus rapidement vers une solution.
+Notons également, que dans la pratique, on trouve couramment la
+variante donnée en algorithme \ref{algo-gradient-sgd-epoch}.
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{StochasticGradientDescent}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\While{non convergence}
+\State\Call{Shuffle}{$\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N$}
+\For{$1\leq i\leq N$}
+    \State $\mathbf{w} \gets \mathbf{w} - \alpha\, \ell (y_i,\mathbf{x}_i;\mathbf{w})$
+\EndFor
+\EndWhile
+\State\Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-gradient-sgd-epoch}Variante de l'algorithme de descente de gradient stochastique}
 \end{algorithm}
 
-\begin{algorithm}
+
+Cet algorithme, très utilisé en \ac{tal}, connaît de nombreuses
+variantes, une des plus importantes est la variante dite en minibatch.
+Celle-ci consiste à sélectionner aléatoirement un nombre d'exemple $k$
+($1 < k \ll N)$ pour évaluer le gradient. Cette variante est
+particulièrement utilisée  pour paralléliser les calculs sur plusieurs
+processeurs. L'idée est que chaque processeur calcule indépendamment 
+un gradient approximé pour le minibatch qui lui est assigné. La mise à
+jour des poids est ensuite réalisée séquentiellement.
+
+La force de la méthode \ac{sgd} est aussi son problème principal.
+Le problème essentiel de la méthode c'est l'aspect aléatoire.
+Il est possible que certains exemples aberrants dans les données
+créent des estimations approximatives de gradients bruitées, ce qui
+peut perturber l'estimation des poids, surtout si ces exemples sont
+tirés en fin de procédure.
+
+Pour corriger ce problème, on utilise couramment la version moyennée
+qui est appelée \kw{descente de gradient stochastique moyennée} (\ac{asgd}).
+L'idée de ce dernier algorithme est de maintenir une somme cumulée des
+différents vecteurs $\mathbf{w}$ obtenus au cours des itérations et de
+renvoyer la moyenne. Ce type de méthode peut être vue comme une
+application de la loi des grands nombres dans le contexte de la descente
+de gradient (Algorithme \ref{algo-asgd}).  
+\begin{algorithm}[htbp]
 \begin{algorithmic}
 \Function{AveragedStochasticGradientDescent}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
 \State $\mathbf{w} \gets \mathbf{0}$
@@ -1766,12 +1839,41 @@ L'idée de ASGD c'est de retenir la valeur moyenne du gradient.
 \State\Return $\bar{\mathbf{w}}/C$
 \EndFunction
 \end{algorithmic}
-\caption{Algorithme de descente de gradient moyennée (ASGD)}
+\caption{\label{algo-asgd}Algorithme de descente de gradient moyennée (ASGD)}
 \end{algorithm}
+
+\paragraph{Moyenne mobile cumulée (move to perceptron)} En pratique, plutôt que de stocker un grand
+nombre de vecteurs de poids $\mathbf{w}_1\ldots \mathbf{w}_N$ pour
+finalement calculer la moyenne $\bar{\mathbf{w}} = \frac{1}{N}
+(\mathbf{w}_1+\ldots + \mathbf{w}_N$ en fin de procédure, on utilisera plutôt la méthode
+de la moyenne mobile cumulée qui permet de mettre à jour la valeur de
+$\bar{\mathbf{w}}$ itérativement~:
+\begin{equation}
+\label{eq-moving-average}
+\bar{\mathbf{w}}_{i+1} = \frac{\mathbf{w}_{i+1} + i \bar{\mathbf{w}}_{i} }{i+1}
+\end{equation}
+On justifie cette méthode en voyant que~:
+\begin{displaymath}
+i \bar{\mathbf{w}}_{i} = \frac{i}{i} (\mathbf{w}_1 +\ldots +\mathbf{w}_i)\\
+\end{displaymath}
+par conséquent (\ref{eq-moving-average}) abrège~:
+\begin{displaymath}
+\bar{\mathbf{w}}_{i+1} = \frac{\mathbf{w}_{i+1} + \mathbf{w}_i +\ldots +\mathbf{w}_1 }{i+1}
+\end{displaymath}
+
+
+
+
+
+
+
+
+
+
 
 \subsection{Instabilités numériques}
 
-$exp(x)$ peut créer un overflow si $x$ trop grand.
+$\text{exp}(x)$ peut créer un overflow si $x$ trop grand.
 Or on a l'équivalence suivante
 \begin{eqnarray}
 \frac{e^x}{1+e^x} &= &\frac{e^x}{1+e^x} \frac{e^{-x}}{e^{-x}}\\
@@ -1780,41 +1882,567 @@ Or on a l'équivalence suivante
 \end{eqnarray}
 Utiliser (\ref{eq-logisitic-positive}) lorsque $x$ est positif permet
 d'éviter l'overflow. Utiliser $\frac{e^x}{1+e^x}$ lorsque $x$ est
-négatif permet d'éviter l'underflow.
-
+négatif permet d'éviter l'overflow (dans l'autre sens).
 
 
 \section{Régression logistique multinomiale}
-{\bf Discuter le codage des features et recommencer}
 
-Modèle : 
+Le modèle de régression logistique multinomiale est une généralisation
+du modèle de régression logistique au cas où $Y$ est un ensemble de deux valeurs
+discrètes ou plus. Un tel modèle prédit une probabilité
+$P(y|\mathbf{x};\mathbf{w})$ pour chaque classe $y\in Y$ étant donné
+un vecteur d'observations $\mathbf{x}\in \mathbb{R}^d$ et une matrice
+de poids $\mathbf{w}\in \mathbb{R}^{d\times|Y|}$.
+
+\begin{figure}[htbp]
+\begin{center}
+\begin{tikzpicture}
+
+ \matrix (mat) at (0,0) [matrix of nodes,ampersand replacement=\&,
+    nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $z_{y_1}$\\
+      $z_{y_2}$\\
+      $z_{y_3}$\\
+    };
+
+    \node (A) at (1,0){=};
+    \matrix (mat) at (4,0) [matrix of nodes,ampersand replacement=\&,
+    nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $w_{11}$ \& $w_{12}$ \& $w_{13}$ \& $w_{14}$ \&  $w_{15}$\\
+      $w_{21}$ \& $w_{22}$ \& $w_{23}$ \& $w_{24}$ \&  $w_{25}$\\
+      $w_{31}$ \& $w_{32}$ \& $w_{33}$ \& $w_{34}$ \&  $w_{35}$\\    
+    };
+
+  \matrix (mat) at (8,0) [matrix of nodes,ampersand replacement=\&,
+    nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $x_{1}$ \\
+      $x_{2}$ \\
+      $x_{3}$ \\
+      $x_{4}$ \\
+      $x_{5}$ \\
+    };
+
+  \end{tikzpicture}
+\caption{\label{fig-logistic-multinomial-schema}Représentation
+schématique d'un modèle de régression
+  logistique multinomiale ($\mathbf{w}\in\mathbb{R}^{5\times 3}$, $\mathbf{x}\in\mathbb{R}^5$)}
+\end{center}
+\end{figure}
+
+En première approximation, on peut considérer qu'
+un vecteur de poids $\mathbf{w}_y \in \mathbb{R}^d$ (une ligne de la
+matrice) correspond à chaque classe $y\in Y$.
+Le score $z_y$ de la classe $y$  se calcule par le produit scalaire $\mathbf{w}^T\mathbf{x}$.
+On peut ainsi calculer le score de l'ensemble des classes par le
+produit de la matrice $\mathbf{w}$ et du vecteur $\mathbf{x}$, ce qu'on illustre
+schématiquement en figure \ref{fig-logistic-multinomial-schema}.
+
+Pour obtenir des probabilités à partir du vecteur de scores --
+positifs ou négatifs --  on les transforme d'abord en nombres positifs à l'aide de la
+fonction exponentielle (exp) puis en divisant chacun de ces nombres
+par le total des scores $(\sum_y z_y )$, ce qui donne le modèle de
+régression logistique multinomiale\footnote{Cette fonction de
+  normalisation de scores en probabilités est également appelée fonction softmax.}~:
 \begin{equation}
-P(y|\mathbf{x};\mathbf{w}) =  \frac{\text{exp}(\mathbf{w}^T
-    \boldsymbol\Phi(\mathbf{x},y)) }{\sum_{y'\in Y} \text{exp}(\mathbf{w}^T
-    \boldsymbol\Phi(\mathbf{x},y'))}
+\label{eq-multinomial-logistic-numeric}
+P(y|\mathbf{x};\mathbf{w}) =  \frac{\text{exp}(\mathbf{w}_y^T
+    \mathbf{x}) }{\sum_{y'\in Y} \text{exp}(\mathbf{w}_{y'}^T
+    \mathbf{x})}
+\end{equation}
+\paragraph{Codage des symboles par des vecteurs creux}
+Pour utiliser un tel modèle
+en \ac{tal}, il reste un problème à
+traiter~: le modèle suppose naturellement des données $\mathbf{x}$ réelles alors
+que les données langagières sont le plus souvent représentées par des
+symboles discrets (à l'exception des données audio).
+
+Supposons que $\mathbf{x}$ est un vecteur de symboles
+discrets de dimension $k$ comme par exemple les familles du jeu de
+cartes~: $\{\diamondsuit ,\spadesuit ,\heartsuit , \clubsuit \}$. La
+manière classique de coder numériquement ce type de symboles consiste
+à les coder sur des vecteurs à $|F|$ dimensions, tel que chaque
+symbole value à 1 une dimension et à 0 les autres. Par exemple pour les
+familles du jeu de cartes~:
+\begin{eqnarray*}
+\diamondsuit &=& [1,0,0,0]\\
+\spadesuit &=& [0,1,0,0]\\
+\heartsuit &=& [0,0,1,0]\\
+\clubsuit &=& [0,0,0,1]
+\end{eqnarray*}
+On peut formaliser cette méthode de codage, appelée \kw{one hot
+  coding}, à l'aide de \kw{fonctions features}. \`A chaque dimension $i$
+du vecteur codé $\boldsymbol\Phi(x) = \phi_1(x),\phi_2(x),\phi_3(x),\phi_4(x)$ on fait correspondre une
+fonction feature $\phi_i(x)$ à valuation booléenne, par
+exemple si on a tiré une carte $x$, on pourra la coder à l'aide des
+features suivantes~:
+\begin{center}
+\vspace{-0.75cm}\scalebox{0.7}{
+\begin{minipage}[t]{.35\textwidth}
+\begin{displaymath}
+\phi_1(x) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x = \diamondsuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\end{minipage}
+\begin{minipage}[t]{.35\textwidth}
+\begin{displaymath}
+\phi_2(x) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x = \spadesuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\end{minipage}
+\begin{minipage}[t]{.35\textwidth}
+\begin{displaymath}
+\phi_3(x) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x = \heartsuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\end{minipage}
+\begin{minipage}[t]{.35\textwidth}
+\begin{displaymath}
+\phi_4(x) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x = \clubsuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\end{minipage}
+}
+\end{center}
+Supposons maintenant qu'on ait tiré un vecteur $\mathbf{x} = x_1,x_2$
+de deux cartes. On peut toujours utiliser un vecteur de features $\boldsymbol\Phi(\mathbf{x})$ pour coder la
+séquence $\mathbf{x}$ de cartes tirées~:
+\begin{center}
+\vspace{-0.75cm}\scalebox{0.7}{
+\begin{minipage}[t]{.35\textwidth}
+\begin{displaymath}
+\phi_1(\mathbf{x}) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x_1 = \diamondsuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\begin{displaymath}
+\phi_5(\mathbf{x}) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x_2 = \diamondsuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\end{minipage}
+\begin{minipage}[t]{.35\textwidth}
+\begin{displaymath}
+\phi_2(\mathbf{x}) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x_1 = \spadesuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\begin{displaymath}
+\phi_6(\mathbf{x}) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x_2 = \spadesuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\end{minipage}
+\begin{minipage}[t]{.35\textwidth}
+\begin{displaymath}
+\phi_3(\mathbf{x}) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x_1 = \heartsuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\begin{displaymath}
+\phi_7(\mathbf{x}) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x_2 = \heartsuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\end{minipage}
+\begin{minipage}[t]{.35\textwidth}
+\begin{displaymath}
+\phi_4(\mathbf{x}) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x_1 = \clubsuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\begin{displaymath}
+\phi_8(\mathbf{x}) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x_2 = \clubsuit \\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+\end{minipage}
+}
+\end{center}
+mais on peut aussi envisager coder les information qui portent sur les
+\kw{interactions} entre variables. Si on veut indiquer explicitement qu'on a tiré
+deux cartes de la famille pique, on pourra utiliser par exemple une
+feature telle que~:
+\begin{displaymath}
+\phi_9(\mathbf{x}) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } x_1 = \spadesuit \quad \&\quad  x_2 = \spadesuit\\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+de telle sorte que les vecteurs de features
+$\boldsymbol\Phi(\mathbf{x})$ ont généralement une dimensionnalité
+considérable en pratique. 
+Notons que cette première méthode de codage permet d'utiliser le
+modèle logistique multinomial avec des symboles discrets comme données.
+En explicitant le codage, le modèle (\ref{eq-multinomial-logistic-numeric}) prend ainsi la forme suivante~:
+\begin{equation}
+\label{eq-multinomial-logistic-sparse1}
+P(y|\mathbf{x};\mathbf{w}) =  \frac{\text{exp}(\mathbf{w}_y^T
+    \boldsymbol\Phi(\mathbf{x})) }{\sum_{y'\in Y} \text{exp}(\mathbf{w}_{y'}^T
+   \boldsymbol\Phi( \mathbf{x}))}
 \end{equation}
 
-Objective (Max vraisemblance)
+Un tel modèle fait encore l'hypothèse implicite que les poids sont
+organisés en matrice~: chaque ligne $\mathbf{w}_y$ de la matrice de
+poids correspond aux poids destinés à scorer la classe $y\in Y$. 
+Lorsque le nombre de classes est grand (voire infini) ou lorsqu'on ne
+souhaite pas utiliser une matrice de poids, on peut généraliser la méthode
+de codage par interactions en spécialisant les features à une classe
+donnée, c'est-à-dire en spécifiant des features qui ont la forme générale suivante~:
+\begin{displaymath}
+\phi_i(\mathbf{x}, y) = 
+\left\{
+\begin{array}{ll}
+1&\text{si } Y=y \quad\&\quad  x_k = \text{valeur}\quad (\&\, x_l = \text{valeur})*\\
+0&\text{sinon}
+\end{array}
+\right.
+\end{displaymath}
+Cette représentation alternative --~qui est le plus souvent utilisée dans
+ce cours~-- permet de représenter les poids comme un simple vecteur
+$\mathbf{w}$. Le score d'une classe est obtenu par un produit scalaire 
+$z_y = \mathbf{w}^T\boldsymbol\Phi(\mathbf{x},y)$ qui ne fait intervenir
+que les features qui sont pertinentes pour scorer cette classe.
+Lorsqu'on utilise ce codage, on notera que le modèle (\ref{eq-multinomial-logistic-sparse1}) 
+prend alors la forme suivante~:
+\begin{equation}
+\label{eq-multinomial-logistic-sparse2}
+P(y|\mathbf{x};\mathbf{w}) =  \frac{\text{exp}(\mathbf{w}^T
+    \boldsymbol\Phi(\mathbf{x},y)) }{\sum_{y'\in Y} \text{exp}(\mathbf{w}^T
+   \boldsymbol\Phi( \mathbf{x},y'))}
+\end{equation}
 
+
+\paragraph{Estimation des paramètres} L'entraînement d'un modèle de
+régression logistique multinomiale est la procédure qui consiste à
+estimer un vecteur $\mathbf{w}$ de poids à partir  de  données annotées.
+Un jeu de données aura en général une allure du type~:
+\begin{center}
+\begin{tabular}{llll}\toprule
+$y$ &$x_0$&$x_1$&$x_2$\\\midrule
+Animé&la&	souris&	grise\\
+Inanimé&	la&	souris&	apple\\
+Inanimé&	une&	souris&	cassée\\
+Animé&	une&	souris&	affamée\\
+Groupe	&un&	troupeau&	errant\\\bottomrule
+\end{tabular}
+\end{center}
+Cet exemple pourrait constituer le début d'un jeu de données destiné à
+classer les occurrences de noms en classes d'animacité ($Y = \{\text{Animé,Inanimé,Groupe}\}$)
+en fonction de leur contexte. 
+
+Dans ce qui suit, on note le jeu de
+données $\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N$, et comme dans le cas de
+la régression logistique, l'objectif est de trouver une valeur des
+paramètres qui maximise l'objectif de maximum de vraisemblance~:
 \begin{equation}
 f(\mathbf{w}) =  \prod_{i=1}^N P(y_i|\mathbf{x}_i;\mathbf{w})
 \end{equation}
+La fonction de log-vraisemblance est en général celle qui est
+maximisée car elle est strictement concave et la version logarithmique
+facilite les calculs~:
+\begin{align}
+\nonumber
+\hat{\mathbf{w}} &=\mathop{\text{argmax}}_{\mathbf{w} \in
+  \mathbb{R}^d} \prod_{i=1}^N P(y_i|\mathbf{x}_i;\mathbf{w})\\
+\nonumber
+&= \mathop{\text{argmax}}_{\mathbf{w} \in \mathbb{R}^d} \sum_{i=1}^N
+\log P(y_i|\mathbf{x}_i;\mathbf{w})\\
+\nonumber
+&= \mathop{\text{argmax}}_{\mathbf{w} \in \mathbb{R}^d} 
+\sum_{i=1}^N \log \frac{\text{exp}(\mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}_i,y_i)) } 
+{\sum_{y'\in Y}\text{exp}(\mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}_i,y')) }\\
+&=\mathop{\text{argmax}}_{\mathbf{w} \in \mathbb{R}^d} 
+\sum_{i=1}^N \left[\mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}_i,y_i)  
+-\log\left(\sum_{y'\in Y}\text{exp}(\mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}_i,y')) \right)\right]
+\end{align}
+On obtient les dérivées partielles de manière analogue au cas de la régression logistique~:
+\begin{align}
+\nonumber
+\frac{\partial f(\mathbf{w})}{\partial w_j} &=\frac{\partial
+  f}{\partial w_j} \sum_{i=1}^N \left[\mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}_i,y_i)  
+-\log\left(\sum_{y'\in Y}\text{exp}(\mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}_i,y'))\right) \right] \\
+\nonumber
+&= \sum_{i=1}^N 
+\left[  \phi_j(\mathbf{x}_i,y_i)  
+- \frac{\partial
+  f}{\partial w_j}\log\left(\sum_{y'\in Y}\text{exp}(\mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}_i,y')) \right)\right] \\
+\nonumber
+&=\sum_{i=1}^N 
+\left[  \phi_j(\mathbf{x}_i,y_i)  
+-\frac{\frac{\partial f}{\partial w_j}\sum_{y'\in Y} 
+  \text{exp}(\mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,y'))  }{\sum_{y'\in Y}\text{exp}(\mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,y')) }
+\right]\\
+\label{eq-triptrap}
+&=\sum_{i=1}^N 
+\left[  \phi_j(\mathbf{x}_i,y_i)  
+-\frac{ \sum_{y'\in Y}\text{exp}(\mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}_i,y')) \phi_j(\mathbf{x}_i,y')  }{\sum_{y'\in
+    Y}\text{exp}(\mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,y')) } 
+\right] \\
+\label{eq-multinomial-derivative}
+&=\sum_{i=1}^N 
+( \phi_j(\mathbf{x}_i,y_i)  
+- \sum_{y'\in Y} P(y' | \mathbf{x}_i;\mathbf{w})  \phi_j(\mathbf{x}_i,y'))
+\end{align}
+La dérivation qui précède applique essentiellement des règles de
+dérivation classiques (log et exp). Par contre il faut voir que le facteur 
+$\phi_j(\mathbf{x},y')$ qui apparaît en  (\ref{eq-triptrap})
+n'est valué à 1 que pour le seul $y'$ où la feature est effectivement
+valuée à 1. 
+Intuitivement, la mise à jour consiste à donner un bonus à $\phi_j$
+lorsqu'elle
+contribue à prédire la bonne hypothèse et un malus lorsqu'elle
+contribue à prédire une mauvaise hypothèse. 
+Le bonus sera d'autant plus important que le modèle aura mal prédit la
+bonne solution, et le malus est proportionnel à la
+probabilité que le modèle donne à  cette mauvais hypothèse.
 
-Dérivée partielle : 
+Autrement dit, la montée de gradient consiste à compter le nombre
+d'occurrences de la feature observées dans les données (premier terme)
+et à lui soustraire un pseudo-compte d'occurrences de la feature tel
+que prédit par le modèle (second terme).
+Le gradient sera nul lorsque ces deux nombres seront égaux pour toutes
+les features (et la procédure d'estimation aura convergé). 
+
+Pour le calcul de l'ensemble du gradient, on peut ainsi formuler une contrepartie de la fonction $\ell(y_i,\mathbf{x}_i;\mathbf{w})$,
+donnée en équation \ref{eq-sgd-gradient}, pour le cas multinomial~:
+\begin{displaymath}
+\ell(y_i,\mathbf{x}_i,\mathbf{w}) = \boldsymbol\Phi(\mathbf{x}_{i},y)
+-  \sum_{y'\in Y} P(y'|\mathbf{x}_i;\mathbf{w}) \boldsymbol\Phi(\mathbf{x}_i,y')
+\end{displaymath}
+On peut ainsi réutiliser des algorithmes de montée de gradient
+standard ou stochastiques pour réaliser l'entrainement. On donne un
+exemple d'algorithme de montée de gradient en batch en Algorithme 
+\ref{algo-batch-multi-logistic}.
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{MultinomialLogisticGradientAscent}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\While{non convergence}
+    \State $\mathbf{w} \gets \mathbf{w} + 
+\alpha\, \left(\sum_{i=1}^N\boldsymbol\Phi(\mathbf{x}_i,y_i) -  \sum_{y'\in Y} P(y'|\mathbf{x}_i;\mathbf{w}) \boldsymbol\Phi(\mathbf{x}_i,y')\right)$
+\EndWhile
+\State\Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-batch-multi-logistic}Algorithme de
+  montée de gradient pour la régression logistique multinomiale}
+\end{algorithm}
+
+
+
+
+\begin{exo}[Régularisation]
+On utilise parfois une version régularisée du modèle logistique
+multinomial. La fonction objective de ce modèle s'exprime comme suit~:
+\begin{equation}
+\label{eq-multi-logistic-L2}
+f(\mathbf{w}) =  \frac{\lambda}{2}||\mathbf{w}||_2^2+ \sum_{i=1}^N
+\log P(y_i|\mathbf{x}_i;\mathbf{w})
+\end{equation}
+où $\lambda \in \mathbb{R}^+$ est un paramètre fixé par l'utilisateur.  
+Donner une explication intuitive de l'intérêt que peut avoir le terme
+de régularisation. 
+Donner le gradient de la version régularisée du modèle logistique (pas
+besoin de refaire tous les calculs). Quel effet a $\lambda$ ? 
+\end{exo}
+\begin{exo}[\ac{sgd}]
+Donner une reformulation de l'algorithme
+\ref{algo-batch-multi-logistic} qui utilise \ac{sgd}
+\end{exo}
+\begin{exo}[\ac{sgd}]
+Donner une reformulation de l'algorithme
+\ref{algo-batch-multi-logistic} pour la fonction
+objective régularisée (\ref{eq-multi-logistic-L2}) et en utilisant \ac{sgd}.
+\end{exo}
+
+\section{Large marge multiclasse}
+
+Si les modèles logistiques cherchent à maximiser la probabilité que le
+modèle donne aux données, les modèles à large marge cherchent à
+produire un modèle qui non seulement minimise les erreurs sur les
+données d'entrainement mais également essaye de donner une marge de
+confiance aux décisions qu'il va prendre. Deux modèles très connus
+font partie de cette famille~: l'algorithme du perceptron et le modèle
+des machines à vecteurs support linéaires (\ac{svm}).
+
+Les modèles à large marge, présentés ici, sont des modèles linéaires, chaque classe
+$y\in Y$ est associée à un vecteur de poids qui lui correspond et le
+score d'une classe est déterminé par un produit scalaire~:
+\begin{equation}
+\text{score}(y,\mathbf{x};\mathbf{w}) =  \mathbf{w}_y^T \,
+    \boldsymbol\Phi(\mathbf{x})
+\end{equation}
+On peut utiliser les modèles à large marge avec le même système de
+codage que les modèles logistiques. On utilisera ici la version du modèle avec le 
+codage en $\phi(\mathbf{x},y)$, c'est-à-dire~:
+\begin{equation}
+\text{score}(y,\mathbf{x};\mathbf{w}) =  \mathbf{w}^T \,
+    \boldsymbol\Phi(\mathbf{x},y)
+\end{equation}
+Contrairement aux modèles logistiques, les modèles à large marge
+produisent des scores qui couvrent toute l'intervalle réelle. La
+procédure de décision sous-jacente consiste à choisir la classe de
+score maximal. Donc plus un score est élevé, plus la classe a de
+chances d'être choisie par la procédure de décision.
+
+On voit donc que les modèles à large marge ont un fonctionnement
+général qui est très similaire aux modèles logistiques. La différence
+principale provient du fait que les prédictions ne s'interprètent pas
+comme des probabilités.
+
+
+
+\paragraph{Estimation des paramètres} L'originalité des modèles à
+large marge tient dans le procédé d'apprentissage des poids. Les
+données utilisées ont la même allure que les données utilisées par les
+modèles logistiques. Ainsi on note un jeu de données $D = \mathop{(\mathbf{x}_i,y_i)}_{i=1}^N$.
+
+La fonction objective d'un modèle à large marge multiclasse est la suivante~:
+\begin{equation}
+\label{eq-largemargin-objective}
+f(\mathbf{w}) = \frac{1}{N}\sum_{i=1}^N \text{max}(0,
+1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
+\end{equation}
+où $y^* = 
+\mathop{\text{argmax}}_{y'\in Y\backslash\{y\}} \mathbf{w}^T \,
+    \boldsymbol\Phi(\mathbf{x},y')$ représente l'hypothèse incorrecte
+    qui a le meilleur le score (le plus sérieux concurrent de
+    l'hypothèse correcte).  La fonction $\text{max}(0,
+1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))$
+est appelée \kw{hinge loss multiclasse}, on peut remarquer que plus
+le score du plus sérieux concurrent est élevé plus la valeur de la
+fonction de coût augmente.
+Par conséquent, l'objectif d'un modèle à large marge est de minimiser la fonction
+objective (on utilisera cette fois l'algorithme de descente de gradient).
+Pour le dire encore autrement,  il faut voir que pour un exemple donné, le
+coût augmente lorsque~:
+\begin{displaymath}
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i)  -
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) \leq 1
+\end{displaymath}
+c'est-à-dire tant que le score de la prédiction de référence n'est pas supérieur à
+la somme score du meilleur concurrent avec une marge de 1. La marge a
+en général la valeur conventionnelle 1.  Certains modèles utilisent
+une marge nulle, comme typiquement  l'algorithme du perceptron.
+
+\paragraph{Estimation des paramètres}
+\begin{center}
+\begin{tikzpicture}
+\foreach \x in {-4,-3,-2,-1,0,1,2,3,4}
+    {        
+      \coordinate (A\x) at ($(0,0)+(\x*0.5cm,0)$) {};
+      \draw [gray!75]($(A\x)+(0,5pt)$) -- ($(A\x)-(0,5pt)$);
+      \node[gray!75] at ($(A\x)+(0,-3ex)$) {\x};
+    }
+    \draw[->,gray!75] (-5,0) -- (5,0) node[right] {$x$};
+    \draw[->,gray!75] (0,-1.5) -- (0,4) node[above] {$f(x)$};
+    \draw[scale=0.5,domain=-4:4,smooth,thick,variable=\x,blue] plot({\x},{-(\x-1)});
+    \draw[scale=0.5,domain=-5:5,smooth,thick,variable=\x,red] plot({\x},{0});
+    \draw[scale=0.5,domain=-5:5,samples=400,dashed,variable=\x,ultra thick,black] plot({\x},{max(0,-(\x-1))});
+%\addlegendentry{$f_1(x) = 1-x$}
+%\addlegendentry{$f_2(x) = 0$}
+%\addlegendentry{$f_3(x) = max(0,1-x)$}
+\end{tikzpicture}
+\end{center}
+
+Objective (miniser l'erreur): 
 
 \begin{equation}
-\frac{\partial f(\mathbf{w})}{\partial w_j} =  \sum_{i=1}^N \left[\phi_j(\mathbf{x}_{i},y) -
-\sum_{y'\in Y} P(y'|\mathbf{x}_i,\mathbf{W}) \phi_j(\mathbf{x}_i,y') \right]
+\label{eq-largemargin-objective}
+f(\mathbf{w}) = \frac{1}{N}\sum_{i=1}^N \text{max}(0,
+1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
+\end{equation}
+
+Sous-dérivée partielle :
+\begin{equation}
+\frac{\partial f(\mathbf{w})}{\partial w_j} =  
+\sum_{i=1}^N \left\{
+\begin{array}{ll}
+\phi_j(\mathbf{x}_{i},y^*_i) -\phi_j(\mathbf{x}_{i},y_i) &\text{si }
+[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
+0&\text{sinon}
+\end{array}\right.
 \end{equation}
 
 \begin{displaymath}
-\ell(y_i,\mathbf{x}_i,\mathbf{w}) = \boldsymbol\Phi(\mathbf{x}_{i},y)
--  \sum_{y'\in Y} P(y'|\mathbf{x}_i;\mathbf{w}) \boldsymbol\Phi(\mathbf{x}_i,y') 
+\ell(y_i,\mathbf{x}_i,\mathbf{w}) = 
+\left\{
+\begin{array}{ll}
+ \boldsymbol\Phi(\mathbf{x}_i,{y}^*_i)-
+\boldsymbol\Phi(\mathbf{x}_{i},y_i)&\text{si }
+[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
+ \mathbf{0}& \text{sinon}
+\end{array}\right.
 \end{displaymath}
 
 
-{\bf Dire de faire attention au problème d'explosion du score lors de
-  la prédicion : exp(trop grand nombre)}
 
 \section{Perceptron multiclasse}
     
@@ -1861,56 +2489,6 @@ alors:
 \end{array}\right.
 \end{displaymath}
 
-\section{Large marge multiclasse}
-hinge loss
-montrer que le gradient est celui du perceptron 
-perceptron = large marge avec marge nulle en SGD
-dériver SVM
-
-
-Modèle : 
-\begin{equation}
-\text{score}(y,\mathbf{x};\mathbf{w}) =  \mathbf{w}^T \,
-    \boldsymbol\Phi(\mathbf{x},y)
-\end{equation}
-
-%Soit $\hat{\mathbf{y}} =  
-%\mathop{\text{argmax}}_{y\in Y} \mathbf{w}^T \,
-%    \boldsymbol\Phi(\mathbf{x},y)$
-
-Soit $y^* = 
-\mathop{\text{argmax}}_{y'\in Y\backslash\{y\}} \mathbf{w}^T \,
-    \boldsymbol\Phi(\mathbf{x},y')$ (meilleur concurrent)
-
-Objective (miniser l'erreur): 
-
-\begin{equation}
-\label{eq-largemargin-objective}
-f(\mathbf{w}) = \frac{1}{N}\sum_{i=1}^N \text{max}(0,
-1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
-\end{equation}
-
-Sous-dérivée partielle :
-\begin{equation}
-\frac{\partial f(\mathbf{w})}{\partial w_j} =  
-\sum_{i=1}^N \left\{
-\begin{array}{ll}
-\phi_j(\mathbf{x}_{i},y^*_i) -\phi_j(\mathbf{x}_{i},y_i) &\text{si }
-[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
-0&\text{sinon}
-\end{array}\right.
-\end{equation}
-
-\begin{displaymath}
-\ell(y_i,\mathbf{x}_i,\mathbf{w}) = 
-\left\{
-\begin{array}{ll}
- \boldsymbol\Phi(\mathbf{x}_i,{y}^*_i)-
-\boldsymbol\Phi(\mathbf{x}_{i},y_i)&\text{si }
-[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
- \mathbf{0}& \text{sinon}
-\end{array}\right.
-\end{displaymath}
 
 \paragraph{Large marge et perceptron}
 
