@@ -1842,34 +1842,6 @@ de gradient (Algorithme \ref{algo-asgd}).
 \caption{\label{algo-asgd}Algorithme de descente de gradient moyennée (ASGD)}
 \end{algorithm}
 
-\paragraph{Moyenne mobile cumulée (move to perceptron)} En pratique, plutôt que de stocker un grand
-nombre de vecteurs de poids $\mathbf{w}_1\ldots \mathbf{w}_N$ pour
-finalement calculer la moyenne $\bar{\mathbf{w}} = \frac{1}{N}
-(\mathbf{w}_1+\ldots + \mathbf{w}_N$ en fin de procédure, on utilisera plutôt la méthode
-de la moyenne mobile cumulée qui permet de mettre à jour la valeur de
-$\bar{\mathbf{w}}$ itérativement~:
-\begin{equation}
-\label{eq-moving-average}
-\bar{\mathbf{w}}_{i+1} = \frac{\mathbf{w}_{i+1} + i \bar{\mathbf{w}}_{i} }{i+1}
-\end{equation}
-On justifie cette méthode en voyant que~:
-\begin{displaymath}
-i \bar{\mathbf{w}}_{i} = \frac{i}{i} (\mathbf{w}_1 +\ldots +\mathbf{w}_i)\\
-\end{displaymath}
-par conséquent (\ref{eq-moving-average}) abrège~:
-\begin{displaymath}
-\bar{\mathbf{w}}_{i+1} = \frac{\mathbf{w}_{i+1} + \mathbf{w}_i +\ldots +\mathbf{w}_1 }{i+1}
-\end{displaymath}
-
-
-
-
-
-
-
-
-
-
 
 \subsection{Instabilités numériques}
 
@@ -2295,9 +2267,6 @@ exemple d'algorithme de montée de gradient en batch en Algorithme
   montée de gradient pour la régression logistique multinomiale}
 \end{algorithm}
 
-
-
-
 \begin{exo}[Régularisation]
 On utilise parfois une version régularisée du modèle logistique
 multinomial. La fonction objective de ce modèle s'exprime comme suit~:
@@ -2392,7 +2361,27 @@ la somme score du meilleur concurrent avec une marge de 1. La marge a
 en général la valeur conventionnelle 1.  Certains modèles utilisent
 une marge nulle, comme typiquement  l'algorithme du perceptron.
 
-\paragraph{Estimation des paramètres}
+\paragraph{Notion de sous-gradient d'une fonction convexe}La procédure d'estimation des paramètres consiste à minimiser
+(\ref{eq-largemargin-objective}).  Bien que convexe, cette fonction n'est pas
+différentiable sur l'intégralité de son domaine car elle fait intervenir
+un maximum. On illustre cet aspect en figure \ref{fig-maxfun} où la
+fonction $f(x) = \text{max}(0,1-x)$ n'est pas différenciable en
+$x_0=1$~: visuellement on peut constater qu'un nombre infini de droites
+sont tangentes à la fonction en $x_0=1$.
+
+On appelle \kw{sous-dérivée} d'une fonction convexe $f(x)$ en $x_0$
+tout nombre réel $s\in\mathbb{R}$ tel que~:
+\begin{displaymath}
+f(x) \geq f(x_0) + s(x-x_0)
+\end{displaymath}
+intuitivement $s$ est l'ensemble des coefficients de pente des droites
+qui passent en $(x_0,f(x_0))$ et qui sont situées sous la fonction
+$f(x)$. Sur l'exemple en figure \ref{fig-maxfun}, $s\in [-1,0]$.
+L'ensemble $S$ de toutes les sous-dérivées de $f(x)$ en $x_0$ est appelé
+\kw{sous-différentiel} de $f$ en $x_0$.  Le calcul des bornes de $S$ est donné dans le cas de la fonction max
+par les dérivées des fonctions linéaires $f(x) = 0$ et $f(x) =
+1-x$. 
+\begin{figure}[htbp]
 \begin{center}
 \begin{tikzpicture}
 \foreach \x in {-4,-3,-2,-1,0,1,2,3,4}
@@ -2411,112 +2400,219 @@ une marge nulle, comme typiquement  l'algorithme du perceptron.
 %\addlegendentry{$f_3(x) = max(0,1-x)$}
 \end{tikzpicture}
 \end{center}
+\caption{\label{fig-maxfun}Maximum de deux fonctions $f(x) = \text{max}(0,1-x)$}
+\end{figure}
 
-Objective (miniser l'erreur): 
-
-\begin{equation}
-\label{eq-largemargin-objective}
-f(\mathbf{w}) = \frac{1}{N}\sum_{i=1}^N \text{max}(0,
-1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
-\end{equation}
-
-Sous-dérivée partielle :
-\begin{equation}
-\frac{\partial f(\mathbf{w})}{\partial w_j} =  
-\sum_{i=1}^N \left\{
+De manière générale la dérivée d'une fonction $f(x) = \text{max}(f_1(x),f_2(x))$
+s'obtient en divisant le domaine en deux sous-intervalles réparties autour du point de non
+différentiabilité ($x_0=1$ sur l'exemple). On utilisera la dérivée
+correspondant à l'intervalle dans lequel on se trouve.
+On peut déterminer facilement cet intervalle en comparant $f_1$ et $f_2$ de telle
+sorte que~:
+\begin{displaymath}
+\frac{\partial f}{\partial x}\text{max}(f_1(x),f_2(x)) = \left\{
 \begin{array}{ll}
-\phi_j(\mathbf{x}_{i},y^*_i) -\phi_j(\mathbf{x}_{i},y_i) &\text{si }
-[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
+\frac{\partial f_1}{\partial x}(x) & \text{si } f_1(x) > f_2(x)\\\\
+\frac{\partial f_2}{\partial x}(x) & \text{si } f_2(x) > f_1(x)
+\end{array}\right.
+\end{displaymath}
+Lors de la descente de sous-gradient, au point non différentiable, on
+peut choisir tout $s\in S$ comme valeur de la dérivée. En pratique on
+prendra arbitrairement la dérivée de $f_1$ ou de $f_2$. 
+
+Ce qui précède se généralise aux cas des fonctions de plusieurs variables.
+En ce qui concerne la fonction objective des
+modèles à large marge (\ref{eq-largemargin-objective}), on obtient les
+dérivées partielles suivantes~:
+\begin{eqnarray}
+\hat{\mathbf{w}}&=&\mathop{\text{argmin}}_{\mathbf{w} \in \mathbb{R}^d}\sum_{i=1}^N
+\text{max}(0,
+1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))\\
+\nonumber
+\frac{\partial f}{\partial w_j} &=&\sum_{i=1}^N
+\frac{\partial}{\partial w_j} \text{max}(0,
+1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) -
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))\\
+\nonumber
+&=&\sum_{i=1}^N
+\left\{
+\begin{array}{ll}
+\phi_j(\mathbf{x}_i,y*) - \phi_j(\mathbf{x}_i,y_i) & \text{si }  1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) -
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i)  \geq 0\\
+0&\text{sinon}
+\end{array}\right.\\
+%\nonumber
+&=&\sum_{i=1}^N
+\left\{
+\begin{array}{ll}
+\phi_j(\mathbf{x}_i,y*) - \phi_j(\mathbf{x}_i,y_i) & \text{si }  
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i)   - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) \leq 1\\
 0&\text{sinon}
 \end{array}\right.
-\end{equation}
-
+\end{eqnarray}
+Au final, on peut formuler une fonction $\ell$ qui représente 
+la contribution de chaque exemple dans les données au gradient~:
 \begin{displaymath}
 \ell(y_i,\mathbf{x}_i,\mathbf{w}) = 
 \left\{
 \begin{array}{ll}
  \boldsymbol\Phi(\mathbf{x}_i,{y}^*_i)-
 \boldsymbol\Phi(\mathbf{x}_{i},y_i)&\text{si }
-[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
+[ \text{score}(y_i) - \text{score}(y^*_i)  ]\leq 1\\
  \mathbf{0}& \text{sinon}
 \end{array}\right.
 \end{displaymath}
-
-
-
-\section{Perceptron multiclasse}
-    
-Modèle : 
-\begin{equation}
-\text{score}(y,\mathbf{x};\mathbf{w}) =  \mathbf{w}^T \,
-    \boldsymbol\Phi(\mathbf{x},y)
-\end{equation}
-
-Objective (miniser l'erreur): 
-
-\begin{equation}
-f(\mathbf{w}) = \sum_{i=1}^N \mathbf{1}[ y_i \not = \mathop{\text{argmax}}_{y' \in Y} \mathbf{w}^T \,
-    \boldsymbol\Phi(\mathbf{x}_i,y') ]
-\end{equation}
-
-Sous-dérivée partielle : 
-
-soit:
-\begin{displaymath}
-\hat{y}_i = \mathop{\text{argmax}}_{y' \in
-  Y} \mathbf{w}^T \,
-   \boldsymbol\Phi(\mathbf{x}_i,y') 
-\end{displaymath}
-alors:
-\begin{equation}
-\frac{\partial f(\mathbf{w})}{\partial w_j} =  
-\sum_{i=1}^N \left\{
-\begin{array}{ll}
-\phi_j(\mathbf{x}_{i},\hat{y}_i) -\phi_j(\mathbf{x}_{i},y_i) &\text{si } y_i
-\not = \hat{y}_i\\
-0&\text{sinon}
-\end{array}\right.
-\end{equation}
-
-
-\begin{displaymath}
-\ell(y_i,\mathbf{x}_i,\mathbf{w}) = 
+L'algorithme de descente de gradient s'instancie de manière
+habituelle,
+ce qui donne la version présentée en algorithme \ref{algo-grad-LM}.
+On peut noter qu'on a procédé à une légère réorganisation des signes, ce
+qui facilite notamment la comparaison avec les algorithmes
+d'optimisation pour le cas logistique.
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{BatchLargeMarge}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\While{non convergence}
+\State
+\scalebox{0.8}{$\mathbf{w} \gets \mathbf{w} + \alpha \left(  
+\frac{1}{N}\sum_{i=1}^N
 \left\{
 \begin{array}{ll}
-\boldsymbol\Phi(\mathbf{x}_i,\hat{y}_i)-\boldsymbol\Phi(\mathbf{x}_{i},y_i)
-&\text{si } y_i \not = \hat{y}_i \\
+\boldsymbol\Phi(\mathbf{x}_{i},y_i) - \boldsymbol\Phi(\mathbf{x}_i,{y}^*_i)
+&\text{si }
+[ \text{score}(y_i) - \text{score}(y^*_i)  ]\leq 1\\
  \mathbf{0}& \text{sinon}
-\end{array}\right.
-\end{displaymath}
+\end{array}\right. \right)$}
+\EndWhile
+\State\Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-grad-LM}Descente de gradient pour modèle à large marge linéaire}
+\end{algorithm}
+On peut remarquer que l'algorithme d'optimisation met à jour les poids
+uniquement lorsque la classe correcte n'est pas prédite avec une marge
+supérieure à 1 sur sa plus sérieuse concurrente.
+Dans ce cas l'algorithme donne un bonus au poids associés aux features
+de la référence et un malus aux poids associés aux features de la
+prédiction concurrente.
+
+L'algorithme de descente de gradient à large marge peut être utilisé
+tel quel, mais on va maintenant montrer que deux algorithmes très connus peuvent être
+vus comme des cas particuliers de la famille des modèles à large
+marge~: l'algorithme du perceptron et les \ac{svm} linéaires.
 
 
-\paragraph{Large marge et perceptron}
+\subsection{Algorithme du perceptron}
 
-On peut voir l'algorithme du perceptron comme un cas particulier des
-modèles à large marge. En posant que la marge est nulle, l'objectif à
+L'algorithme du \kw{perceptron} est un algorithme très populaire en \ac{tal}
+car il est particulièrement simple à implémenter. On peut le voir
+comme un cas particulier des modèles à large marge dont la procédure
+d'optimisation est \ac{sgd}. Ainsi en posant que la marge est nulle, l'objectif à
 large marge devient~:
 \begin{equation}
 f(\mathbf{w}) = \frac{1}{N}\sum_{i=1}^N \text{max}(0,
 \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
 \end{equation}
-dont le sous-gradient devient~:
+et le sous-gradient devient~:
 \begin{equation}
+\label{eq-perceptron-grad}
 \frac{\partial f(\mathbf{w})}{\partial w_j} =  
 \sum_{i=1}^N \left\{
 \begin{array}{ll}
 \phi_j(\mathbf{x}_{i},y^*_i) -\phi_j(\mathbf{x}_{i},y_i) &\text{si }
-[ \text{score}(y_i) - (\text{score}(y^*_i) ) ]\leq 0\\
+[ \text{score}(y_i) - \text{score}(y^*_i)  ]\leq 0\\
 0&\text{sinon}
 \end{array}\right.
 \end{equation}
-Si l'algorithme utilisé pour estimer les paramètres est \ac{sgd}
-(Algorithme ??), on peut observer que la méthode correspond exactement
-à l'algorithme du \kw{ perceptron multiclasse}.
+Si l'algorithme utilisé pour réaliser la descente de gradient est \ac{sgd}
+structuré en itérations sur les données (Algorithme \ref{algo-gradient-sgd-epoch}),
+on peut observer que ce cas d'utilisation correspond exactement
+à l'algorithme du \kw{perceptron multiclasse} traditionnel que l'on
+reproduit en algorithme \ref{algo-perceptron-sgd}.
 
-On peut donc voir l'algorithme du perceptron comme un cas particulier
-des modèles à large marge.
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{Perceptron}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\While{non convergence}
+\State\Call{Shuffle}{$\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N$}
+\For{$1\leq i\leq N$}
+    \State $\hat{y} \gets \mathop{\text{argmax}}_{{y\in Y}}
+    \mathbf{w}^T \, \boldsymbol\Phi(\mathbf{x}_i,y)$
+    \If{$\hat{y} \not = y_i$}
+       \State $\mathbf{w} \gets \mathbf{w} + \alpha\, (\phi_j(\mathbf{x}_{i},y_i)-\phi_j(\mathbf{x}_{i},\hat{y})) $
+    \EndIf
+\EndFor
+\EndWhile
+\State\Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-perceptron-sgd}Algorithme du perceptron}
+\end{algorithm}
+\begin{exo}[Vérification]
+Pour vous convaincre que l'algorithme \ref{algo-perceptron-sgd} est
+bien une variante notationnelle d'un modèle à large marge. Ecrivez
+l'algorithme de descente de gradient stochastique qui utilise
+directement (\ref{eq-perceptron-grad}) et procédez à la comparaison.
+\end{exo}
 
-\paragraph{Régularisation}
+Notons finalement que l'algorithme du perceptron est très utilisé dans
+sa version moyennée ce qui permet de lui donner une certaine stabilité
+et de réduire les effets de surentrainement (Algorithme \ref{algo-perceptron-asgd})
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{AveragedPerceptron}{$\alpha,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\State $\bar{\mathbf{w}} \gets \mathbf{0}$
+\State $e\gets 0$
+\While{non convergence}
+\State\Call{Shuffle}{$\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N$}
+\For{$1\leq i\leq N$}
+    \State $\hat{y} \gets \mathop{\text{argmax}}_{{y\in Y}}
+    \mathbf{w}^T \, \boldsymbol\Phi(\mathbf{x}_i,y)$
+    \If{$\hat{y} \not = y_i$}
+       \State $\mathbf{w} \gets \mathbf{w} + \alpha\, (\phi_j(\mathbf{x}_{i},y_i)-\phi_j(\mathbf{x}_{i},\hat{y})) $
+    \EndIf
+       \State $\bar{\mathbf{w}} \gets  \bar{\mathbf{w}}+ \mathbf{w} $
+\EndFor
+\State $e \gets e + 1$
+\EndWhile
+\State\Return $\bar{\mathbf{w}}/(N\times e)$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-perceptron-asgd}Algorithme du perceptron moyenné}
+\end{algorithm}
+
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{BatchSVM}{$\alpha,\lambda, \mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
+\State $\mathbf{w} \gets \mathbf{0}$
+\While{non convergence}
+\State
+\scalebox{0.8}{$\mathbf{w} \gets \mathbf{w} + \alpha \left( 
+\frac{1}{N}\sum_{i=1}^N
+\left\{
+\begin{array}{ll}
+\boldsymbol\Phi(\mathbf{x}_{i},y_i) - \boldsymbol\Phi(\mathbf{x}_i,{y}^*_i)
+&\text{si }
+[ \text{score}(y_i) - \text{score}(y^*_i)  ]\leq 1\\
+ \mathbf{0}& \text{sinon}
+\end{array}\right. - \lambda
+  \mathbf{w} \right)$}
+\EndWhile
+\State\Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-linear-svm}Descente de gradient de \ac{svm}
+  linéaire (batch)}
+\end{algorithm}
+
+
+
+
+
+\subsection{\ac{Svm} linéaire multiclasse}
 Si maintenant on ajoute un terme de régularisation à l'objectif (\ref{eq-largemargin-objective}), celui-ci prend la forme suivante~:
 \begin{equation}
 f(\mathbf{w}) = \frac{\lambda}{2}||\mathbf{w}||_2^2 +
@@ -2530,29 +2626,32 @@ initialement formulés de manière très différente (en apparence).
 
 On peut optimiser cet objectif avec les
 algorithmes de descente de gradient et de descente de gradient
-stochastique moyennée présentés dans ce chapitre.
-
-\begin{algorithm}[htbp]
-\begin{algorithmic}
-\Function{BatchSVM}{$\alpha,\lambda,\mathop{(\mathbf{x}_i,y_i)}_{i=1}^N}$
-\State $\mathbf{w} \gets \mathbf{0}$
-\While{non convergence}
-\State
-\scalebox{0.8}{$\mathbf{w} \gets \mathbf{w} - \alpha \left( \lambda \mathbf{w} + 
-\frac{1}{N}\sum_{i=1}^N
+stochastique moyennée présentés dans ce chapitre. Ainsi le problème
+d'optimisation consiste à minimiser~:
+\begin{equation}
+\hat{\mathbf{w}}=\mathop{\text{argmin}}_{\mathbf{w} \in \mathbb{R}^d}
+\frac{\lambda}{2}||\mathbf{w}||_2^2+\sum_{i=1}^N
+\text{max}(0,
+1+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))
+\end{equation}
+dont on obtient les dérivées partielles suivantes en procédant à un
+développement analogue aux précédents~:
+\begin{equation}
+\frac{\partial f}{\partial w_j} = \lambda w_j+\sum_{i=1}^N
 \left\{
 \begin{array}{ll}
-\boldsymbol\Phi(\mathbf{x}_{i},y_i) - \boldsymbol\Phi(\mathbf{x}_i,{y}^*_i)
-&\text{si }
-[ \text{score}(y_i) - (\text{score}(y^*_i) +1 ) ]\leq 0\\
- \mathbf{0}& \text{sinon}
-\end{array}\right. \right)$}
-\EndWhile
-\State\Return $\mathbf{w}$
-\EndFunction
-\end{algorithmic}
-\caption{Algorithme de descente de gradient pour \ac{svm} linéaire (batch)}
-\end{algorithm}
+\phi_j(\mathbf{x}_i,y*) - \phi_j(\mathbf{x}_i,y_i) & \text{si }  
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i)   - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) \leq 1\\
+0&\text{sinon}
+\end{array}\right.
+\end{equation}
+Contrairement au perceptron, la résolution du problème d'optimisation
+de \ac{svm} en forme primale est
+habituellement présenté comme un  algorithme de descente de gradient en batch
+(Algorithme \ref{algo-linear-svm}). Mais rappelons que \ac{svm} est
+habituellement présenté à partir de sa forme duale.  Celle-ci est
+toutefois inadaptée
+aux problèmes de \ac{tal}. 
 
 
 \section{Réseaux de neurones}
