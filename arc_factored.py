@@ -170,18 +170,19 @@ class ArcFactoredParser:
         @toklist: the list of tokens of the sentence
         @return : a float (score)
         """
-        dep_repr = self.__make_representation(gov_idx,dep_idx,toklist)
+        dep_repr = self.__make_arc_representation(gov_idx,dep_idx,toklist)
         ylabel   =  ArcFactoredParser.RIGHTARC if gov_idx < dep_idx else ArcFactoredParser.LEFTARC
         return self.model.dot(dep_repr,ylabel)
 
     
-    def __make_representation(self,gov_idx,dep_idx,toklist):
+    def __make_arc_representation(self,gov_idx,dep_idx,toklist):
         """
-        Inserts the interactions for coding the dependency in the representation.
-        @param gov_idx,dep_idx : the indexes of the governor and
-        dependant in the sentence
+        Creates a list of values from which to code a dependency arc with binary features 
+        Inserts the interactions between the words for coding the dependency in the representation.
+        
+        @param gov_idx,dep_idx : the indexes of the governor and dependant in the sentence
         @toklist: the list of tokens of the sentence
-        @return : a list of tuples ready to be scored or binarized
+        @return : a list of tuples ready to be binarized and scored.
         """
         interaction1 = (toklist[gov_idx][1],toklist[dep_idx][1],)
         interaction2 = (toklist[gov_idx][0],toklist[dep_idx][0],) 
@@ -206,13 +207,13 @@ class ArcFactoredParser:
                     
                     delta_ref = SparseWeightVector()
                     for gov_idx,dep_idx in ref_tree.edges:
-                        x_repr = self.__make_representation(gov_idx,dep_idx,tokens)
+                        x_repr = self.__make_arc_representation(gov_idx,dep_idx,tokens)
                         ylabel = ArcFactoredParser.RIGHTARC if gov_idx < dep_idx else ArcFactoredParser.LEFTARC
                         delta_ref += SparseWeightVector.code_phi(x_repr,ylabel)
                     
                     delta_pred = SparseWeightVector()
                     for gov_idx,dep_idx in pred_tree.edges:    
-                        x_repr = self.__make_representation(gov_idx,dep_idx,tokens)
+                        x_repr = self.__make_arc_representation(gov_idx,dep_idx,tokens)
                         ylabel = ArcFactoredParser.RIGHTARC if gov_idx < dep_idx else ArcFactoredParser.LEFTARC
                         delta_pred += SparseWeightVector.code_phi(x_repr,ylabel)
 
