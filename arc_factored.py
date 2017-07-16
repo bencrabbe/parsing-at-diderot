@@ -15,7 +15,12 @@ class DependencyTree:
     def __init__(self,tokens=None, edges=None):
         self.edges  = [] if edges is None else edges                       # couples (gov_idx,dep_idx)
         self.tokens = [('$ROOT$','$ROOT$')] if tokens is None else tokens #couples (wordform,postag)
-             
+
+    
+    def __str__(self):
+        gdict = dict([(d,g) for (g,d) in self.edges])
+        return '\n'.join(['\t'.join([str(idx+1),tok[0],tok[1],str(gdict[idx+1])]) for idx,tok in enumerate(self.tokens[1:])])
+                     
     def __make_ngrams(self):
         """
         Makes word representations suitable for feature extraction
@@ -36,7 +41,6 @@ class DependencyTree:
         @return: a DependencyTree instance 
         """
         deptree = DependencyTree()
-        idx = 0
         bfr = istream.readline()
         while True:
             if (bfr.isspace() or bfr == ''):
@@ -45,10 +49,9 @@ class DependencyTree:
                     return deptree
                 bfr = istream.readline()
             else:
-                idx += 1
-                word, tag, governor_idx = bfr.split()
+                idx, word, tag, governor_idx = bfr.split()
                 deptree.tokens.append((word,tag))
-                deptree.edges.append((int(governor_idx),idx))
+                deptree.edges.append((int(governor_idx),int(idx)))
                 bfr = istream.readline()
         deptree.__make_ngrams()
         return deptree
@@ -177,7 +180,7 @@ class ArcFactoredParser:
     
     def __make_arc_representation(self,gov_idx,dep_idx,toklist):
         """
-        Creates a list of values from which to code a dependency arc with binary features 
+        Creates a list of values from which to code a dependency arc as binary features 
         Inserts the interactions between the words for coding the dependency in the representation.
         
         @param gov_idx,dep_idx : the indexes of the governor and dependant in the sentence
@@ -185,12 +188,12 @@ class ArcFactoredParser:
         @return : a list of tuples ready to be binarized and scored.
         """
         interaction1 = (toklist[gov_idx][1],toklist[dep_idx][1],)
-        interaction2 = (toklist[gov_idx][0],toklist[dep_idx][0],) 
+        interaction2 = (toklist[gov_idx][0],toklist[dep_idx][0],)
+        #add more interactions here to improve the parser
 
         return toklist[gov_idx] + toklist[dep_idx] + (interaction1,) + (interaction2,)
 
 
-    
     def train(self,dataset,step_size=1.0,max_epochs=100):
         """
         @param dataset : a list of dependency trees
@@ -229,21 +232,23 @@ class ArcFactoredParser:
         for ref_tree in dataset:
             tokens    = ref_tree.tokens
             pred_tree = self.parse_one(tokens)
+            print(pred_tree)
+            print()
             sum_acc   = ref_tree.accurracy(pred_tree)
         return sum_acc/N
                 
 test = """
-le   D     2
-chat N     3
-dort V     0
-.    PONCT 3
+1 le   D     2
+2 chat N     3
+3 dort V     0
+4 .    PONCT 3
 """
 test2 = """
-le    D     2
-tapis N     3
-est   V     0
-rouge A     3  
-.     PONCT 3
+1 le    D     2
+2 tapis N     3
+3 est   V     0
+4 rouge A     3  
+5 .     PONCT 3
 """
 
 istream = io.StringIO(test)
@@ -252,4 +257,5 @@ d = DependencyTree.read_tree(istream)
 d2 = DependencyTree.read_tree(istream2)
 
 p = ArcFactoredParser()
-p.train([d,d2])
+p.train([d,d2],max_epochs=100)
+p.test([d,d2])

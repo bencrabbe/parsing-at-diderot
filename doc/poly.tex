@@ -3209,6 +3209,60 @@ pour des détails supplémentaires.}
 \section{Fonctions features et potentiels}
 
 
+\chapter{Analyse syntaxique en dépendances}
+
+
+\section{Arbres de dépendances}
+
+Un graphe de dépendances est un graphe $G = \langle V,E \rangle $
+où :
+\begin{itemize}
+\item $W$ est un ensemble de noeuds muni d'une relation d'ordre $\prec$
+\item $E \subseteq V\times V$  est un ensemble d'arcs 
+\end{itemize}
+
+La relation d'ordre sur les noeuds est la relation d'ordre sur les
+entiers qui indicent les noeuds.
+$E^*$ dénote la fermeture réflexive transitive de $E$. Cette relation
+permet de capturer les relations de dominance entre noeuds qui sont indirectes.
+
+Un arc $(i,j) \in E$ représente une relation de dépendance non typée entre
+deux noeuds. Celle-ci est
+également notée $i \rightarrow j$. 
+On note $i\stackrel{*}{\rightarrow} j$ un élément de $E^*$
+
+En pratique, les noeuds $w_i \in W$ sont étiquetés par des mots et les
+arcs $(i,j) \in E$ sont étiquetés par des types qui représentent les
+fonctions syntaxiques. Ces aspects pratiques sont secondaires pour les
+problèmes algorithmiques et seront largement ignorés dans la suite de ce chapitre.
+
+
+\paragraph{Propriétés}
+Les arbres de dépendances sont des graphes $G = \langle W,E \rangle$qui satisfont les
+contraintes suivantes~:
+\begin{itemize}
+\item $G$ est connexe. $\forall i \exists j :  i \rightarrow j \lor
+  j\rightarrow i$
+\end{itemize}
+
+
+
+
+
+
+
+
+
+\section{Analyse par transitions}
+\subsection{Modèle Arc-standard}
+\subsection{Modèle Arc-eager}
+\subsection{Modèle de Covington}
+
+\section{Analyse CKY}
+\section{Factorisations en arcs}
+
+
+
 \chapter{Approximations par modèles locaux}
 
 Motivation = réduire temps d'entrainement.
