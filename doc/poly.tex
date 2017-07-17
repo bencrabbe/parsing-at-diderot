@@ -10,6 +10,8 @@
 \usepackage{amssymb}
 \usepackage{amsfonts}
 \usepackage{latexsym}
+\usepackage{mathabx}
+
 \usepackage{algpseudocode}
 \usepackage{algorithm}
 \usepackage{tikz}
@@ -20,6 +22,8 @@
 \usetikzlibrary{calc}
 \usepackage{comment}
 \usepackage{minted}
+\usepackage{tikz-dependency}%dependency trees
+
 
 
 
@@ -3238,13 +3242,32 @@ problèmes algorithmiques et seront largement ignorés dans la suite de ce chapi
 
 
 \paragraph{Propriétés}
-Les arbres de dépendances sont des graphes $G = \langle W,E \rangle$qui satisfont les
+Les arbres de dépendances sont des graphes $G = \langle W,E \rangle$ qui satisfont les
 contraintes suivantes~:
-\begin{itemize}
-\item $G$ est connexe. $\forall i \exists j :  i \rightarrow j \lor
-  j\rightarrow i$
-\end{itemize}
-
+\begin{enumerate}
+\item $G$ est connexe. 
+\begin{displaymath}
+ i\in W \quad\Rightarrow\quad \exists_j (i \rightarrow j) \in E \lor
+  (j\rightarrow i) \in E
+\end{displaymath}
+\item $G$ est acyclique. 
+\begin{displaymath}
+i \rightarrow j\in E \quad\Rightarrow\quad 
+  j \stackrel{*}{\rightarrow} i \not \in E^*
+\end{displaymath}
+\item Chaque  noeud de $G$  a au plus un arc entrant~: 
+\begin{displaymath}
+i\rightarrow j  \in E \quad\Rightarrow\quad \lnot \exists k  (k\rightarrow j)\in E
+\end{displaymath}
+\item\label{it:projectif} $G$ est projectif~: 
+\begin{displaymath}
+ i\rightarrow j \in E \quad\Rightarrow\quad 
+\forall_{k\in W: i
+\prec k \prec j}  \, i\stackrel{*}{\rightarrow} k 
+\end{displaymath}
+\end{enumerate}
+La condition (\ref{it:projectif}) est parfois relâchée pour traiter
+les langues à ordre des mots libre.
 
 
 
@@ -3259,7 +3282,245 @@ contraintes suivantes~:
 \subsection{Modèle de Covington}
 
 \section{Analyse CKY}
-\section{Factorisations en arcs}
+\subsection{Factorisation en arcs}
+On suppose que le score d'un arbre se décompose par la somme des scores de ses arcs:
+\begin{displaymath}
+score(G) = \sum_{(i,j) \in E} score(i,j,\mathbf{x})
+\end{displaymath}
+
+L'algorithme d'analyse en dépendances par factorisation des arcs ({\em arc factored parser}, Algorithme \ref{algo-eisner})
+peut-être vu comme une reformulation de l'algorithme {\sc cky} au cas des dépendances projectives.
+L'algorithme cherche à construire itérativement des sous-arbres qui couvrent des empans de plus en plus grands
+et s'arrête lorsqu'il a construit le meilleur sous-arbre pour  un empan qui couvre toute la phrase à analyser.
+
+Pour un empan $(i,j)$ l'algorithme construit les {\bf sous-arbres incomplets} ($\bot$) qui couvrent cet empan, qu'ils commencent en $i$ ou en $j$
+en créant les arcs correspondants. Cette première étape cherche à construire des arbres dont un arc $i\rightarrow j$ ou $j\rightarrow i$
+couvre l'intégralité de l'empan. Dans un second temps, l'algorithme cherche à produire des {\bf sous-arbres complets} ($\top$) en combinant
+ un arbre incomplet avec un arbre complet qui couvre un empan plus petit, ce qui permet de couvrir l'empan avec des relations de dépendances indirectes de la forme $i\stackrel{*}{\rightarrow} j$ ou
+$j\stackrel{*}{\rightarrow} i$.
+
+\begin{algorithm}[htbp]
+
+\scriptsize
+\begin{algorithmic}[0]
+\Function{ArcFactored}{$\mathbf{x}$,n}
+\State C[i][i][d][c] $\gets 0.0 \quad 0 \leq i \leq n, d\in
+\{\curvearrowleft, \curvearrowright\}, c \in \{\top,\bot \}$ 
+
+\For {$1 \leq span \leq n$}
+  \For{$1\leq i \leq n-span$}
+     \State $j \gets s + span$
+     \State\Comment{Arbres incomplets}
+     \State C[i][j][$\curvearrowleft$][$\bot$] $\gets \mathop{\text{max}}_{i\leq k < j}(C[i][k][\curvearrowright][\top] + C[k+1][j][\curvearrowleft][\top] + score(j,i,\mathbf{x}))$
+     \State C[i][j][$\curvearrowright$][$\bot$] $\gets \mathop{\text{max}}_{i\leq k < j}(C[i][k][\curvearrowright][\top] + C[k+1][j][\curvearrowleft][\top] + score(i,j,\mathbf{x}))$ 
+     \State\Comment{Arbres complets}
+     \State C[i][j][$\curvearrowleft$][$\top$] $\gets \mathop{\text{max}}_{i\leq k < j}(C[i][k][\curvearrowleft][\top] + C[k][j][\curvearrowleft][\bot])$     
+     \State C[i][j][$\curvearrowright$][$\top$] $\gets \mathop{\text{max}}_{i < k \leq j}(C[i][k][\curvearrowright][\bot] + C[k][j][\curvearrowright][\top])$     
+
+ \EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+
+\caption{\label{algo-eisner}Algorithme d'analyse à arcs factorisés (Eisner)}
+\end{algorithm}
+
+
+
+\section{Incomplete trees}
+L'algo essaye de trouver la meilleure projection $i\stackrel{*}{\rightarrow} j$ (ou $j\stackrel{*}{\rightarrow} i$ ) 
+pour un span donné. On remarque que le gouverneur $i$ (ou $j$) pourrait avoir une projection qui continue à droite de $j$ (resp. $i$).
+
+Trees whose governor projection might be extended at the dependent.
+
+\begin{minipage}[t]{.5\textwidth}
+\begin{center}
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+i \& j \\
+\end{deptext}
+  \depedge[hide label,edge style={ultra thick,dotted}]{1}{2}{ } 
+\end{dependency}
+\hrule
+\scalebox{0.65}{
+\begin{tabular}{cc}
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_k$ \& w$_{k+1}$ \&  w$_j$ \\
+\end{deptext}
+  \depedge[hide label,edge style={ultra thick,dotted}]{1}{4}{ } 
+  \depedge[hide label]{1}{2}{ }
+  \depedge[hide label]{4}{3}{ }
+\end{dependency}
+&
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_k$ \& w$_{k+1}$ \&  w$_j$ \\
+\end{deptext}
+  \depedge[hide label,edge style={ultra thick,dotted}]{1}{4}{ } 
+  \depedge[hide label]{1}{2}{ }
+  \depedge[hide label]{3}{4}{ }
+\end{dependency}\\
+ok & DAG \\
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_k$ \& w$_{k+1}$ \&  w$_j$ \\
+\end{deptext}
+  \depedge[hide label,edge style={ultra thick,dotted}]{1}{4}{ } 
+  \depedge[hide label]{2}{1}{ }
+  \depedge[hide label]{4}{3}{ }
+\end{dependency}
+&
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_k$ \& w$_{k+1}$ \&  w$_j$ \\
+\end{deptext}
+  \depedge[hide label,edge style={ultra thick,dotted}]{1}{4}{ } 
+  \depedge[hide label]{2}{1}{ }
+  \depedge[hide label]{3}{4}{ }
+\end{dependency}\\
+non projective & non projective + DAG \\
+\end{tabular}}
+\end{center}
+
+\end{minipage}
+\begin{minipage}[t]{.5\textwidth}
+\begin{center}
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+i \& j \\
+\end{deptext}
+  \depedge[hide label,edge style={ultra thick,dotted}]{2}{1}{ } 
+\end{dependency}
+\hrule
+\scalebox{0.65}{
+\begin{tabular}{cc}
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_k$ \& w$_{k+1}$ \&  w$_j$ \\
+\end{deptext}
+ \depedge[hide label,edge style={ultra thick,dotted}]{4}{1}{ } 
+  \depedge[hide label]{1}{2}{ }
+  \depedge[hide label]{4}{3}{ }
+\end{dependency}
+&
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_k$ \& w$_{k+1}$ \&  w$_j$ \\
+\end{deptext}
+  \depedge[hide label,edge style={ultra thick,dotted}]{4}{1}{ } 
+  \depedge[hide label]{1}{2}{ }
+  \depedge[hide label]{3}{4}{ }
+\end{dependency}\\
+ok & non projective \\
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_k$ \& w$_{k+1}$ \&  w$_j$ \\
+\end{deptext}
+  \depedge[hide label,edge style={ultra thick,dotted}]{4}{1}{ } 
+  \depedge[hide label]{2}{1}{ }
+  \depedge[hide label]{4}{3}{ }
+\end{dependency}
+&
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_k$ \& w$_{k+1}$ \&  w$_j$ \\
+\end{deptext}
+  \depedge[hide label,edge style={ultra thick,dotted}]{4}{1}{ } 
+  \depedge[hide label]{2}{1}{ }
+  \depedge[hide label]{3}{4}{ }
+\end{dependency}\\
+DAG & non projective + DAG \\
+\end{tabular}}
+
+\end{center}
+\end{minipage}
+
+\section{Complete trees}
+Either the highest weighted tree spanning $\langle s,t \rangle$ is an incomplete tree just discovered or it is an incomplete tree of shorter span that needs to be completed.
+
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_u$ \&  w$_j$ \\
+\end{deptext}
+  \depedge[hide label,edge unit distance=1.25ex,edge style={ultra thick,dotted}]{1}{3}{ } 
+  %\depedge[hide label,edge style={ultra thick,dotted}]{1}{2}{ }
+  %\depedge[hide label]{2}{3}{ }
+\end{dependency}
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_u$ \&  w$_j$ \\
+\end{deptext}
+  %\depedge[hide label,edge style={ultra thick,dotted}]{1}{3}{ } 
+  \depedge[hide label,edge style={ultra thick,dotted}]{1}{2}{ }
+  \depedge[hide label]{2}{3}{ }
+\end{dependency}
+
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_u$ \&  w$_j$ \\
+\end{deptext}
+  \depedge[hide label,edge unit distance=1.25ex,
+  edge style={ultra thick,dotted}]{3}{1}{ } 
+  %\depedge[hide label,edge style={ultra thick,dotted}]{1}{2}{ }
+  %\depedge[hide label]{2}{3}{ }
+\end{dependency}
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+w$_i$ \& w$_u$ \&  w$_j$ \\
+\end{deptext}
+  %\depedge[hide label,edge style={ultra thick,dotted}]{1}{3}{ } 
+  \depedge[hide label]{2}{1}{ }
+  \depedge[hide label,edge style={ultra thick,dotted}]{3}{2}{ }
+\end{dependency}
+
+\section{History}
+History items are triples of quads of the form: $(i,j,dir,c) \leftarrow  (i,j,dir,c) (j,k,dir,c)$ added either when generating an incomplete tree or a complete tree. From this one can deduce the dependency tree.
+
+\section{Comparison with naive CYK}
+
+\paragraph{Naive {\sc cyk}} for dependency parsing in ${\cal O}(n^5)$:
+
+\begin{displaymath}
+\frac{\langle i,k,h \rangle\quad \langle k,j,h' \rangle}
+{\langle i,j,h\rangle} \quad reduce(\curvearrowleft)
+\end{displaymath}
+
+\begin{displaymath}
+\frac{\langle i,k,h \rangle\quad \langle k,j,h' \rangle}
+{\langle i,j,h'\rangle} \quad reduce(\curvearrowright)
+\end{displaymath}
+
+\paragraph{Arc factored}
+
+\begin{displaymath}
+\frac{\langle i,k,\curvearrowright,\top \rangle\quad \langle k+1,j,\curvearrowleft,\top \rangle}
+{\langle i,j,\curvearrowleft,\bot \rangle} \quad reduce(\curvearrowleft)
+\end{displaymath}
+\begin{displaymath}
+\frac{\langle i,k,\curvearrowright,\top \rangle\quad \langle k+1,j,\curvearrowleft,\top \rangle}
+{\langle i,j,\curvearrowright,\bot \rangle} \quad reduce(\curvearrowright)
+\end{displaymath}
+
+\begin{displaymath}
+\frac{\langle i,k,\curvearrowright,\top \rangle\quad \langle k,j,\curvearrowright,\bot \rangle}
+{\langle i,j,\curvearrowright,\top \rangle} \quad complete(\curvearrowright) \, s.c. (k < j)
+\end{displaymath}
+\begin{displaymath}
+\frac{\langle i,k,\curvearrowleft,\bot \rangle\quad \langle k,j,\curvearrowleft,\top \rangle}
+{\langle i,j,\curvearrowleft,\top \rangle} \quad complete(\curvearrowleft) \, s.c. (k < j)
+\end{displaymath}
+
+
+
+\section{Exercises}
+\begin{itemize}
+\item Add I/O and eval functions
+\item Add dependency Labels
+\item Add bi-LSTM tagger input (and switch to feed forward scorer ?)
+\item Error analysis
+\end{itemize}
+
 
 
 

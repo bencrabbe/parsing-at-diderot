@@ -222,7 +222,7 @@ class ArcFactoredParser:
 
                     self.model += step_size*(delta_ref-delta_pred)
                 
-            print('Loss = ',loss, "Exact match accurracy = ",(N-loss)/N)
+            print('Loss = ',loss, "%Exact match = ",(N-loss)/N)
             if loss == 0.0:
                 return
             
@@ -244,11 +244,17 @@ test = """
 4 .    PONCT 3
 """
 test2 = """
-1 le    D     2
-2 tapis N     3
-3 est   V     0
-4 rouge A     3  
-5 .     PONCT 3
+1 le      D     2
+2 tapis   N     3
+3 est     V     5
+4 rouge   A     3
+5 et      CC    0
+6 le      D     7
+7 chat    N     8
+8 mange   V     5
+9 la      D     10
+10 souris N     8
+11 .      PONCT 5
 """
 
 istream = io.StringIO(test)
@@ -257,5 +263,5 @@ d = DependencyTree.read_tree(istream)
 d2 = DependencyTree.read_tree(istream2)
 
 p = ArcFactoredParser()
-p.train([d,d2],max_epochs=100)
+p.train([d,d2],max_epochs=10)
 p.test([d,d2])
