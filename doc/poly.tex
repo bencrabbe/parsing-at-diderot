@@ -3285,7 +3285,7 @@ les langues à ordre des mots libre.
 \subsection{Factorisation en arcs}
 On suppose que le score d'un arbre se décompose par la somme des scores de ses arcs:
 \begin{displaymath}
-score(G) = \sum_{(i,j) \in E} score(i,j,\mathbf{x})
+\Psi(G) = \sum_{(i,j) \in E} \psi(\mathbf{x},i,j)
 \end{displaymath}
 
 L'algorithme d'analyse en dépendances par factorisation des arcs ({\em arc factored parser}, Algorithme \ref{algo-eisner})
@@ -3327,12 +3327,18 @@ $j\stackrel{*}{\rightarrow} i$.
 
 
 
-\section{Incomplete trees}
-L'algo essaye de trouver la meilleure projection $i\stackrel{*}{\rightarrow} j$ (ou $j\stackrel{*}{\rightarrow} i$ ) 
-pour un span donné. On remarque que le gouverneur $i$ (ou $j$) pourrait avoir une projection qui continue à droite de $j$ (resp. $i$).
+\paragraph{Arbres incomplets}
+Pour un empan donné $(i,j)$ l'algorithme commence par créer les arcs
+$i\rightarrow j$ et $j\rightarrow i$. On dit de ces arcs qu'ils
+représentent des arbres incomplets car ils ne codent pas toute la
+projection du gouverneur. Par exemple, si $i$ est choisi comme
+gouverneur et que l'arc $i\rightarrow j$ est ajouté,
+l'arbre incomplet va capturer toutes les relations 
+$i \stackrel{*}{\rightarrow} k$ pour $i\leq k \leq j$. Par contre il
+est possible que des relations $i \stackrel{*}{\rightarrow} l$
+existent avec $l > j$. 
 
-Trees whose governor projection might be extended at the dependent.
-
+\begin{figure}[htbp]
 \begin{minipage}[t]{.5\textwidth}
 \begin{center}
 \begin{dependency}
@@ -3435,44 +3441,40 @@ DAG & non projective + DAG \\
 
 \end{center}
 \end{minipage}
+\caption{\label{fig-incomplete}Cas admissibles pour les arbres incomplets}
+\end{figure}
 
-\section{Complete trees}
-Either the highest weighted tree spanning $\langle s,t \rangle$ is an incomplete tree just discovered or it is an incomplete tree of shorter span that needs to be completed.
+On peut remarquer en Figure \ref{fig-incomplete} que 
+l'ajout d'un arc  $i \rightarrow j$ (ou $j \rightarrow i$)
+n'est autorisé que dans peu de configurations préexistantes. Les différents cas sont
+illustrés sur la figure et motivent les lignes correspondantes de
+l'algorithme \ref{algo-eisner}. Seul le cas où à la fois $i$ et $j$
+ont des dépendants qui sont situés dans l'intervalle $i\ldots j$ autorise
+la création de l'arc. Les cas alternatifs potentiels créent des
+structures en graphe ou des structures non projectives et sont donc interdits par
+l'algorithme.
 
-\begin{dependency}
-\begin{deptext}[column sep=.5cm]
-w$_i$ \& w$_u$ \&  w$_j$ \\
-\end{deptext}
-  \depedge[hide label,edge unit distance=1.25ex,edge style={ultra thick,dotted}]{1}{3}{ } 
-  %\depedge[hide label,edge style={ultra thick,dotted}]{1}{2}{ }
-  %\depedge[hide label]{2}{3}{ }
-\end{dependency}
-\begin{dependency}
-\begin{deptext}[column sep=.5cm]
-w$_i$ \& w$_u$ \&  w$_j$ \\
-\end{deptext}
-  %\depedge[hide label,edge style={ultra thick,dotted}]{1}{3}{ } 
-  \depedge[hide label,edge style={ultra thick,dotted}]{1}{2}{ }
-  \depedge[hide label]{2}{3}{ }
-\end{dependency}
+\paragraph{Arbres complets}
+La création des arbres incomplets par ajout de l'arc $i\rightarrow j$ permet de créer des sous-arbres de
+dépendances tels que le gouverneur $i$ domine l'ensemble des
+dépendants $k$ tels que $i\leq k \leq j$. Autrement dit, l'algorithme
+garantit la projectivité de l'analyse sur l'empan $i\ldots j$. Par
+contre $i$ peut potentiellement dominer des mots $l$ tels que $l > j$
+et tels que $i\stackrel{*}{\rightarrow} l$. C'est pour capturer ce
+manque qu'il y a une étape supplémentaire de création d'arbres complets. 
+Celle-ci consiste à créer des liens de type
+$i\stackrel{*}{\rightarrow} l$ en concaténant un arbre incomplet
+$i\rightarrow j$ avec un arbre complet de la forme $j\stackrel{*}{\rightarrow} l$.
 
-\begin{dependency}
-\begin{deptext}[column sep=.5cm]
-w$_i$ \& w$_u$ \&  w$_j$ \\
-\end{deptext}
-  \depedge[hide label,edge unit distance=1.25ex,
-  edge style={ultra thick,dotted}]{3}{1}{ } 
-  %\depedge[hide label,edge style={ultra thick,dotted}]{1}{2}{ }
-  %\depedge[hide label]{2}{3}{ }
-\end{dependency}
-\begin{dependency}
-\begin{deptext}[column sep=.5cm]
-w$_i$ \& w$_u$ \&  w$_j$ \\
-\end{deptext}
-  %\depedge[hide label,edge style={ultra thick,dotted}]{1}{3}{ } 
-  \depedge[hide label]{2}{1}{ }
-  \depedge[hide label,edge style={ultra thick,dotted}]{3}{2}{ }
-\end{dependency}
+En résumé, les arbres incomplets relient directement $i\rightarrow j$
+(ou $j\rightarrow i$)
+sur un empan $i\ldots j$ alors que les arbres incomplets représentent
+des liens potentiellement indirects $i\stackrel{*}{\rightarrow} j$ (ou
+ $j\stackrel{*}{\rightarrow} i$).
+
+\paragraph{Complexité}L'intérêt de cet algorithme est qu'il permet d'obtenir un analyseur en
+dépendances projectif en ${\cal O}(n^3)$ alors que l'adaptation naïve
+de l'algorithme {\sc cky} a une complexité en ${\cal O}(n^5)$
 
 \section{History}
 History items are triples of quads of the form: $(i,j,dir,c) \leftarrow  (i,j,dir,c) (j,k,dir,c)$ added either when generating an incomplete tree or a complete tree. From this one can deduce the dependency tree.
