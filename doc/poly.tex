@@ -3282,12 +3282,16 @@ les langues à ordre des mots libre.
 \subsection{Modèle de Covington}
 
 \section{Analyse CKY}
-\subsection{Factorisation en arcs}
-On suppose que le score d'un arbre se décompose par la somme des scores de ses arcs:
-\begin{displaymath}
-\Psi(G) = \sum_{(i,j) \in E} \psi(\mathbf{x},i,j)
-\end{displaymath}
+\subsection{La version naïve}
 
+On peut envisager adapter l'algorithme {\sc cky} au cas de l'analyse
+en dépendances de manière directe et naïve. C'est ce que nous
+présentons dans ce qui suit. Notons que cette première solution pose un
+problème de complexité qui sera 
+
+
+\subsection{Factorisation en arcs}
+\label{sec-arc-factored}
 L'algorithme d'analyse en dépendances par factorisation des arcs ({\em arc factored parser}, Algorithme \ref{algo-eisner})
 peut-être vu comme une reformulation de l'algorithme {\sc cky} au cas des dépendances projectives.
 L'algorithme cherche à construire itérativement des sous-arbres qui couvrent des empans de plus en plus grands
@@ -3311,8 +3315,10 @@ $j\stackrel{*}{\rightarrow} i$.
   \For{$1\leq i \leq n-span$}
      \State $j \gets s + span$
      \State\Comment{Arbres incomplets}
-     \State C[i][j][$\curvearrowleft$][$\bot$] $\gets \mathop{\text{max}}_{i\leq k < j}(C[i][k][\curvearrowright][\top] + C[k+1][j][\curvearrowleft][\top] + score(j,i,\mathbf{x}))$
-     \State C[i][j][$\curvearrowright$][$\bot$] $\gets \mathop{\text{max}}_{i\leq k < j}(C[i][k][\curvearrowright][\top] + C[k+1][j][\curvearrowleft][\top] + score(i,j,\mathbf{x}))$ 
+     \State C[i][j][$\curvearrowleft$][$\bot$] $\gets
+     \mathop{\text{max}}_{i\leq k < j}(C[i][k][\curvearrowright][\top]
+     + C[k+1][j][\curvearrowleft][\top] + score(\mathbf{x},j,i))$
+     \State C[i][j][$\curvearrowright$][$\bot$] $\gets \mathop{\text{max}}_{i\leq k < j}(C[i][k][\curvearrowright][\top] + C[k+1][j][\curvearrowleft][\top] + score(\mathbf{x},i,j))$ 
      \State\Comment{Arbres complets}
      \State C[i][j][$\curvearrowleft$][$\top$] $\gets \mathop{\text{max}}_{i\leq k < j}(C[i][k][\curvearrowleft][\top] + C[k][j][\curvearrowleft][\bot])$     
      \State C[i][j][$\curvearrowright$][$\top$] $\gets \mathop{\text{max}}_{i < k \leq j}(C[i][k][\curvearrowright][\bot] + C[k][j][\curvearrowright][\top])$     
@@ -3476,10 +3482,7 @@ des liens potentiellement indirects $i\stackrel{*}{\rightarrow} j$ (ou
 dépendances projectif en ${\cal O}(n^3)$ alors que l'adaptation naïve
 de l'algorithme {\sc cky} a une complexité en ${\cal O}(n^5)$
 
-\section{History}
-History items are triples of quads of the form: $(i,j,dir,c) \leftarrow  (i,j,dir,c) (j,k,dir,c)$ added either when generating an incomplete tree or a complete tree. From this one can deduce the dependency tree.
-
-\section{Comparison with naive CYK}
+Comparison with naive CYK
 
 \paragraph{Naive {\sc cyk}} for dependency parsing in ${\cal O}(n^5)$:
 
@@ -3513,9 +3516,59 @@ History items are triples of quads of the form: $(i,j,dir,c) \leftarrow  (i,j,di
 {\langle i,j,\curvearrowleft,\top \rangle} \quad complete(\curvearrowleft) \, s.c. (k < j)
 \end{displaymath}
 
+\paragraph{Estimation des poids} L'analyse syntaxique par factorisation des
+arcs ({\em arc factored parsing}) suppose que le score d'un arbre se
+décompose comme la somme des scores de ses arcs~:
+\begin{equation}
+\label{eq-arc-factored}
+\Psi({\mathbf{y}}) = \sum_{(i,j) \in \mathbf{y}} \psi(\mathbf{x},i,j)
+\end{equation}
+On peut en principe utiliser n'importe quelle méthode d'apprentissage 
+structurée (perceptron, large marge ou {\sc crf}) 
+pour réaliser l'estimation de poids à partir de données.
+
+Comme pour la plupart des algorithmes d'analyse syntaxique, 
+l'estimation des poids par un {\sc crf} est un processus relativement
+lourd en pratique (mais pas impossible en théorie). Par conséquent, on présente ici une variante de
+l'algorithme du perceptron qui permet d'estimer les poids à partir
+d'un treebank de référence.
+
+On suppose qu’un corpus annoté $C = \mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$ est un
+exemplaire de $N$ phrases où chaque séquence de mots $\mathbf{x}_i$
+est associée à un arbre de référence $\mathbf{y}_i$.
+L'algorithme \ref{perceptron-eisner} est un variante de l'algorithme
+du perceptron vu précédemment qui tire parti de la décomposition
+en arcs de l'arbre de dépendances telle que posée en équation (\ref{eq-arc-factored}).
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{arc-factored-perceptron}{$\mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$,$E$}
+\State $\mathbf{w} \gets \bar{\mathbf{0}}$
+\For{$1\leq e \leq E $}
+\For{$1\leq i \leq N$}
+\State
+$\hat{\mathbf{y}} \gets \mathop{\text{argmax}}_{\mathbf{y}\in
+  \mathbf{Y}} 
+\sum_{(i,j) \in \mathbf{y}} \mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,i,j)$
+\Comment{Parsing}
+\If{$\hat{\mathbf{y}} \not = \mathbf{y}_i$}
+     \State $\mathbf{w} \gets  \mathbf{w} +
+     \left[ \sum_{(i,j) \in \mathbf{y}_i} \boldsymbol\Phi(\mathbf{x}_i,i,j) 
+       - \sum_{(i,j) \in
+         \hat{\mathbf{y}}}\boldsymbol\Phi(\mathbf{x}_i,i,j)   \right]$ 
+\EndIf
+\EndFor
+\EndFor
+\State \Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{perceptron-eisner}Perceptron pour l'analyse factorisée
+en arcs}
+\end{algorithm}
 
 
-\section{Exercises}
+
+\section{Exercices}
 \begin{itemize}
 \item Add I/O and eval functions
 \item Add dependency Labels
