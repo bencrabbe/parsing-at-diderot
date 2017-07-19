@@ -8,7 +8,6 @@ import numpy as np
 This is the 1st order projective spanning tree algorithm of Eisner
 1996 weighted by a perceptron.
 """
-
 #DATA REPRESENTATION
 class DependencyTree:
 
@@ -221,7 +220,6 @@ class ArcFactoredParser:
                         delta_pred += SparseWeightVector.code_phi(x_repr,ylabel)
 
                     self.model += step_size*(delta_ref-delta_pred)
-                
             print('Loss = ',loss, "%Exact match = ",(N-loss)/N)
             if loss == 0.0:
                 return
@@ -234,7 +232,7 @@ class ArcFactoredParser:
             pred_tree = self.parse_one(tokens)
             print(pred_tree)
             print()
-            sum_acc   = ref_tree.accurracy(pred_tree)
+            sum_acc   += ref_tree.accurracy(pred_tree)
         return sum_acc/N
                 
 test = """
@@ -264,4 +262,4 @@ d2 = DependencyTree.read_tree(istream2)
 
 p = ArcFactoredParser()
 p.train([d,d2],max_epochs=10)
-p.test([d,d2])
+print(p.test([d,d2]))

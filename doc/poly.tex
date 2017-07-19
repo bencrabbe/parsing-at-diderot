@@ -2781,6 +2781,9 @@ ASGD
 
 \section{Estimation des paramètres et approximations}
 
+TODO: cette section, introduire la décomposition du score partout, y
+compris dans le pseudo code.
+
 Pour certains types de problèmes ou de représentations, il n'est pas
 possible d'évaluer un \ac{dag} de programmation dynamique exhaustivement.
 En pratique, les temps de calcul deviennent prohibitifs.
@@ -3271,13 +3274,170 @@ les langues à ordre des mots libre.
 
 
 
-
-
-
-
-
 \section{Analyse par transitions}
+
+Les méthodes d'analyse en dépendances par transitions sont dérivées
+des méthodes d'analyse par décalage réduction utilisées pour l'analyse
+en constituants et des formalisations d'algorithmes de planification
+et de démonstration automatique.
+
+L'ensemble de ces algorithmes travaille avec une structure de donnée
+appelée {\bf configuration} (ou état) et qui est essentiellement un couple $\langle
+\mathbf{S} , \mathbf{B}\rangle$ fait d'une pile et d'une file (ou
+buffer). L'ensemble des configurations possibles est en général très
+vaste de telle sorte que mener une procédure exacte de recherche de
+solutions d'analyse est en général infaisable. Par conséquent les
+algorithmes présentés dans cette section sont en général associés à
+des méthodes de recherche inexactes de solution. Le caractère inexact
+de la méthode de recherche de solution est compensé par la richesse de
+l'information stockée dans les configurations, ce qui permet de
+prendre des décisions très bien informées localement.
+
 \subsection{Modèle Arc-standard}
+
+Le modèle arc-standard est un modèle d'analyse dont les configurations
+sont des triplets $\langle \mathbf{S},\mathbf{B} ,  A\rangle$ où
+$\mathbf{S}$ est une pile, $\mathbf{B}$ une file et $A$ un ensemble d'arcs.
+La donnée à analyser $\mathbf{x} = w_0\ldots w_n$ est une séquence de mots
+dont le mot $w_0$ est par convention un mot artificiel qui représente
+la racine de l'arbre.
+
+L'algorithme (Figure \ref{fig-AS}) commence avec un état initial où la
+pile est vide et la file remplie de la séquence de mots. Il termine
+lorsque la pile ne contient plus que la racine de l'arbre et que le
+buffer est vide. Les actions arc gauche ({\bf left-arc}) et ({\bf
+  right-arc}) sont des contreparties de l'action de réduction d'un
+analyseur à décalage réduction. L'action de décalage est la
+contrepartie fidèle d'une action de décalage traditionnelle.
+
+
+
+\begin{figure}[htbp]
+\begin{displaymath}
+\begin{array}{rccl}
+\mathbf{init}  &\langle \epsilon , w_0 \ldots w_n ,\emptyset \rangle\\
+\mathbf{but}  & \langle w_0 ,\epsilon , A \rangle\\
+\mathbf{shift} & \langle \mathbf{S} ,  w_i | \mathbf{B} , A   \rangle
+&\Rightarrow &\langle \mathbf{S} | w_i ,  \mathbf{B} , A   \rangle\\
+\mathbf{left-arc} &\langle \mathbf{S}|w_i | w_j , \mathbf{B} , A   \rangle
+&\Rightarrow& \langle \mathbf{S}| w_j , \mathbf{B} , A \cup \{
+j\rightarrow i \}   \rangle\\
+\mathbf{right-arc }  &\langle \mathbf{S}|w_i | w_j , \mathbf{B} , A   \rangle
+&\Rightarrow & 
+\langle \mathbf{S}| w_i , \mathbf{B} , A \cup \{
+i \rightarrow j \}   \rangle
+\end{array}
+\end{displaymath}
+\caption{\label{fig-AS}Le système de transitions arc standard}
+\end{figure}
+
+
+Les actions arc-gauche et arc-droit sont augmentées d'une procédure
+qui collecte les arcs créés en cours d'analyse (représentés par
+l'ensemble $A$) ce qui permet d'extraire trivialement l'arbre de
+dépendance en fin d'analyse.
+
+L'algorithme est fondamentalement non déterministe. Il est par
+conséquent habituel de l'augmenter (1) d'une méthode de pondération des
+hypothèses et (2) d'une méthode de recherche de solutions
+approximative (en général non exhaustive en faisceau).
+
+\paragraph{Dérivations et pondérations} 
+Un pas de dérivation est le passage d'une configuration $c_i$ à une
+configuration $c_{i+1}$ en utilisant une transition (ou action) $t\in
+\{shift, left-arc,right-arc, stop\}$. L'action {\bf stop} est exécutée
+uniquement pour terminer l'analyse lorsque le buffer est vide et que
+la pile ne peut plus être réduite.
+
+Une séquence de dérivation, ou {\bf dérivation}, est une séquence de la
+forme $\mathbf{d} = (c_0, t_0) \ldots (c_m,t_m)$. On pondère une dérivation en
+faisant l'hypothèse que son score se décompose par la somme~:
+\begin{equation}
+\Psi(\mathbf{d}) = \sum_{i=0}^m  \psi(c_i,t_i,\mathbf{x})
+\end{equation}
+où $\mathbf{x}$ représente la séquence de mots à analyser.
+Le problème d'analyse syntaxique consiste en général à résoudre~:
+\begin{equation}
+{\mathbf{\hat{d}}} = \mathop{\text{argmax}}_{\mathbf{d} \in \mathbf{D}(\mathbf{x})} \Psi(\mathbf{d}) 
+\end{equation}
+où $\mathbf{D}(\mathbf{x})$ représente l'ensemble des dérivations possibles pour
+la phrase à analyser.
+
+\paragraph{Estimation des paramètres}
+L'estimation des paramètres se réalise à partir d'un 
+corpus annoté $C = \mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$ qui est un
+exemplaire de $N$ phrases où chaque séquence de mots $\mathbf{x}_i$
+est associée à un arbre de référence $\mathbf{y}_i$.
+
+La procédure d'apprentissage consiste à estimer un vecteur de
+paramètres $\mathbf{w}$ de telle sorte que les dérivations prédites par
+l'algorithme sont les plus similaires aux dérivations de référence.
+Comme les données sont naturellement des couples
+$(\mathbf{x}_i,\mathbf{y}_i)$, il faut transformer les arbres de
+référence $\mathbf{y}_i$ en dérivations.
+On réalise cette opération à l'aide d'un {\bf oracle} statique
+(Algorithme \ref{algo-AS-oracle}) qui permet de simuler l'analyse de référence en utilisant
+comme donnée $A$ l'ensemble des arcs de l'arbre de référence.
+
+\begin{algorithm}
+\begin{algorithmic}[0]
+\Function{ArcStandardStaticOracle}{$\mathbf{S},\mathbf{B},A$}
+\If{ $\mathbf{S} | i | j $} \Comment{Il y a au moins 2 éléments sur la
+pile}
+\If{$i\rightarrow j \in A$}
+\State \Return $\mathbf{right-arc}$
+\ElsIf{$j\rightarrow i \in A$}
+\State \Return $\mathbf{left-arc}$
+\EndIf
+\EndIf
+\If{$\mathbf{B} \not = \epsilon$} \Comment{Il y a au moins un élément
+  dans la file}
+\State\Return $\mathbf{shift}$
+\EndIf
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-AS-oracle} Oracle statique pour le système arc
+  standard ({\bf incorrect, refaire})}
+%http://demo.clab.cs.cmu.edu/fa2015-11711/images/b/b1/TbparsingSmallCorrection.pdf
+\end{algorithm}
+Le jeu de données transformé où les arbres $\mathbf{y}_i$ sont
+transformés en dérivation $\mathbf{d}_i$ prend alors la forme suivante.
+$C = \mathop{(\mathbf{x}_i,\mathbf{d}_i)}^N_{i=1}$. L'estimation des
+paramètres se fait en général avec un modèle à large marge car
+l'utilisation d'un {\sc crf} exige un facteur de
+normalisation qui demande de calculer l'ensemble des dérivations
+possibles pour une phrase donnée, ce qui est trop coûteux en temps de calcul.
+On donne ici une méthode d'estimation à l'aide de l'algorithme du
+perceptron (Algorithme \ref{perceptron-AS}).
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{arc-standard-perceptron}{$\mathop{(\mathbf{x}_i,\mathbf{d}_i)}^N_{i=1}$,$E$}
+\State $\mathbf{w} \gets \bar{\mathbf{0}}$
+\For{$1\leq e \leq E $}
+\For{$1\leq i \leq N$}
+\State
+$\hat{\mathbf{d}} \gets \mathop{\text{argmax}}_{\mathbf{d}\in
+  \mathbf{D}(\mathbf{x})} 
+\sum_{j = 0}^m \mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,c_j,t_j)$
+\Comment{Parsing}
+\If{$\hat{\mathbf{d}} \not = \mathbf{d}_i$}
+     \State $\mathbf{w} \gets  \mathbf{w} +
+     \left[ \sum_{j=0}^m \boldsymbol\Phi(\mathbf{x}_i,c_j,t_j) 
+       - \sum_{j=0}^m \boldsymbol\Phi(\mathbf{x}_i,\hat{c}_j,\hat{t}_j)   \right]$ 
+\EndIf
+\EndFor
+\EndFor
+\State \Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{perceptron-AS}Perceptron pour un système d'analyse
+  en dépendances par transitions}
+\end{algorithm}
+
+ \paragraph{Problème d'approximation par recherche en faisceau}
+(TODO)
+
 \subsection{Modèle Arc-eager}
 \subsection{Modèle de Covington}
 
@@ -3286,9 +3446,50 @@ les langues à ordre des mots libre.
 
 On peut envisager adapter l'algorithme {\sc cky} au cas de l'analyse
 en dépendances de manière directe et naïve. C'est ce que nous
-présentons dans ce qui suit. Notons que cette première solution pose un
-problème de complexité qui sera 
+présentons dans ce qui suit. Cette première solution pose toutefois un
+problème de complexité car les analyses sont produites en ${\cal O}(n^5)$. On donne en section
+\ref{sec-arc-factored} une version moins naïve qui produit des
+analyses projectives en ${\cal O}(n^3)$ et qui est la version
+utilisée dans les implémentations habituelles.
 
+Sous forme déductive, les items de l'algorithme sont des triplets 
+de la forme $\langle i,j,h \rangle$ où $i$ est l'indice de l'extrémité
+gauche de l'empan, $j$ l'indice de l'extrémité droite de l'empan et
+$h \, (i\leq h \leq j)$ est la position de la tête dans la séquence de
+mots $\mathbf{x} = w_1\ldots w_n$ à analyser. 
+En suivant le principe classique de l'algorithme {\sc cky}, l'algorithme
+donné ici commence en supposant que chaque mot définit son propre empan puis
+essaye de combiner des empans contigus en empans de plus en plus
+larges en utilisant deux actions de réductions qui se distinguent par
+leur manière d'assigner la tête au nouvel empan. On résume cet
+algorithme sous forme de système déductif en figure \ref{fig-cky-dep}.
+\begin{figure}[htbp]
+
+\begin{eqnarray*}
+\mathbf{init}  &\frac{\, }{\langle i, i+1, w_i \rangle} & (0\leq i <
+n)\\
+\mathbf{but}  &\langle 0,n, h \rangle \\
+\mathbf{reduce}(\curvearrowleft) &
+\frac{\langle i,k,h \rangle\quad \langle k,j,h' \rangle}
+{\langle i,j,h\rangle}\\
+\mathbf{reduce}(\curvearrowright) &
+\frac{\langle i,k,h \rangle\quad \langle k,j,h' \rangle}
+{\langle i,j,h'\rangle} 
+\end{eqnarray*}
+
+\caption{\label{fig-cky-dep} Algorithme {\sc cky} pour l'analyse en dépendances}
+\end{figure}
+On peut remarquer que chacune des règles de réduction (gauche et droite) fait intervenir 5
+indices libres ce qui suggère une complexité en ${\cal O}(n^5)$.
+
+
+\paragraph{Estimation des poids}
+Cet algorithme peut être pondéré par tout modèle discriminant.
+L'estimation des poids pour un modèle {\sc crf} demande de déployer 
+des récurrences dedans dehors ({\em inside-outside}) et est difficile à rendre efficace à l'usage. Les modèles à large marge sont en
+principe plus faciles à utiliser mais cet algorithme naïf n'est en
+général pas utilisé en pratique. C'est l'algorithme par factorisation
+des arcs présenté ci-dessous qui est utilisé en pratique.
 
 \subsection{Factorisation en arcs}
 \label{sec-arc-factored}
@@ -3484,28 +3685,18 @@ de l'algorithme {\sc cky} a une complexité en ${\cal O}(n^5)$
 
 Comparison with naive CYK
 
-\paragraph{Naive {\sc cyk}} for dependency parsing in ${\cal O}(n^5)$:
-
-\begin{displaymath}
-\frac{\langle i,k,h \rangle\quad \langle k,j,h' \rangle}
-{\langle i,j,h\rangle} \quad reduce(\curvearrowleft)
-\end{displaymath}
-
-\begin{displaymath}
-\frac{\langle i,k,h \rangle\quad \langle k,j,h' \rangle}
-{\langle i,j,h'\rangle} \quad reduce(\curvearrowright)
-\end{displaymath}
-
 \paragraph{Arc factored}
 
-\begin{displaymath}
+\begin{eqnarray*}
+\mathbf{init}&\langle i,i,d,c\rangle &
+(0\leq i < n , d\in \{\curvearrowright , \curvearrowleft\}, c \in
+\{\top ,\bot \})\\
+\mathbf{reduce}(\curvearrowleft)&
 \frac{\langle i,k,\curvearrowright,\top \rangle\quad \langle k+1,j,\curvearrowleft,\top \rangle}
-{\langle i,j,\curvearrowleft,\bot \rangle} \quad reduce(\curvearrowleft)
-\end{displaymath}
-\begin{displaymath}
-\frac{\langle i,k,\curvearrowright,\top \rangle\quad \langle k+1,j,\curvearrowleft,\top \rangle}
-{\langle i,j,\curvearrowright,\bot \rangle} \quad reduce(\curvearrowright)
-\end{displaymath}
+{\langle i,j,\curvearrowleft,\bot \rangle} \\
+\mathbf{reduce}(\curvearrowright)&\frac{\langle i,k,\curvearrowright,\top \rangle\quad \langle k+1,j,\curvearrowleft,\top \rangle}
+{\langle i,j,\curvearrowright,\bot \rangle}\\
+\end{eqnarray*}
 
 \begin{displaymath}
 \frac{\langle i,k,\curvearrowright,\top \rangle\quad \langle k,j,\curvearrowright,\bot \rangle}
