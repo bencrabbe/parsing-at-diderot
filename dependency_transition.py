@@ -225,6 +225,7 @@ class ArcStandardTransitionParser:
                     #print("   => found")
                     break
             if not found:
+                #print("   => not found")
                 #backtrace
                 jdx = idx
                 source_idx = 0
@@ -321,8 +322,10 @@ class ArcStandardTransitionParser:
             for tokens,ref_derivation in sequences:
                 pred_beam = self.parse_one(tokens,beam_size,get_beam=True)
                 (update, ref_prefix,pred_prefix) = self.early_prefix(ref_derivation,pred_beam)
-                #print(ref_derivation)
-                #print(pred_prefix)
+                #print('R',ref_derivation)
+                #print('P',pred_prefix)
+                #self.test(dataset,beam_size)
+
                 if update:
                     #print (pred_prefix)
                     loss += 1.0
@@ -343,7 +346,6 @@ class ArcStandardTransitionParser:
                         current_config = config
 
                     self.model += step_size*(delta_ref-delta_pred)
-            self.test(dataset)
             print('Loss = ',loss, "%Exact match = ",(N-loss)/N)
             if loss == 0.0:
                 return
@@ -374,5 +376,5 @@ istream2 =  io.StringIO(test2)
 d = DependencyTree.read_tree(istream)
 d2 = DependencyTree.read_tree(istream2)
 p = ArcStandardTransitionParser()
-p.train([d,d2],max_epochs=100,beam_size=2)
-print(p.test([d,d2],beam_size=2))
+p.train([d,d2],max_epochs=100,beam_size=3)
+print(p.test([d,d2],beam_size=3))
