@@ -171,7 +171,7 @@ class ArcStandardTransitionParser:
         current_beam = [(-1,None,init)]
         beam = [current_beam]
             
-        for i in range(2*N-1):
+        for i in range(2*N): #because 2N-1+terminate
             next_beam = []
             for idx, (_,action,config) in enumerate(current_beam):
                 S,B,A,score = config 
@@ -202,7 +202,7 @@ class ArcStandardTransitionParser:
             return beam
         else:
             succ = beam[-1][0][2] #success in last beam, top position, newconfig
-            print(succ)
+            print(beam[-1][0][1],succ)
             return DependencyTree(tokens=sentence,edges=succ[2])
 
              
@@ -376,5 +376,5 @@ istream2 =  io.StringIO(test2)
 d = DependencyTree.read_tree(istream)
 d2 = DependencyTree.read_tree(istream2)
 p = ArcStandardTransitionParser()
-p.train([d,d2],max_epochs=100,beam_size=3)
-print(p.test([d,d2],beam_size=3))
+p.train([d,d2],max_epochs=100,beam_size=4)
+print(p.test([d,d2],beam_size=4))

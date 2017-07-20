@@ -3314,14 +3314,14 @@ contrepartie fidèle d'une action de décalage traditionnelle.
 
 \begin{figure}[htbp]
 \begin{displaymath}
-\begin{array}{rccl}
+\begin{array}{rccll}
 \mathbf{init}  &\langle \epsilon , w_0 \ldots w_n ,\emptyset \rangle\\
 \mathbf{but}  & \langle w_0 ,\epsilon , A \rangle\\
 \mathbf{shift} & \langle \mathbf{S} ,  w_i | \mathbf{B} , A   \rangle
 &\Rightarrow &\langle \mathbf{S} | w_i ,  \mathbf{B} , A   \rangle\\
-\mathbf{left-arc} &\langle \mathbf{S}|w_i | w_j , \mathbf{B} , A   \rangle
-&\Rightarrow& \langle \mathbf{S}| w_j , \mathbf{B} , A \cup \{
-j\rightarrow i \}   \rangle\\
+\mathbf{left-arc} &\langle \mathbf{S}|w_i | w_j , \mathbf{B} , A
+\rangle &\Rightarrow& \langle \mathbf{S}| w_j , \mathbf{B} , A \cup \{
+j\rightarrow i \}   \rangle & (i\not = w_0)\\
 \mathbf{right-arc }  &\langle \mathbf{S}|w_i | w_j , \mathbf{B} , A   \rangle
 &\Rightarrow & 
 \langle \mathbf{S}| w_i , \mathbf{B} , A \cup \{
@@ -3380,13 +3380,16 @@ On réalise cette opération à l'aide d'un {\bf oracle} statique
 comme donnée $A$ l'ensemble des arcs de l'arbre de référence.
 
 \begin{algorithm}
+\scriptsize
 \begin{algorithmic}[0]
-\Function{ArcStandardStaticOracle}{$\mathbf{S},\mathbf{B},A$}
+\Function{ArcStandardStaticOracle}{$\mathbf{S},\mathbf{B},A, A_{ref}$}
 \If{ $\mathbf{S} | i | j $} \Comment{Il y a au moins 2 éléments sur la
 pile}
-\If{$i\rightarrow j \in A$}
+\If{$i\rightarrow j \in A_{ref}$ {\bf and} $j\not = 0$ {\bf and}
+  $\forall k (j \rightarrow k \in A_{ref} \Rightarrow  j \rightarrow k \in A)$}
 \State \Return $\mathbf{right-arc}$
-\ElsIf{$j\rightarrow i \in A$}
+\ElsIf{$j\rightarrow i \in A_{ref}$ {\bf and} $i\not = 0$ {\bf and} 
+ $\forall k (i \rightarrow k \in A_{ref} \Rightarrow  i \rightarrow k \in A)$}
 \State \Return $\mathbf{left-arc}$
 \EndIf
 \EndIf
@@ -3397,7 +3400,7 @@ pile}
 \EndFunction
 \end{algorithmic}
 \caption{\label{algo-AS-oracle} Oracle statique pour le système arc
-  standard ({\bf incorrect, refaire})}
+  standard}
 %http://demo.clab.cs.cmu.edu/fa2015-11711/images/b/b1/TbparsingSmallCorrection.pdf
 \end{algorithm}
 Le jeu de données transformé où les arbres $\mathbf{y}_i$ sont
