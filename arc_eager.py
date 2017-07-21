@@ -71,12 +71,13 @@ class DependencyTree:
         """
         return self.tokens[idx]
 
-class ArcStandardTransitionParser:
+class ArcEagerTransitionParser:
 
     #actions
-    LEFTARC  = "L"
-    RIGHTARC = "R"
+    LEFTARC  = "LA"
+    RIGHTARC = "RA"
     SHIFT    = "S"
+    REDUCE   = "R"
     TERMINATE= "T"
     
     def __init__(self):
@@ -91,46 +92,48 @@ class ArcStandardTransitionParser:
         """
         S,B,A,score = configuration
         all_words   = range(N)
-        if len(S) >= 2:
-           i,j = S[-2],S[-1]
-           if j!=0 and (i,j) in reference_arcs and all([ (j,k) in A for k in all_words if (j,k)  in reference_arcs]):
-                return ArcStandardTransitionParser.RIGHTARC
-           elif i!= 0 and (j,i) in reference_arcs and all([ (i,k) in A for k in all_words if (i,k)  in reference_arcs]):
-                return ArcStandardTransitionParser.LEFTARC
+        
+        if S and B:
+            i,j = S[-1], B[0]
+            if i!= 0 and (j,i) in reference_arcs:
+                return ArcEagerTransitionParser.LEFTARC
+            if  (i,j) in reference_arcs:
+                return ArcEagerTransitionParser.RIGHTARC
+        if S and any([(k,S[-1]) for k in all_words]):
+            return ArcEagerTransitionParser.REDUCE
         if B:
-            return ArcStandardTransitionParser.SHIFT
-        return ArcStandardTransitionParser.TERMINATE
+            return ArcEagerTransitionParser.SHIFT
+        return ArcEagerTransitionParser.TERMINATE
 
     
-    def oracle_derivation(self,ref_parse):
+    def static_oracle_derivation(self,ref_parse):
         """
-        This generates an oracle reference derivation from a sentence
+        This generates a static oracle reference derivation from a sentence
         @param ref_parse: a DependencyTree object
-        @return : the oracle derivation
+        @return : the oracle derivation as a list of (Configuration,action) couples
         """
         sentence = ref_parse.tokens
         edges    = set(ref_parse.edges)
         N        = len(sentence)
         
-        C = (tuple(),tuple(range(len(sentence))),tuple(),0.0) #A config is a hashable quadruple with score 
-        action     = None
-        derivation = [(action,C)]
-        
-        while action != ArcStandardTransitionParser.TERMINATE :
+        C = ((0,),tuple(range(1,len(sentence))),tuple(),0.0)       #A config is a hashable quadruple with score 
+        action = ArcEagerTransitionParser.static_oracle(C,edges,N)
+        derivation.append((C,action))
+
+        while C[1] and action != ArcEagerTransitionParser.TERMINATE:
                         
-            action = ArcStandardTransitionParser.static_oracle(C,edges,N)
-            
-            if action ==  ArcStandardTransitionParser.SHIFT:
+            if action ==  ArcEagerTransitionParser.SHIFT:
                 C = self.shift(C,sentence)
-            elif action == ArcStandardTransitionParser.LEFTARC:
+            elif action == ArcEagerTransitionParser.LEFTARC:
                 C = self.leftarc(C,sentence)
-            elif action == ArcStandardTransitionParser.RIGHTARC:
+            elif action == ArcEagerTransitionParser.RIGHTARC:
                 C = self.rightarc(C,sentence)
-            elif action ==  ArcStandardTransitionParser.TERMINATE:
+            elif action ==  ArcEagerTransitionParser.TERMINATE:
                 C = self.terminate(C,sentence)
-                
-            derivation.append((action,C))
-            
+
+            action = ArcEagerTransitionParser.static_oracle(C,edges,N)
+            derivation.append((C,action))
+                            
         return derivation
                 
     def shift(self,configuration,tokens):
@@ -139,122 +142,80 @@ class ArcStandardTransitionParser:
         """
         S,B,A,score = configuration
         w0 = B[0]
-        return (S + (w0,),B[1:],A,score+self.score(configuration,ArcStandardTransitionParser.SHIFT,tokens)) 
+        return (S + (w0,),B[1:],A,score+self.score(configuration,ArcEagerTransitionParser.SHIFT,tokens)) 
 
     def leftarc(self,configuration,tokens):
         """
         Performs the left arc action and returns a new configuration
         """
         S,B,A,score = configuration
-        i,j = S[-2],S[-1]
-        return (S[:-2]+(j,),B,A + ((j,i),),score+self.score(configuration,ArcStandardTransitionParser.LEFTARC,tokens)) 
+        i,j = S[-1],B[0]
+        return (S[:-1],B,A + ((j,i),),score+self.score(configuration,ArcEagerTransitionParser.LEFTARC,tokens)) 
 
     def rightarc(self,configuration,tokens):
         S,B,A,score = configuration
-        i,j = S[-2],S[-1]
-        return (S[:-1],B, A + ((i,j),),score+self.score(configuration,ArcStandardTransitionParser.RIGHTARC,tokens)) 
+        i,j = S[-1],B[0]
+        return (S+[j],B[1:], A + ((i,j),),score+self.score(configuration,ArcEagerTransitionParser.RIGHTARC,tokens)) 
 
+    def reduce(self,configuration,tokens):
+        S,B,A,score = configuration
+        i = S[-1]
+        return (S,B,A,score+self.score(configuration,ArcEagerTransitionParser.REDUCE,tokens))
+    
     def terminate(self,configuration,tokens):
         S,B,A,score = configuration
-        return (S,B,A,score+self.score(configuration,ArcStandardTransitionParser.TERMINATE,tokens))        
+        return (S,B,A,score+self.score(configuration,ArcEagerTransitionParser.TERMINATE,tokens))        
 
 
-    def parse_one(self,sentence,beam_size=4,get_beam=False):
+    def parse_one(self,sentence):
+        """
+        Greedy parsing
+        @param sentence: a list of tokens
+        """
         
-        actions = [ArcStandardTransitionParser.LEFTARC,\
-                   ArcStandardTransitionParser.RIGHTARC,\
-                   ArcStandardTransitionParser.SHIFT,\
-                   ArcStandardTransitionParser.TERMINATE]
+        actions = [ArcEagerTransitionParser.LEFTARC,\
+                   ArcEagerTransitionParser.RIGHTARC,\
+                   ArcEagerTransitionParser.SHIFT,\
+                   ArcEagerTransitionParser.REDUCE,\
+                   ArcEagerTransitionParser.TERMINATE]
 
         N = len(sentence)
-        init = (tuple(),tuple(range(N)),tuple(),0.0) #A config is a hashable quadruple with score 
-        current_beam = [(-1,None,init)]
-        beam = [current_beam]
-            
-        for i in range(2*N): #because 2N-1+terminate
-            next_beam = []
-            for idx, (_,action,config) in enumerate(current_beam):
-                S,B,A,score = config 
-                for a in actions:
-                    if a ==  ArcStandardTransitionParser.SHIFT:
-                        if B:
-                            newconfig = self.shift(config,sentence)
-                            next_beam.append((idx,a,newconfig))
-                    elif a == ArcStandardTransitionParser.LEFTARC:
-                        if len(S) >= 2 and S[-2] != 0: #a word cannot dominate the dummy root
-                            newconfig = self.leftarc(config,sentence)
-                            next_beam.append((idx,a,newconfig))
-                    elif a == ArcStandardTransitionParser.RIGHTARC:
-                        if len(S) >= 2:
-                            newconfig = self.rightarc(config,sentence)
-                            next_beam.append((idx,a,newconfig))
-                    elif a == ArcStandardTransitionParser.TERMINATE:
-                        if len(S) < 2 and not B:
-                            newconfig = self.terminate(config,sentence)
-                            next_beam.append((idx,a,newconfig))
-            next_beam.sort(key=lambda x:x[2][3],reverse=True)
-            next_beam = next_beam[:beam_size]
-            beam.append(next_beam)
-            current_beam = next_beam
-        
-
-        if get_beam:
-            return beam
-        else:
-            succ = beam[-1][0][2] #success in last beam, top position, newconfig
-            print(beam[-1][0][1],succ)
-            return DependencyTree(tokens=sentence,edges=succ[2])
-
-             
-    def early_prefix(self,ref_parse,beam):
-        """
-        Finds the prefix for early update, that is the prefix where the ref parse fall off the beam.
-        @param ref_parse: a parse derivation
-        @param beam: a beam output by the parse_one function
-        @return (bool, ref parse prefix, best in beam prefix)
-                the bool is True if update required false otherwise
-        """
-        idx = 0
-        for (actionR,configR),(beamCol) in zip(ref_parse,beam):
-            found = False
-            #print("seeking",configR, "at index",idx)
-            for source_idx,action,configTarget in beamCol:
-                #print("  ",configTarget)
-                if action == actionR and configTarget[:-1] == configR[:-1]: #-1 -> does not test score equality
-                    found = True
-                    #print("   => found")
-                    break
-            if not found:
-                #print("   => not found")
-                #backtrace
-                jdx = idx
-                source_idx = 0
-                early_prefix = []
-                while jdx >= 0:
-                    new_source_idx,action,config = beam[jdx][source_idx]
-                    early_prefix.append( (action,config) )
-                    source_idx = new_source_idx
-                    jdx -= 1
-                early_prefix.reverse()
-                return (True, ref_parse[:idx+1],early_prefix)
-            idx+=1
-        #if no error found check that the best in beam is the ref parse
-        last_ref_action,last_ref_config     = ref_parse[-1]
-        _,last_pred_action,last_pred_config =  beam[-1][0]
-        if last_pred_config[:-1] == last_ref_config[:-1]:
-            return (False,None,None)#returns a no update message
-        else:#backtrace
-            jdx = len(beam)-1
-            source_idx = 0
-            early_prefix = []
-            while jdx >= 0:
-                new_source_idx,action,config = beam[jdx][source_idx]
-                early_prefix.append( (action,config) )
-                source_idx = new_source_idx
-                jdx -= 1
-            early_prefix.reverse()
-            return (True,ref_parse,early_prefix)
+        C = (tuple(),tuple(range(N)),tuple(),0.0) #A config is a hashable quadruple with score 
                 
+        for i in range(2*N): #because 2N-1+terminate
+                S,B,A,score = C
+                candidates = []
+                #shift
+                if B:
+                    candidates.append(self.shift(C,sentence))
+                #leftarc
+                i = S[-1]     
+                if S and B and i != 0 and not any([(k,i) in A for k in range(N)]): 
+                    candidates.append(self.leftarc(C,sentence))
+                #rightarc
+                j = B[0]
+                if not any([(k,j) in A for k in range(N)]):
+                    candidates.append(self.rightarc(C,sentence))
+                    elif a == ArcEagerTransitionParser.REDUCE:
+                #reduce
+                i = S[-1]
+                if any([(k,i) in A for k in range(N)]):
+                    candidates.append(self.reduce(C,sentence))
+                    if a == ArcEagerTransitionParser.TERMINATE:
+                #terminate
+                if not B:
+                    candidates.append(self.terminate(C,sentence))
+            candidates.sort(key=lambda x:x[3],reverse=True)
+            C = candidates[0]
+        S,B,A,score = C
+        #connect to 0 any dummy root
+        As = set(A)
+        for s in S:
+            if not any([(k,s) in As for k in range(N)]):
+                As.add((0,s))
+        return DependencyTree(tokens=sentence,edges=As)
+
+
     def score(self,configuration,action,tokens):
         """
         Computes the prefix score of a derivation
@@ -314,6 +275,7 @@ class ArcStandardTransitionParser:
         """
         @param dataset : a list of dependency trees
         """
+        #TODO
         N = len(dataset)
         sequences = list([ (dtree.tokens,self.oracle_derivation(dtree)) for dtree in dataset])
         
