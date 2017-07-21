@@ -3215,9 +3215,7 @@ pour des détails supplémentaires.}
 
 \section{Fonctions features et potentiels}
 
-
 \chapter{Analyse syntaxique en dépendances}
-
 
 \section{Arbres de dépendances}
 
@@ -3265,8 +3263,7 @@ i\rightarrow j  \in E \quad\Rightarrow\quad \lnot \exists k  (k\rightarrow j)\in
 \item\label{it:projectif} $G$ est projectif~: 
 \begin{displaymath}
  i\rightarrow j \in E \quad\Rightarrow\quad 
-\forall_{k\in W: i
-\prec k \prec j}  \, i\stackrel{*}{\rightarrow} k 
+\forall_{k:i \prec k \prec j}  (i\stackrel{*}{\rightarrow} k)
 \end{displaymath}
 \end{enumerate}
 La condition (\ref{it:projectif}) est parfois relâchée pour traiter
@@ -3363,6 +3360,45 @@ Le problème d'analyse syntaxique consiste en général à résoudre~:
 où $\mathbf{D}(\mathbf{x})$ représente l'ensemble des dérivations possibles pour
 la phrase à analyser.
 
+Les dérivations complètes du système de transition arc-standard ont comme
+propriété que leur longueur est de $2n-1$ pas de dérivation pour une
+phrase de $w_0\ldots w_n$ mots~:  pour obtenir une analyse complète,
+il faut réaliser $n$ décalages et $n-1$ opérations d'arcs (gauche ou
+droite).
+Lorsqu'on ajoute une action {\bf stop} la longueur de la dérivation
+vaut $2n$.
+
+Cette propriété facilite l'usage du système arc-standard en
+combinaison avec une méthode de recherche de solutions en faisceau.
+En effet, on observe empriquement que le score d'une dérivation tel
+que donné par un modèle discriminant est à peu près linéairement
+corrélé à sa longueur~: plus une dérivation est longue, plus son score
+est élevé. Ici, comme toutes les dérivations concurrentes ont la même
+longueur, ce problème de biais lié à la longueur ne se manifeste pas
+(contrairement à la plupart des systèmes de transitions présentés par la suite).
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[0]
+\Function{ArcStandardBeamParse}{$\mathbf{x}$,K}
+\State ${\cal B} \gets \langle \epsilon, w_0\ldots w_n,\emptyset\rangle$
+\For  {$0\leq i < 2n-1$}
+\For {$c \in \mathop{\text{K-argmax}}_{c \in {\cal B}} \delta(c)$}
+\For{$t \in T$}\Comment{$T$ est l' ensemble des actions}
+\State $c' \gets t(c)$
+\State $\delta(c') \gets \delta(c) + \psi(c,t,\mathbf{x})$
+\State ${\cal B}' \gets {\cal B}\cup c'$
+\EndFor
+\EndFor
+\State ${\cal B} \gets {\cal B}'$
+\EndFor
+\State \Return $\mathop{\text{argmax}}_{c\in \cal B} \delta(c)$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-arc-standard}Algorithme d'analyse Arc Standard en
+faisceau}
+\end{algorithm}
+
+
 \paragraph{Estimation des paramètres}
 L'estimation des paramètres se réalise à partir d'un 
 corpus annoté $C = \mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$ qui est un
@@ -3377,7 +3413,10 @@ $(\mathbf{x}_i,\mathbf{y}_i)$, il faut transformer les arbres de
 référence $\mathbf{y}_i$ en dérivations.
 On réalise cette opération à l'aide d'un {\bf oracle} statique
 (Algorithme \ref{algo-AS-oracle}) qui permet de simuler l'analyse de référence en utilisant
-comme donnée $A$ l'ensemble des arcs de l'arbre de référence.
+comme donnée $A$ l'ensemble des arcs de l'arbre de référence. L'oracle
+permet également de mettre en évidence l'idée bottom-up du système arc-standard~: la
+création d'un arc vers un noeud $i$ exige que tous les dépendants 
+de $i$ soient déjà identifiés.
 
 \begin{algorithm}
 \scriptsize
@@ -3438,11 +3477,290 @@ $\hat{\mathbf{d}} \gets \mathop{\text{argmax}}_{\mathbf{d}\in
   en dépendances par transitions}
 \end{algorithm}
 
+
+\paragraph{Unicité de l'oracle (move elsewhere)}
+L'analyse par transitions suppose que chaque arbre de dépendance de
+référence $\mathbf{y}_i$ peut être transformé en une dérivation de
+référence $\mathbf{d}_i$. Autrement dit, on suppose une fonction $o :
+A \mapsto D$. 
+
+On peut remarquer que cette fonction n'est pas déterministe pour le
+système de transitions arc-standard~: plusieurs dérivations peuvent
+représenter le même arbre de dépendances.
+
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+$w_0$ \& $w_1$ \& $w_2$ \& $w_3$\\
+\end{deptext}
+\depedge[hide label]{1}{3}{ }
+\depedge[hide label]{3}{2}{ }
+ \depedge[hide label]{3}{4}{ }
+\end{dependency}
+\begin{tabular}{cccccc}
+S&S&LA&S&RA&RA\\
+S&S&S&RA&LA&RA\\
+\end{tabular}
+
  \paragraph{Problème d'approximation par recherche en faisceau}
-(TODO)
+L' algorithme \ref{perceptron-AS} est en général utilisé avec un
+algorithme de recherche en faisceau, ce qui a pour conséquence que la
+meilleure analyse prédite n'est pas nécessairement celle qui a le meilleur
+poids pour le modèle (celle-ci peut avoir été sortie prématurément du faisceau).
+
+Dans ce cas de figure, il est donc possible que l'algorithme
+d'estimation réalise une mise à jour des poids alors que sans
+l'approximation introduite par le faisceau
+le modèle aurait prédit la bonne analyse. Ce comportement peut
+perturber la descente de gradient jusqu'à causer une divergence.
+
+Pour garantir que la descente de gradient converge il faut garantir
+que la mise à jour a lieu lorsqu'il y a bien une violation effective de la marge
+et que celle-ci ne provient pas de l'approximation en faisceau.
+
+Pour cette raison on s'autorise dans la pratique à réaliser la mise à
+jour sur des sous-séquences de dérivation pour lesquelles on a la
+garantie que la marge est effectivement violée indépendamment des
+approximations introduites par le faisceau. Autrement dit une mise à
+jour valide respecte la condition suivante\footnote{
+La mise à jour invalide qui consiste à comparer la meilleure analyse complète
+dans le faisceau en fin d'analyse avec la référence ne vérifie pas cette condition dans tous les cas. 
+}~:
+\begin{equation}
+\Psi(\tilde{\mathbf{y}}^*_{0\ldots k}) > \Psi(\mathbf{y}_{0\ldots k})
+\end{equation}
+La méthode la plus utilisée en pratique est la mise à jour rapide
+({\bf early update}) où la mise à jour est réalisée sur des
+sous-dérivations dont le préfixe $0\ldots k$ correspond à l'étape de
+dérivation où la dérivation de référence sort du faisceau. Une méthode
+alternative est la mise à jour à violation maximale de la marge ({\bf max violation update}). 
+Dans ce cas on choisit $k$ tel que 
+\begin{displaymath}
+k = \mathop{\text{argmax}}_{0 \leq k
+ < 2n-1}\Psi(\tilde{\mathbf{y}}^*_{0\ldots k}) -
+\Psi(\mathbf{y}_{0\ldots k})
+\end{displaymath}
 
 \subsection{Modèle Arc-eager}
+
+Le modèle arc-eager est un modèle d'analyse dont les configurations
+sont des triplets $\langle \mathbf{S},\mathbf{B} ,  A\rangle$ où
+$\mathbf{S}$ est une pile, $\mathbf{B}$ une file et $A$ un ensemble d'arcs.
+La donnée à analyser $\mathbf{x} = w_0\ldots w_n$ est une séquence de mots
+dont le mot $w_0$ est par convention un mot artificiel qui représente
+la racine de l'arbre.
+
+L'algorithme (Figure \ref{fig-AE}) commence avec un état initial où la
+pile est vide et la file remplie de la séquence de mots. Il termine
+lorsque le buffer est vide. Contrairement au système arc-standard, ici
+le système essaye d'attacher les nouveaux mots le plus rapidement possible dans
+la structure~: les transitions left-arc et right-arc attachent le
+premier mot du buffer à la structure avant même qu'il ait été placé
+sur la pile. La transition de réduction qui supprime la tête de pile
+indique que le mot ne fera plus partie d'une relation de dépendance
+par la suite.  Quant à la transition de décalage, elle est plus classique. 
+\begin{figure}[htbp]
+\begin{displaymath}
+\begin{array}{rccll}
+\mathbf{init}  &\langle w_0 ,  w_1 \ldots w_n ,\emptyset \rangle\\
+\mathbf{but}  & \langle \mathbf{S} ,\epsilon , A \rangle\\
+\mathbf{shift} & \langle \mathbf{S} ,  w_i | \mathbf{B} , A   \rangle
+&\Rightarrow &\langle \mathbf{S} | w_i ,  \mathbf{B} , A   \rangle\\
+\mathbf{left-arc} &\langle \mathbf{S}| w_i , w_j|\mathbf{B} , A
+\rangle &\Rightarrow& \langle \mathbf{S}, w_j | \mathbf{B} , A \cup \{
+j\rightarrow i \}   \rangle & (i\not = w_0 \text{ et } \lnot \exists k
+(k\rightarrow i \in A) )\\
+\mathbf{right-arc }  &\langle \mathbf{S}|w_i , w_j | \mathbf{B} , A   \rangle
+&\Rightarrow & 
+\langle \mathbf{S}| w_i | w_j , \mathbf{B} , A \cup \{
+i \rightarrow j \}   \rangle
+&\lnot\exists k (k\rightarrow j \in A)\\
+\mathbf{reduce}&\langle \mathbf{S}|w_i , \mathbf{B} , A   \rangle
+&\Rightarrow & 
+\langle \mathbf{S} , \mathbf{B} , A   \rangle & 
+\exists k (k\rightarrow i \in A)
+\end{array}
+\end{displaymath}
+\caption{\label{fig-AE}Le système de transitions arc eager}
+\end{figure}
+
+Le système arc-eager offre des garanties plus faibles que
+arc-standard~: le but est satisfait dès que le buffer est vide. 
+En particulier il ne garantit pas que l'analyse renvoie
+un arbre de dépendances unique. Il renvoie en général une forêt~:
+plusieurs racines sont possibles. Il est par conséquent classique
+d'ajouter une étape de finalisation dans les implémentations qui
+relie l'ensemble des racines résultantes à $w_0$.
+
+
+\paragraph{Dérivations et pondérations} 
+Un pas de dérivation est le passage d'une configuration $c_i$ à une
+configuration $c_{i+1}$ en utilisant une transition (ou action) $t\in
+\{shift, left-arc,right-arc, reduce,stop\}$. L'action {\bf stop} est exécutée
+uniquement pour terminer l'analyse lorsque le buffer est vide.
+
+Une séquence de dérivation, ou {\bf dérivation}, est une séquence de la
+forme $\mathbf{d} = (c_0, t_0) \ldots (c_m,t_m)$. On pondère une dérivation en
+faisant l'hypothèse que son score se décompose par la somme~:
+\begin{equation}
+\Psi(\mathbf{d}) = \sum_{i=0}^m  \psi(c_i,t_i,\mathbf{x})
+\end{equation}
+où $\mathbf{x}$ représente la séquence de mots à analyser.
+Le problème d'analyse syntaxique consiste en général à résoudre~:
+\begin{equation}
+{\mathbf{\hat{d}}} = \mathop{\text{argmax}}_{\mathbf{d} \in \mathbf{D}(\mathbf{x})} \Psi(\mathbf{d}) 
+\end{equation}
+où $\mathbf{D}(\mathbf{x})$ représente l'ensemble des dérivations possibles pour
+la phrase à analyser.
+
+Les dérivations complètes du système de transition arc-eager ont comme
+propriété que leur longueur vaut {\bf au plus} $2n-1$ pas de dérivation pour une
+phrase de $w_0\ldots w_n$ mots~: il est en effet possible de terminer
+une analyse en $n$ étapes (après $n$ décalages tous les mots sont
+racines d'un arbre différent et l'analyse est potentiellement terminée). 
+
+Cette propriété complique l'usage du système arc-eager en
+combinaison avec une méthode de recherche de solutions en faisceau.
+En effet il faut pouvoir comparer des dérivations de longueurs
+différentes, ce qui est généralement problématique tant pour la 
+gestion du faisceau que de la gestion de la corrélation entre longueur
+de la séquence et score de la dérivation.
+Pour ces raisons, le système arc-eager est habituellement utilisé avec
+un modèle de recherche de solutions qui est glouton et une
+approximation par des modèles statistiques locaux.
+Il faut finalement remarquer que dans le contexte où le modèle est glouton, la
+procédure d'analyse syntaxique est particulièrement simple (Algorithme
+\ref{algo-arceager}).
+\begin{algorithm}[htbp]
+\begin{algorithmic}[0]
+\Function{ArcEagerGreedyParse}{$\mathbf{x}$}
+\State $c \gets \langle w_0, w_1\ldots w_n,\emptyset\rangle$
+\While {$c_{buffer} \not = \emptyset$}
+\State $t \gets \mathop{\text{argmax}}_{t\in T} \psi(c,t,\mathbf{x})$
+\Comment{$T$ est l'ensemble des actions}
+\State $c \gets t(c)$
+\EndWhile
+\State \Return $c$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-arceager}Algorithme d'analyse Arc Eager glouton}
+\end{algorithm}
+
+
+
+
+\paragraph{Estimation des paramètres par modèle local}
+L'estimation des paramètres se réalise à partir d'un 
+corpus annoté $C = \mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$ qui est un
+exemplaire de $N$ phrases où chaque séquence de mots $\mathbf{x}_i$
+est associée à un arbre de référence $\mathbf{y}_i$.
+
+Dans le contexte d'un modèle local, la procédure d'apprentissage consiste à estimer un vecteur de
+paramètres $\mathbf{w}$ de telle sorte que pour chaque configuration
+d'analyse identifiable dans les données de référence, la prédiction de
+l'algorithme soit la plus similaire à l'action de référence trouvée
+dans les données. Cette procédure suppose de transformer un treebank
+$\mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$
+en une séquence de couples $\mathop{(x_i,y_i)}_{i=1}^{N'}$
+de configurations $x_i$ et d'actions $y_i$ à prédire.
+
+On réalise cette opération à l'aide d'un {\bf oracle} statique
+(Algorithme \ref{algo-AE-oracle}) qui permet de simuler l'analyse de référence en utilisant
+comme donnée $A$ l'ensemble des arcs de l'arbre de référence. L'oracle
+permet également de mettre en évidence l'idée bottom-up du système arc-standard~: la
+création d'un arc vers un noeud $i$ exige que tous les dépendants 
+de $i$ soient déjà identifiés.
+
+\begin{algorithm}
+\scriptsize
+\begin{algorithmic}[0]
+\Function{ArcEagerStaticOracle}{$\mathbf{S},\mathbf{B},A, A_{ref}$}
+\If{ $\mathbf{S} | i  $ {\bf and} $j | \mathbf{B}$} \Comment{Il y a au moins 1 élément sur la
+pile et 1 sur la file}
+\If{$j\rightarrow i \in A_{ref}$ {\bf and} $i\not = 0$}
+\State \Return $\mathbf{left-arc}$
+\ElsIf{$i\rightarrow j \in A_{ref}$}
+\State \Return $\mathbf{right-arc}$
+\ElsIf{$\exists k (k\rightarrow i \in A)$ {\bf and} $\forall
+  k (i\rightarrow k) \in A_{ref} \Rightarrow (i\rightarrow k) \in A$}
+\State \Return $\mathbf{reduce}$
+\Else
+\State\Return $\mathbf{shift}$
+\EndIf
+\EndIf
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-AE-oracle} Oracle statique pour le système arc
+  eager}
+\end{algorithm}
+Le jeu de données transformé où les arbres $\mathbf{y}_i$ sont
+transformés en dérivation $\mathbf{d}_i$ prend alors la forme suivante.
+$C = \mathop{(\mathbf{x}_i,\mathbf{d}_i)}^N_{i=1}$. L'estimation des
+paramètres se fait en général avec un modèle à large marge car
+l'utilisation d'un {\sc crf} exige un facteur de
+normalisation qui demande de calculer l'ensemble des dérivations
+possibles pour une phrase donnée, ce qui est trop coûteux en temps de calcul.
+On donne ici une méthode d'estimation à l'aide de l'algorithme du
+perceptron (Algorithme \ref{perceptron-AE}).
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{arc-standard-perceptron}{$\mathop{(\mathbf{x}_i,\mathbf{d}_i)}^N_{i=1}$,$E$}
+\State $\mathbf{w} \gets \bar{\mathbf{0}}$
+\For{$1\leq e \leq E $}
+\For{$1\leq i \leq N$}
+\State
+$\hat{\mathbf{d}} \gets \mathop{\text{argmax}}_{\mathbf{d}\in
+  \mathbf{D}(\mathbf{x})} 
+\sum_{j = 0}^m \mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,c_j,t_j)$
+\Comment{Parsing}
+\If{$\hat{\mathbf{d}} \not = \mathbf{d}_i$}
+     \State $\mathbf{w} \gets  \mathbf{w} +
+     \left[ \sum_{j=0}^m \boldsymbol\Phi(\mathbf{x}_i,c_j,t_j) 
+       - \sum_{j=0}^m \boldsymbol\Phi(\mathbf{x}_i,\hat{c}_j,\hat{t}_j)   \right]$ 
+\EndIf
+\EndFor
+\EndFor
+\State \Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{perceptron-AE}Perceptron pour un système d'analyse
+  en dépendances par transitions}
+\end{algorithm}
+
+
 \subsection{Modèle de Covington}
+
+Idée : $\mathbf{S}_1$ = mots déjà traités
+$\mathbf{S}_2$ = liste qui contient successivement les candidats à
+attacher à $w_j$
+
+
+\begin{figure}[htbp]
+\begin{displaymath}
+\begin{array}{rccll}
+\mathbf{init}  &\langle \epsilon , \epsilon , w_0 \ldots w_n ,\emptyset \rangle\\
+\mathbf{but}  & \langle \epsilon , w_0|\mathbf{S}_2 , w_n, A \rangle && (to check)\\
+\mathbf{shift} & \langle \mathbf{S}_1, \mathbf{S}_2 ,  w_i | \mathbf{B} , A   \rangle
+&\Rightarrow &\langle  \mathbf{S}_1\mathbf{S}_2 | w_i , \epsilon ,
+\mathbf{B} , A   \rangle\\
+
+\mathbf{no-arc}& \langle \mathbf{S}_1 | w_i , \mathbf{S}_2 , \mathbf{B} , A \rangle 
+&\Rightarrow &\langle \mathbf{S}_1 ,  w_i |\mathbf{S}_2 ,\mathbf{B} , A\rangle \\
+
+\mathbf{left-arc}& \langle \mathbf{S}_1 | w_i , \mathbf{S}_2 , w_j | \mathbf{B} , A \rangle 
+&\Rightarrow &\langle \mathbf{S}_1 ,  w_i |\mathbf{S}_2 ,w_j|\mathbf{B} ,
+A \cup \{j\rightarrow i\}\rangle  
+(\lnot\exists k (k\rightarrow i  \in A) \land i \stackrel{*}{\rightarrow } j \not\in A*) \\
+
+\mathbf{right-arc}& \langle \mathbf{S}_1 | w_i , \mathbf{S}_2 , w_j | \mathbf{B} , A \rangle 
+&\Rightarrow &\langle \mathbf{S}_1 ,  w_i |\mathbf{S}_2 ,w_j|\mathbf{B} ,
+A \cup \{i\rightarrow j\}\rangle 
+(\lnot\exists k (k\rightarrow j  \in A) \land j \stackrel{*}{\rightarrow } i \not\in A*)
+\end{array}
+\end{displaymath}
+\caption{\label{fig-covington}Le système de transitions à pile partagée}
+\end{figure}
+
 
 \section{Analyse CKY}
 \subsection{La version naïve}
