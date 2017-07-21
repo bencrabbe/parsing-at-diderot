@@ -178,6 +178,7 @@ class ArcEagerTransitionParser:
         C = (tuple(),tuple(range(N)),tuple(),0.0) #A config is a hashable quadruple with score 
         candidates = [C]
         while candidates:
+            candidates.sort(key=lambda x:x[0][3],reverse=True)
             C = candidates[0][0]
             if  candidates[0][1] == ArcEagerTransitionParser.TERMINATE:
                 break
@@ -197,7 +198,6 @@ class ArcEagerTransitionParser:
             if not B:
                 candidates.append((self.terminate(C,sentence),ArcEagerTransitionParser.TERMINATE))
                 
-            candidates.sort(key=lambda x:x[0][3],reverse=True)
             
         S,B,A,score = C
         #connect any remaining dummy root to 0 
