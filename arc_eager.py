@@ -200,12 +200,12 @@ class ArcEagerTransitionParser:
             candidates.sort(key=lambda x:x[0][3],reverse=True)
             
         S,B,A,score = C
-        #connect to 0 any dummy root
+        #connect any remaining dummy root to 0 
         As = set(A)
         for s in S:
             if not any([(k,s) in As for k in range(N)]):
                 As.add((0,s))
-        return DependencyTree(tokens=sentence,edges=As)
+        return DependencyTree(tokens=sentence,edges=list(As))
 
 
     def score(self,configuration,action,tokens):
