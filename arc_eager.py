@@ -183,27 +183,22 @@ class ArcEagerTransitionParser:
                 break
             S,B,A,score = C
             candidates = []
-            #shift
             if B:
                 candidates.append((self.shift(C,sentence),ArcEagerTransitionParser.SHIFT))
-            #leftarc
+                j = B[0]
+                if not any([(k,j) in A for k in range(N)]):
+                    candidates.append((self.rightarc(C,sentence),ArcEagerTransitionParser.RIGHTARC))
             if S:
                 i = S[-1]     
                 if S and B and i != 0 and not any([(k,i) in A for k in range(N)]): 
                     candidates.append((self.leftarc(C,sentence),ArcEagerTransitionParser.LEFTARC))
-            #rightarc
-            if B:
-                j = B[0]
-                if not any([(k,j) in A for k in range(N)]):
-                    candidates.append((self.rightarc(C,sentence),ArcEagerTransitionParser.RIGHTARC))
-            #reduce
-            i = S[-1]
-            if any([(k,i) in A for k in range(N)]):
-                candidates.append((self.reduce_config(C,sentence),ArcEagerTransitionParser.REDUCE))
-            #terminate
+                if any([(k,i) in A for k in range(N)]):
+                    candidates.append((self.reduce_config(C,sentence),ArcEagerTransitionParser.REDUCE))
             if not B:
                 candidates.append((self.terminate(C,sentence),ArcEagerTransitionParser.TERMINATE))
+                
             candidates.sort(key=lambda x:x[0][3],reverse=True)
+            
         S,B,A,score = C
         #connect to 0 any dummy root
         As = set(A)
