@@ -3665,10 +3665,7 @@ de configurations $x_i$ et d'actions $y_i$ à prédire.
 
 On réalise cette opération à l'aide d'un {\bf oracle} statique
 (Algorithme \ref{algo-AE-oracle}) qui permet de simuler l'analyse de référence en utilisant
-comme donnée $A$ l'ensemble des arcs de l'arbre de référence. L'oracle
-permet également de mettre en évidence l'idée bottom-up du système arc-standard~: la
-création d'un arc vers un noeud $i$ exige que tous les dépendants 
-de $i$ soient déjà identifiés.
+comme donnée $A$ l'ensemble des arcs de l'arbre de référence. 
 
 \begin{algorithm}
 \scriptsize
@@ -3693,40 +3690,42 @@ pile et 1 sur la file}
   eager}
 \end{algorithm}
 Le jeu de données transformé où les arbres $\mathbf{y}_i$ sont
-transformés en dérivation $\mathbf{d}_i$ prend alors la forme suivante.
-$C = \mathop{(\mathbf{x}_i,\mathbf{d}_i)}^N_{i=1}$. L'estimation des
-paramètres se fait en général avec un modèle à large marge car
-l'utilisation d'un {\sc crf} exige un facteur de
-normalisation qui demande de calculer l'ensemble des dérivations
-possibles pour une phrase donnée, ce qui est trop coûteux en temps de calcul.
-On donne ici une méthode d'estimation à l'aide de l'algorithme du
+transformés en une séquence de couples $\mathop{(x_i,t_i)}_{i=1}^N$
+est utilisé pour entraîner tout modèle d'apprentissage approprié~:
+modèle à large marge local, modèle de régression logistique
+multinomiale ou réseau de neurones. Contrairement aux modèles
+structurés présentés précédemment, calculer le facteur de
+normalisation pour les modèles logistiques ne pose pas de problème
+particulier dans le cas des modèles locaux. On donne ici un exemple
+d'algorithme d'estimation
+de paramètres  à l'aide de l'algorithme du
 perceptron (Algorithme \ref{perceptron-AE}).
 
 \begin{algorithm}[htbp]
 \begin{algorithmic}[1]
-\Function{arc-standard-perceptron}{$\mathop{(\mathbf{x}_i,\mathbf{d}_i)}^N_{i=1}$,$E$}
+\Function{arc-eager-local-perceptron}{$\mathop{(x_i,t_i)}^N_{i=1}$,$E$}
 \State $\mathbf{w} \gets \bar{\mathbf{0}}$
 \For{$1\leq e \leq E $}
 \For{$1\leq i \leq N$}
 \State
-$\hat{\mathbf{d}} \gets \mathop{\text{argmax}}_{\mathbf{d}\in
-  \mathbf{D}(\mathbf{x})} 
-\sum_{j = 0}^m \mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,c_j,t_j)$
-\Comment{Parsing}
-\If{$\hat{\mathbf{d}} \not = \mathbf{d}_i$}
+$\hat{t} \gets \mathop{\text{argmax}}_{t\in
+  T}  \mathbf{w}^T \boldsymbol\Phi(c_i,t)$
+\If{$\hat{t} \not = t_i$}
      \State $\mathbf{w} \gets  \mathbf{w} +
-     \left[ \sum_{j=0}^m \boldsymbol\Phi(\mathbf{x}_i,c_j,t_j) 
-       - \sum_{j=0}^m \boldsymbol\Phi(\mathbf{x}_i,\hat{c}_j,\hat{t}_j)   \right]$ 
+     \left[ \boldsymbol\Phi(c_j,t_j) 
+       - \boldsymbol\Phi(\hat{c}_j,\hat{t}_j)   \right]$ 
 \EndIf
 \EndFor
 \EndFor
 \State \Return $\mathbf{w}$
 \EndFunction
 \end{algorithmic}
-\caption{\label{perceptron-AE}Perceptron pour un système d'analyse
-  en dépendances par transitions}
+\caption{\label{perceptron-AE}Perceptron pour un système à
+  apprentissage local}
 \end{algorithm}
 
+\paragraph{Unicité de la dérivation et oracles dynamiques}
+TODO
 
 \subsection{Modèle de Covington}
 
