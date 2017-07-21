@@ -128,6 +128,8 @@ class ArcEagerTransitionParser:
                 C = self.leftarc(C,sentence)
             elif action == ArcEagerTransitionParser.RIGHTARC:
                 C = self.rightarc(C,sentence)
+            elif action == ArcEagerTransitionParser.REDUCE:
+                C = self.reduce_config(C,sentence)
             elif action ==  ArcEagerTransitionParser.TERMINATE:
                 C = self.terminate(C,sentence)
 
@@ -157,7 +159,7 @@ class ArcEagerTransitionParser:
         i,j = S[-1],B[0]
         return (S+[j],B[1:], A + ((i,j),),score+self.score(configuration,ArcEagerTransitionParser.RIGHTARC,tokens)) 
 
-    def reduce(self,configuration,tokens):
+    def reduce_config(self,configuration,tokens):
         S,B,A,score = configuration
         i = S[-1]
         return (S,B,A,score+self.score(configuration,ArcEagerTransitionParser.REDUCE,tokens))
@@ -172,41 +174,36 @@ class ArcEagerTransitionParser:
         Greedy parsing
         @param sentence: a list of tokens
         """
-        
-        actions = [ArcEagerTransitionParser.LEFTARC,\
-                   ArcEagerTransitionParser.RIGHTARC,\
-                   ArcEagerTransitionParser.SHIFT,\
-                   ArcEagerTransitionParser.REDUCE,\
-                   ArcEagerTransitionParser.TERMINATE]
-
         N = len(sentence)
         C = (tuple(),tuple(range(N)),tuple(),0.0) #A config is a hashable quadruple with score 
-                
-        for i in range(2*N): #because 2N-1+terminate
-                S,B,A,score = C
-                candidates = []
-                #shift
-                if B:
-                    candidates.append(self.shift(C,sentence))
-                #leftarc
+        candidates = [C]
+        while candidates:
+            C = candidates[0][0]
+            if  candidates[0][1] == ArcEagerTransitionParser.TERMINATE:
+                break
+            S,B,A,score = C
+            candidates = []
+            #shift
+            if B:
+                candidates.append((self.shift(C,sentence),ArcEagerTransitionParser.SHIFT))
+            #leftarc
+            if S:
                 i = S[-1]     
                 if S and B and i != 0 and not any([(k,i) in A for k in range(N)]): 
-                    candidates.append(self.leftarc(C,sentence))
-                #rightarc
+                    candidates.append((self.leftarc(C,sentence),ArcEagerTransitionParser.LEFTARC))
+            #rightarc
+            if B:
                 j = B[0]
                 if not any([(k,j) in A for k in range(N)]):
-                    candidates.append(self.rightarc(C,sentence))
-                    elif a == ArcEagerTransitionParser.REDUCE:
-                #reduce
-                i = S[-1]
-                if any([(k,i) in A for k in range(N)]):
-                    candidates.append(self.reduce(C,sentence))
-                    if a == ArcEagerTransitionParser.TERMINATE:
-                #terminate
-                if not B:
-                    candidates.append(self.terminate(C,sentence))
-            candidates.sort(key=lambda x:x[3],reverse=True)
-            C = candidates[0]
+                    candidates.append((self.rightarc(C,sentence),ArcEagerTransitionParser.RIGHTARC))
+            #reduce
+            i = S[-1]
+            if any([(k,i) in A for k in range(N)]):
+                candidates.append((self.reduce_config(C,sentence),ArcEagerTransitionParser.REDUCE))
+            #terminate
+            if not B:
+                candidates.append((self.terminate(C,sentence),ArcEagerTransitionParser.TERMINATE))
+            candidates.sort(key=lambda x:x[0][3],reverse=True)
         S,B,A,score = C
         #connect to 0 any dummy root
         As = set(A)
