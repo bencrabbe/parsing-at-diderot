@@ -99,7 +99,8 @@ class ArcEagerTransitionParser:
                 return ArcEagerTransitionParser.LEFTARC
             if  (i,j) in reference_arcs:
                 return ArcEagerTransitionParser.RIGHTARC
-        if S and any([(k,S[-1]) for k in all_words]):
+        if S and any([(k,S[-1]) for k in all_words])\
+            and all ([(S[-1],k) in A for k in all_words if (S[-1],k) in reference_arcs]):
             return ArcEagerTransitionParser.REDUCE
         if B:
             return ArcEagerTransitionParser.SHIFT
@@ -186,15 +187,17 @@ class ArcEagerTransitionParser:
             candidates = []
             if B:
                 candidates.append((self.shift(C,sentence),ArcEagerTransitionParser.SHIFT))
+            if S:
+                if any([(k,i) in A for k in range(N)]):
+                    candidates.append((self.reduce_config(C,sentence),ArcEagerTransitionParser.REDUCE))
+            if S and B:
+                i = S[-1]     
+                if i != 0 and not any([(k,i) in A for k in range(N)]): 
+                    candidates.append((self.leftarc(C,sentence),ArcEagerTransitionParser.LEFTARC))
                 j = B[0]
                 if not any([(k,j) in A for k in range(N)]):
                     candidates.append((self.rightarc(C,sentence),ArcEagerTransitionParser.RIGHTARC))
-            if S:
-                i = S[-1]     
-                if S and B and i != 0 and not any([(k,i) in A for k in range(N)]): 
-                    candidates.append((self.leftarc(C,sentence),ArcEagerTransitionParser.LEFTARC))
-                if any([(k,i) in A for k in range(N)]):
-                    candidates.append((self.reduce_config(C,sentence),ArcEagerTransitionParser.REDUCE))
+                    
             if not B:
                 candidates.append((self.terminate(C,sentence),ArcEagerTransitionParser.TERMINATE))
                 

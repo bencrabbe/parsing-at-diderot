@@ -3677,12 +3677,16 @@ pile et 1 sur la file}
 \State \Return $\mathbf{left-arc}$
 \ElsIf{$i\rightarrow j \in A_{ref}$}
 \State \Return $\mathbf{right-arc}$
-\ElsIf{$\exists k (k\rightarrow i \in A)$ {\bf and} $\forall
-  k (i\rightarrow k) \in A_{ref} \Rightarrow (i\rightarrow k) \in A$}
-\State \Return $\mathbf{reduce}$
-\Else
-\State\Return $\mathbf{shift}$
 \EndIf
+\EndIf
+\If {$\mathbf{S} | i$}\Comment{Il y a au moins 1 élément sur la pile}\
+\If{$\exists k (k\rightarrow i \in A)$ {\bf and} $\forall
+  k' (i\rightarrow k') \in A_{ref} \Rightarrow (i\rightarrow k') \in A$}
+\State \Return $\mathbf{reduce}$
+\EndIf
+\EndIf
+\If {$j | \mathbf{B}$}\Comment{Il y a au moins 1 élément dans le
+  buffer}\State\Return $\mathbf{shift}$
 \EndIf
 \EndFunction
 \end{algorithmic}
