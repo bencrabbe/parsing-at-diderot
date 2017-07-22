@@ -111,7 +111,7 @@ class ArcEagerTransitionParser:
         """
         This generates a static oracle reference derivation from a sentence
         @param ref_parse: a DependencyTree object
-        @return : the oracle derivation as a list of (Configuration,action) couples
+        @return : the oracle derivation as a list of (Configuration,action,toklist) triples
         """
         sentence = ref_parse.tokens
         edges    = set(ref_parse.edges)
@@ -119,7 +119,7 @@ class ArcEagerTransitionParser:
         
         C = ((0,),tuple(range(1,len(sentence))),tuple(),0.0)       #A config is a hashable quadruple with score 
         action = ArcEagerTransitionParser.static_oracle(C,edges,N)
-        derivation.append((C,action))
+        derivation.append((C,action,sentence))
 
         while C[1] and action != ArcEagerTransitionParser.TERMINATE:
                         
@@ -135,7 +135,7 @@ class ArcEagerTransitionParser:
                 C = self.terminate(C,sentence)
 
             action = ArcEagerTransitionParser.static_oracle(C,edges,N)
-            derivation.append((C,action))
+            derivation.append((C,action,sentence))
                             
         return derivation
                 
@@ -169,7 +169,38 @@ class ArcEagerTransitionParser:
         S,B,A,score = configuration
         return (S,B,A,score+self.score(configuration,ArcEagerTransitionParser.TERMINATE,tokens))        
 
+    
+    def predict_local(self,configuration,sentence):
+        """
+        Statistical prediction of an action given a configuration
+        @param configuration: a tuple (S,B,A,score)
+        @param sentence: a list of tokens
+        @return (new_config,action_performed)
+        """
+        S,B,A,score = configuration
+        candidates = []
+        if B:
+            candidates.append((self.shift(C,sentence),ArcEagerTransitionParser.SHIFT))
+        if S:
+            if any([(k,i) in A for k in range(N)]):
+                candidates.append((self.reduce_config(C,sentence),ArcEagerTransitionParser.REDUCE))
+        if S and B:
+            i = S[-1]     
+            if i != 0 and not any([(k,i) in A for k in range(N)]): 
+                candidates.append((self.leftarc(C,sentence),ArcEagerTransitionParser.LEFTARC))
+            j = B[0]
+            if not any([(k,j) in A for k in range(N)]):
+                candidates.append((self.rightarc(C,sentence),ArcEagerTransitionParser.RIGHTARC))
+        if not B:
+            candidates.append((self.terminate(C,sentence),ArcEagerTransitionParser.TERMINATE))
 
+        if candidates:
+            candidates.sort(key=lambda x:x[0][3],reverse=True)
+            return candidates[0]    
+        else: #emergency exit when we have no candidate
+            return (C,ArcEagerTransitionParser.TERMINATE)
+            
+    
     def parse_one(self,sentence):
         """
         Greedy parsing
@@ -177,38 +208,17 @@ class ArcEagerTransitionParser:
         """
         N = len(sentence)
         C = (tuple(),tuple(range(N)),tuple(),0.0) #A config is a hashable quadruple with score 
-        candidates = [C]
-        while candidates:
-            candidates.sort(key=lambda x:x[0][3],reverse=True)
-            C = candidates[0][0]
-            if  candidates[0][1] == ArcEagerTransitionParser.TERMINATE:
-                break
-            S,B,A,score = C
-            candidates = []
-            if B:
-                candidates.append((self.shift(C,sentence),ArcEagerTransitionParser.SHIFT))
-            if S:
-                if any([(k,i) in A for k in range(N)]):
-                    candidates.append((self.reduce_config(C,sentence),ArcEagerTransitionParser.REDUCE))
-            if S and B:
-                i = S[-1]     
-                if i != 0 and not any([(k,i) in A for k in range(N)]): 
-                    candidates.append((self.leftarc(C,sentence),ArcEagerTransitionParser.LEFTARC))
-                j = B[0]
-                if not any([(k,j) in A for k in range(N)]):
-                    candidates.append((self.rightarc(C,sentence),ArcEagerTransitionParser.RIGHTARC))
-                    
-            if not B:
-                candidates.append((self.terminate(C,sentence),ArcEagerTransitionParser.TERMINATE))
-                
-            
+        action = None
+        while action != ArcEagerTransitionParser.TERMINATE:
+            C,action = self.predict_local(C,sentence)
+
+        #Connects any remaining dummy root to 0 
         S,B,A,score = C
-        #connect any remaining dummy root to 0 
-        As = set(A)
+        Aset = set(A)
         for s in S:
-            if not any([(k,s) in As for k in range(N)]):
-                As.add((0,s))
-        return DependencyTree(tokens=sentence,edges=list(As))
+            if not any([(k,s) in Aset for k in range(N)]):
+                Aset.add((0,s))
+        return DependencyTree(tokens=sentence,edges=list(Aset))
 
 
     def score(self,configuration,action,tokens):
@@ -266,41 +276,30 @@ class ArcEagerTransitionParser:
         return sum_acc/N
 
         
-    def train(self,dataset,step_size=1.0,max_epochs=100,beam_size=4):
+    def train(self,treebank,step_size=1.0,max_epochs=100):
         """
-        @param dataset : a list of dependency trees
+        @param treebank : a list of dependency trees
         """
-        #TODO
         N = len(dataset)
-        sequences = list([ (dtree.tokens,self.oracle_derivation(dtree)) for dtree in dataset])
-        
+        dataset = []
+        for dtree in treebank:
+            dataset.extend(self.static_oracle_derivation(dtree))
+            
         for e in range(max_epochs):
             loss = 0.0
-            for tokens,ref_derivation in sequences:
-                pred_beam = self.parse_one(tokens,beam_size,get_beam=True)
-                (update, ref_prefix,pred_prefix) = self.early_prefix(ref_derivation,pred_beam)
-                #print('R',ref_derivation)
-                #print('P',pred_prefix)
-                #self.test(dataset,beam_size)
-
-                if update:
-                    #print (pred_prefix)
+            for ref_config,ref_action,tokens in dataset:
+                pred_config,pred_action = self.predict_local(configuration,tokens)
+                if ref_action != pred_action:
                     loss += 1.0
                     delta_ref = SparseWeightVector()
-                    current_config = ref_prefix[0][1]
-                    for action,config in ref_prefix:
-                        S,B,A,score = current_config
-                        x_repr = self.__make_config_representation(S,B,tokens)
-                        delta_ref += SparseWeightVector.code_phi(x_repr,action)
-                        current_config = config
-                        
+                    S,B,A,score = ref_config
+                    x_repr = self.__make_config_representation(S,B,tokens)
+                    delta_ref += SparseWeightVector.code_phi(x_repr,ref_action)
+                                
                     delta_pred = SparseWeightVector()
-                    current_config = pred_prefix[0][1]
-                    for action,config in pred_prefix:
-                        S,B,A,score = current_config
-                        x_repr = self.__make_config_representation(S,B,tokens)
-                        delta_pred += SparseWeightVector.code_phi(x_repr,action)
-                        current_config = config
+                    S,B,A,score = pred_config
+                     x_repr = self.__make_config_representation(S,B,tokens)
+                    delta_pred += SparseWeightVector.code_phi(x_repr,action)
 
                     self.model += step_size*(delta_ref-delta_pred)
             print('Loss = ',loss, "%Exact match = ",(N-loss)/N)
