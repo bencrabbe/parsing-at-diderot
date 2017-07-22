@@ -208,7 +208,7 @@ class ArcEagerTransitionParser:
         @param sentence: a list of tokens
         """
         N = len(sentence)
-        C = (tuple(),tuple(range(N)),tuple(),0.0) #A config is a hashable quadruple with score 
+        C = ((0,),tuple(range(1,N)),tuple(),0.0) #A config is a hashable quadruple with score 
         action = None
         while action != ArcEagerTransitionParser.TERMINATE:
             C,action = self.predict_local(C,sentence)
