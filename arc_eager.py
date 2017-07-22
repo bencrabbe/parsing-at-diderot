@@ -200,8 +200,7 @@ class ArcEagerTransitionParser:
             return candidates[0]    
         else: #emergency exit when we have no candidate
             return (C,ArcEagerTransitionParser.TERMINATE)
-            
-    
+
     def parse_one(self,sentence):
         """
         Greedy parsing
@@ -226,7 +225,7 @@ class ArcEagerTransitionParser:
         """
         Computes the prefix score of a derivation
         @param configuration : a quintuple (S,B,A,score,history)
-        @param action: an action label in {LEFTARC,RIGHTARC,TERMINATE,SHIFT}
+        @param action: an action label in {LEFTARC,RIGHTARC,REDUCE,TERMINATE,SHIFT}
         @param tokens: the x-sequence of tokens to be parsed
         @return a prefix score
         """
