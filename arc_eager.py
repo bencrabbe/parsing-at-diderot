@@ -119,10 +119,10 @@ class ArcEagerTransitionParser:
         
         C = ((0,),tuple(range(1,len(sentence))),tuple(),0.0)       #A config is a hashable quadruple with score 
         action = ArcEagerTransitionParser.static_oracle(C,edges,N)
-        derivation.append((C,action,sentence))
+        derivation = [ (C,action,sentence) ]
 
         while C[1] and action != ArcEagerTransitionParser.TERMINATE:
-                        
+            #print(C,action)
             if action ==  ArcEagerTransitionParser.SHIFT:
                 C = self.shift(C,sentence)
             elif action == ArcEagerTransitionParser.LEFTARC:
@@ -158,12 +158,11 @@ class ArcEagerTransitionParser:
     def rightarc(self,configuration,tokens):
         S,B,A,score = configuration
         i,j = S[-1],B[0]
-        return (S+[j],B[1:], A + ((i,j),),score+self.score(configuration,ArcEagerTransitionParser.RIGHTARC,tokens)) 
+        return (S+(j,),B[1:], A + ((i,j),),score+self.score(configuration,ArcEagerTransitionParser.RIGHTARC,tokens)) 
 
     def reduce_config(self,configuration,tokens):
         S,B,A,score = configuration
-        i = S[-1]
-        return (S,B,A,score+self.score(configuration,ArcEagerTransitionParser.REDUCE,tokens))
+        return (S[:-1],B,A,score+self.score(configuration,ArcEagerTransitionParser.REDUCE,tokens))
     
     def terminate(self,configuration,tokens):
         S,B,A,score = configuration
@@ -177,22 +176,24 @@ class ArcEagerTransitionParser:
         @param sentence: a list of tokens
         @return (new_config,action_performed)
         """
+        N = len(sentence)
         S,B,A,score = configuration
         candidates = []
         if B:
-            candidates.append((self.shift(C,sentence),ArcEagerTransitionParser.SHIFT))
+            candidates.append((self.shift(configuration,sentence),ArcEagerTransitionParser.SHIFT))
         if S:
+            i = S[-1]    
             if any([(k,i) in A for k in range(N)]):
-                candidates.append((self.reduce_config(C,sentence),ArcEagerTransitionParser.REDUCE))
+                candidates.append((self.reduce_config(configuration,sentence),ArcEagerTransitionParser.REDUCE))
         if S and B:
             i = S[-1]     
             if i != 0 and not any([(k,i) in A for k in range(N)]): 
-                candidates.append((self.leftarc(C,sentence),ArcEagerTransitionParser.LEFTARC))
+                candidates.append((self.leftarc(configuration,sentence),ArcEagerTransitionParser.LEFTARC))
             j = B[0]
             if not any([(k,j) in A for k in range(N)]):
-                candidates.append((self.rightarc(C,sentence),ArcEagerTransitionParser.RIGHTARC))
+                candidates.append((self.rightarc(configuration,sentence),ArcEagerTransitionParser.RIGHTARC))
         if not B:
-            candidates.append((self.terminate(C,sentence),ArcEagerTransitionParser.TERMINATE))
+            candidates.append((self.terminate(configuration,sentence),ArcEagerTransitionParser.TERMINATE))
 
         if candidates:
             candidates.sort(key=lambda x:x[0][3],reverse=True)
@@ -216,7 +217,7 @@ class ArcEagerTransitionParser:
         S,B,A,score = C
         Aset = set(A)
         for s in S:
-            if not any([(k,s) in Aset for k in range(N)]):
+            if s!= 0 and not any([(k,s) in Aset for k in range(N)]):
                 Aset.add((0,s))
         return DependencyTree(tokens=sentence,edges=list(Aset))
 
@@ -260,7 +261,7 @@ class ArcEagerTransitionParser:
         tag_trigrams = list(zip(taglist,taglist[1:],taglist[2:]))
         return word_bigrams + tag_bigrams + word_trigrams + tag_trigrams
     
-    def test(self,dataset,beam_size=4):
+    def test(self,dataset):
         """
         @param dataset: a list of DependencyTrees
         @param beam_size: size of the beam
@@ -269,7 +270,7 @@ class ArcEagerTransitionParser:
         sum_acc = 0.0
         for ref_tree in dataset:
             tokens    = ref_tree.tokens
-            pred_tree = self.parse_one(tokens,beam_size)
+            pred_tree = self.parse_one(tokens)
             print(pred_tree)
             print()
             sum_acc   += ref_tree.accurracy(pred_tree)
@@ -280,15 +281,14 @@ class ArcEagerTransitionParser:
         """
         @param treebank : a list of dependency trees
         """
-        N = len(dataset)
         dataset = []
         for dtree in treebank:
             dataset.extend(self.static_oracle_derivation(dtree))
-            
+        N = len(dataset)
         for e in range(max_epochs):
             loss = 0.0
             for ref_config,ref_action,tokens in dataset:
-                pred_config,pred_action = self.predict_local(configuration,tokens)
+                pred_config,pred_action = self.predict_local(ref_config,tokens)
                 if ref_action != pred_action:
                     loss += 1.0
                     delta_ref = SparseWeightVector()
@@ -297,12 +297,12 @@ class ArcEagerTransitionParser:
                     delta_ref += SparseWeightVector.code_phi(x_repr,ref_action)
                                 
                     delta_pred = SparseWeightVector()
-                    S,B,A,score = pred_config
-                     x_repr = self.__make_config_representation(S,B,tokens)
-                    delta_pred += SparseWeightVector.code_phi(x_repr,action)
+                    S,B,A,score = ref_config
+                    x_repr = self.__make_config_representation(S,B,tokens)
+                    delta_pred += SparseWeightVector.code_phi(x_repr,pred_action)
 
                     self.model += step_size*(delta_ref-delta_pred)
-            print('Loss = ',loss, "%Exact match = ",(N-loss)/N)
+            print('Loss = ',loss, "%Local accurracy = ",(N-loss)/N)
             if loss == 0.0:
                 return
 
@@ -331,6 +331,6 @@ istream = io.StringIO(test)
 istream2 =  io.StringIO(test2)
 d = DependencyTree.read_tree(istream)
 d2 = DependencyTree.read_tree(istream2)
-p = ArcStandardTransitionParser()
-p.train([d,d2],max_epochs=100,beam_size=4)
-print(p.test([d,d2],beam_size=4))
+p = ArcEagerTransitionParser()
+p.train([d,d2],max_epochs=10)
+print(p.test([d,d2]))
