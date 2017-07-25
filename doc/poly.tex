@@ -11,7 +11,7 @@
 \usepackage{amsfonts}
 \usepackage{latexsym}
 \usepackage{mathabx}
-
+\usepackage{bbm}
 \usepackage{algpseudocode}
 \usepackage{algorithm}
 \usepackage{tikz}
@@ -3290,9 +3290,9 @@ de la méthode de recherche de solution est compensé par la richesse de
 l'information stockée dans les configurations, ce qui permet de
 prendre des décisions très bien informées localement.
 
-\subsection{Modèle Arc-standard}
+\subsection{Système Arc-standard}
 
-Le modèle arc-standard est un modèle d'analyse dont les configurations
+Le système arc-standard est un modèle d'analyse dont les configurations
 sont des triplets $\langle \mathbf{S},\mathbf{B} ,  A\rangle$ où
 $\mathbf{S}$ est une pile, $\mathbf{B}$ une file et $A$ un ensemble d'arcs.
 La donnée à analyser $\mathbf{x} = w_0\ldots w_n$ est une séquence de mots
@@ -3478,16 +3478,18 @@ $\hat{\mathbf{d}} \gets \mathop{\text{argmax}}_{\mathbf{d}\in
 \end{algorithm}
 
 
-\paragraph{Unicité de l'oracle (move elsewhere)}
+\paragraph{Unicité de l'oracle}
 L'analyse par transitions suppose que chaque arbre de dépendance de
-référence $\mathbf{y}_i$ peut être transformé en une dérivation de
-référence $\mathbf{d}_i$. Autrement dit, on suppose une fonction $o :
-A \mapsto D$. 
+référence $\mathbf{y}_i$ peut être transformé en une unique dérivation de
+référence $\mathbf{d}_i$. Autrement dit, on suppose implicitement une fonction de la forme
+$A \mapsto D$. 
 
-On peut remarquer que cette fonction n'est pas déterministe pour le
+On peut toutefois remarquer que cette fonction n'est pas déterministe pour le
 système de transitions arc-standard~: plusieurs dérivations peuvent
 représenter le même arbre de dépendances.
 
+\begin{figure}[htbp]
+\begin{center}
 \begin{dependency}
 \begin{deptext}[column sep=.5cm]
 $w_0$ \& $w_1$ \& $w_2$ \& $w_3$\\
@@ -3496,10 +3498,19 @@ $w_0$ \& $w_1$ \& $w_2$ \& $w_3$\\
 \depedge[hide label]{3}{2}{ }
  \depedge[hide label]{3}{4}{ }
 \end{dependency}
-\begin{tabular}{cccccc}
-S&S&LA&S&RA&RA\\
-S&S&S&RA&LA&RA\\
+
+\begin{tabular}{l|cccccc}\toprule
+Dérivation A&S&S&LA&S&RA&RA\\
+Dérivation B & S&S&S&RA&LA&RA\\\bottomrule
 \end{tabular}
+\end{center}
+\caption{Dérivations multiples pour un arbre de dépendances avec le
+  système arc-standard}
+\end{figure}
+
+Cette observation illustre un problème du système arc-standard. On
+apprend un modèle qui apprend à prédire un sous-ensemble des
+dérivations qui correspondent aux arbres de référence.
 
  \paragraph{Problème d'approximation par recherche en faisceau}
 L' algorithme \ref{perceptron-AS} est en général utilisé avec un
@@ -3540,9 +3551,9 @@ k = \mathop{\text{argmax}}_{0 \leq k
 \Psi(\mathbf{y}_{0\ldots k})
 \end{displaymath}
 
-\subsection{Modèle Arc-eager}
+\subsection{Système Arc-eager}
 
-Le modèle arc-eager est un modèle d'analyse dont les configurations
+Le système arc-eager est un modèle d'analyse dont les configurations
 sont des triplets $\langle \mathbf{S},\mathbf{B} ,  A\rangle$ où
 $\mathbf{S}$ est une pile, $\mathbf{B}$ une file et $A$ un ensemble d'arcs.
 La donnée à analyser $\mathbf{x} = w_0\ldots w_n$ est une séquence de mots
@@ -3729,7 +3740,242 @@ $\hat{t} \gets \mathop{\text{argmax}}_{t\in
 \end{algorithm}
 
 \paragraph{Unicité de la dérivation et oracles dynamiques}
-TODO
+
+La procédure d'apprentissage local avec oracle statique 
+consiste à transformer un treebank $\mathop{(\mathbf{x}_i,\mathbf{y}_i)}^N_{i=1}$
+en une séquence de couples $\mathop{(x_i,y_i)}_{i=1}^{N'}$
+de configurations $x_i$ et d'actions $y_i$ à prédire.
+
+Cette transformation pose deux types de problèmes. D'une part, on
+suppose (a) qu'il existe une et une seule dérivation qui correspond à un
+arbre de dépendances, ce qui n'est pas toujours vrai (Figure \ref{fig-multi-deriv}). D'autre part (b) le modèle statistique est
+entraîné uniquement sur des couples configurations et actions
+$(x_i,y_i)$ de référence~: lorsque l'analyseur a commis une erreur en
+cours d'analyse, il se trouve potentiellement face à de nouvelles
+configurations qu'il n'aura jamais vues lors de
+l'apprentissage du modèle statistique.
+
+L'idée des oracles dynamiques consiste à corriger (a) et (b)
+en  fournissant à la procédure d'apprentissage 
+des couples $(x_i,y_i)$ qui proviennent des multiples dérivations
+potentielles de l'arbre de référence ou de couples issus de
+dérivations légèrement erronnées qui simulent l'état de l'analyseur lorsqu'il a commis
+une ou plusieurs erreurs d'analyse. Le but est de fournir à l'analyseur des données qui
+lui permettent d'éviter la propagation d'erreurs.
+
+\begin{figure}[htbp]
+\begin{center}
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+$w_0$ \& $w_1$ \& $w_2$ \& $w_3$\& $w_4$ \& $w_5$ \& $w_6$ \\
+\end{deptext}
+\depedge[hide label]{1}{3}{ }
+\depedge[hide label]{3}{2}{ }
+ \depedge[hide label]{3}{4}{ }
+ \depedge[hide label]{3}{4}{ }
+ \depedge[hide label]{3}{6}{ }
+ \depedge[hide label]{3}{7}{ }
+ \depedge[hide label]{6}{5}{ }
+\end{dependency}
+\begin{tabular}{l|ccccccccccc}\toprule
+Dérivation A&S&LA&RA&RA&S&LA&R&RA&R&RA\\
+Dérivation B&S&LA&RA&RA&R&S&LA&RA&R&RA\\\bottomrule
+\end{tabular}
+\end{center}
+\caption{\label{fig-multi-deriv}Dérivations multiples pour un arbre de dépendances}
+\end{figure}
+
+Un {\bf oracle dynamique} est une fonction qui étant donnée une
+configuration d'analyse et un arbre de référence donne l'ensemble des meilleures
+actions à réaliser pour minimiser l'erreur d'analyse.
+
+En notant $A_{ref}$ l'ensemble des arcs d'un arbre de dépendances de
+référence et $A$ l'ensemble des arcs d'une configuration donnée, on
+définit~:
+\begin{equation}
+{\cal L} (A_{ref},A) = |A_{ref} - A|
+\end{equation}
+Ce coût représente le nombre d'arcs de référence $A_{ref}$ qui sont
+absents de l'ensemble  $A$ des arcs de la configuration. 
+De plus, on dit qu'un ensemble d'arcs $A$ est atteignable depuis une
+configuration $c = \langle \mathbf{S},\mathbf{B},A'\rangle$, ce que
+l'on note $c\rightsquigarrow A$, si et seulement si il existe
+une séquence de transitions qui mène de $c$ à $c' = \langle \mathbf{S}',\mathbf{B}',A\rangle$
+\'Etant donnée une configuration $c$, une action $t$ et un arbre de
+référence $A_{ref}$, on définit le coût d'exécution d'une action comme 
+suit~:
+\begin{equation}
+\label{eq-odyn-objective}
+{\cal C}(c,t,A_{ref}) = \left(\mathop{\text{min}}_{A:t(c)\rightsquigarrow A} {\cal
+  L}(A_{ref},A) \right)- \left(\mathop{\text{min}}_{A:c\rightsquigarrow A} {\cal
+  L}(A_{ref},A)  \right) 
+\end{equation}
+Autrement dit, le coût d'une transition représente la différence de
+coût entre le meilleur arbre atteignable après avoir exécuté l'action $t$
+et le meilleur arbre atteignable avant d'avoir exécuté l'action $t$.
+
+Remarquons qu'il existe au moins une transition $t$ pour laquelle 
+${\cal C}(c,t,A_{ref}) = 0$. La raison est que si $A$ est atteignable
+depuis $c$ alors il existe nécessairement une transition qui permet
+d'y arriver. On peut donc définir la fonction indicatrice suivante~:
+\begin{equation}
+\label{eq-zerocost}
+o(c,t,A_{ref}) = \left\{
+\begin{array}{ll}
+1 & \text{si } {\cal C}(c,t,A_{ref}) = 0\\
+0 & \text{sinon} 
+\end{array}\right.
+\end{equation}
+\'Etant donnée une configuration d'analyse $c$, 
+l'ensemble des actions qui minimisent les erreurs d'analyse est
+l'ensemble des actions pour lequel (\ref{eq-zerocost}) est vrai, c'est-à-dire 
+ l'ensemble $Z = \{ t |  o(c,t,A_{ref})  = 1\}$. On peut se convaincre
+ que $Z$ est un ensemble de plus d'un élément en considérant la figure \ref{fig-multi-deriv}.
+
+\begin{algorithm}[htbp]
+\scriptsize
+\begin{algorithmic}[0]
+\Function{Dynamic-Perceptron-Arc-Eager}{$\mathop{(\mathbf{x}_i,\mathbf{y}_i)}_{i=1}^N,E$}
+\State $\mathbf{w} \gets \mathbf{0}$
+\For{$1\leq e \leq E$}
+\For{$1\leq i \leq N$}
+\State $A_{ref} \gets$ \Call{Arcs}{$\mathbf{y}_i$}
+\State $w_0\ldots w_n \gets \mathbf{x}_i$
+\State $c \gets \langle w_0 , w_1\ldots w_n, \epsilon \rangle $
+\While {$c_{buffer} \not = \emptyset$}
+\State $\hat{t} = \mathop{\text{argmax}}_{t\in T} \mathbf{w}^T \boldsymbol\Phi(c,t)$
+\State $Z \gets \{t | o(c,t,A_{ref}) = 1\}$
+\State $t_o \gets \mathop{\text{argmax}}_{t\in Z} \mathbf{w}^T \boldsymbol\Phi(c,t)$
+\If{$\hat{t} \not\in Z$}
+\State $\mathbf{w} \gets  \mathbf{w} + \boldsymbol\Phi(c,t_o) - \boldsymbol\Phi(c,\hat{t}) $
+\EndIf
+\State $t \gets  $\Call{Choose}{$e$,$\hat{t}$,$Z$}
+\State $c\gets t(c)$
+\EndWhile
+\EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-dynamic-oracle}Apprentissage par oracle dynamique pour un système arc eager pondéré par un perceptron}
+\end{algorithm}
+L'oracle dynamique est une fonction capable de nous dire quelles
+actions sont optimales dans une configuration donnée. On peut donc
+l'utiliser dans un scénario d'apprentissage comme illustré en
+Algorithme \ref{algo-dynamic-oracle} pour le cas du perceptron.
+La fonction de choix (notée {\sc Choose})  choisira $\hat{t}$ si $t\in
+Z$, sinon elle choisira un élément aléatoirement dans $Z$.
+
+On peut également modifier la fonction de choix pour faire explorer
+lors de l'apprentissage des configurations d'erreur. Dans ce contexte
+on décidera d'une stratégie d'exploration approriée des configurations
+d'erreur. Par exemple on pourra choisir une action $\hat{t} \not\in Z$
+ après un certain nombre d'époques et en fixant une certaine
+ probabilité de choisir entre l'action erronée ou sa correction prise
+ dans l'ensemble $Z$.
+
+\paragraph{Oracle dynamique pour le système arc-eager}
+La difficulté pour créer un oracle dynamique réside dans la résolution
+des problèmes de minimisation en équation (\ref{eq-odyn-objective})~:
+déterminer le meilleur arbre atteignable depuis une configuration $c =
+\langle \mathbf{S},\mathbf{B},A\rangle$ donnée n'est pas un problème
+algorithmiquement trivial pour la plupart
+des systèmes de transitions.
+
+Le système de transitions arc-eager a la propriété d'être
+{\sl arc-decomposable}, ce qui permet d'évaluer cette équation très
+efficacement. Pour comprendre cette propriété on définit au préalable deux notions,
+l'{\sl arc-reachability} et la {\sl tree-reachability}.
+On dit d'un ensemble d'arcs $A$ qu'il est atteignable ({\sl
+  tree-reachable}) depuis $c$ si et
+seulement si une séquence de transitions mène de $c$ à une
+configuration $c' = \langle \mathbf{S}',\mathbf{B}',A'\rangle$
+telle que $A= A'$. 
+On dit d'un arc $i \rightarrow j$ (resp. $j\rightarrow i$) qu'il est atteignable en $c$ si 
+$i \rightarrow j \in A$ ou que $i \in \mathbf{S} \cup \mathbf{B}$
+et $j \in \mathbf{B}$.
+On dit d'un système de transitions qu'il est arc décomposable si le
+problème de {\sl tree reachability} se réduit au problème d'{\sl arc reachability}.
+
+Un système arc décomposable a donc des propriétés qui permettent très
+facilement de détecter si un arc de référence est perdu en suivant une
+transition, 
+ce qui permet d'évaluer (\ref{eq-odyn-objective}) avec un faible coût
+en calculs. Contrairement au système arc-eager, le système arc
+standard ne possède
+pas cette propriété de décomposabilité, ce qui explique pourquoi c'est
+le premier qui est utilisé principalement avec des oracles dynamiques.
+
+\`A partir de là, on peut ainsi dériver un oracle dynamique pour le
+système arc-eager (Figure \ref{fig-eager-dynamic}). Considérons une configuration  $c = \langle
+\mathbf{S}|i, j|\mathbf{B},A\rangle$ et un ensemble d'arcs de
+référence $A_{ref}$. 
+
+
+\begin{figure}[htbp]
+\begin{tabular}{lcl}\toprule
+\multicolumn{3}{c}{$c = \langle \mathbf{S}|i,j|\mathbf{B},A\rangle$}\\\midrule
+$o(c,LA,A_{ref})$ &=&
+$\left\{ 
+\begin{array}{ll}
+0 &\text{si }\exists k \in \mathbf{B} |  i \rightarrow  k \in A_{ref} \lor  k
+\rightarrow  i \in A_{ref}  \\
+1 & \text{sinon}
+\end{array}
+\right.$\\
+$o(c,RA,A_{ref})$ &=&
+$\left\{ 
+\begin{array}{ll}
+0 &\text{si }\exists k \in \mathbf{B}\cup \mathbf{S} |  k \rightarrow
+j \in A_{ref}  \lor \exists k \in \mathbf{S} |  j \rightarrow  k \in A_{ref}  \\
+1 & \text{sinon}
+\end{array}
+\right.$\\
+$o(c,R,A_{ref})$ &=&
+$\left\{ 
+\begin{array}{ll}
+0 &\text{si } \exists k \in \mathbf{B} |  i \rightarrow  k \in A_{ref}  \\
+1 & \text{sinon}
+\end{array}
+\right.$\\
+$o(c,S,A_{ref})$ &=&
+$\left\{ 
+\begin{array}{ll}
+0 &\text{si }\exists k \in \mathbf{S} |  k \rightarrow
+j \in A_{ref}  \lor \exists k \in \mathbf{S} |  j \rightarrow  k \in A_{ref}  \\
+1 & \text{sinon}
+\end{array}
+\right.$\\
+\\\bottomrule
+\end{tabular}
+\caption{\label{fig-eager-dynamic}Oracle dynamique pour le système arc-eager}
+\end{figure}
+
+
+
+L'action left-arc crée un arc
+$j\rightarrow i$ et enlève $i$ de la pile. Cela signifie que tout arc
+$i\rightarrow k (k \in \mathbf{B})$ ou $k\rightarrow i (k \in
+\mathbf{B})$ devient inaccessible. Le coût est le nombre d'arcs de ce
+type qui existent dans $A_{ref}$.
+
+L'action right-arc crée un arc $i\rightarrow j$ et empile $j$. Cela
+signifie que $j$ ne peut plus dominer un dépendant dans $\mathbf{S}$ 
+et que $j$ ne peut plus devenir dépendant d'aucun autre mot dans
+$\mathbf{S}$ et $\mathbf{B}$ (vu qu'un mot ne peut avoir qu'une
+tête).  Le coût est le nombre d'arcs de ce type qui existent dans $A_{ref}$.
+
+L'action de réduction qui dépile $i$ signifie que plus aucun arc de la
+forme $i\rightarrow k (k \in \mathbf{B})$ ne peut plus être créé. 
+Le coût est le nombre d'arcs de ce type qui existent dans
+$A_{ref}$\footnote{Les arcs de la forme $k\rightarrow i$ ne peuvent
+  plus être créés non plus, mais ils sont déjà pris en compte par les
+  autres règles.}.
+
+L'action de décalage signifie que $j$ ne pourra plus être mis en
+relation de dépendance avec des éléments de la pile. Le coût est le
+nombre d'arcs de ce type qui existent dans $A_{ref}$.
+
+
 
 \subsection{Modèle de Covington}
 

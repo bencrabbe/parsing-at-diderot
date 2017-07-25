@@ -1,6 +1,8 @@
 import io
 from collections import defaultdict
 from SparseWeightVector import SparseWeightVector
+from math import inf
+
 
 #DATA REPRESENTATION
 class DependencyTree:
@@ -89,6 +91,7 @@ class ArcEagerTransitionParser:
         @param configuration: a parser configuration
         @param reference arcs: a set of dependency arcs
         @param N: the length of the input sequence
+        @return the action to execute given config and reference arcs
         """
         S,B,A,score = configuration
         all_words   = range(N)
@@ -106,7 +109,47 @@ class ArcEagerTransitionParser:
             return ArcEagerTransitionParser.SHIFT
         return ArcEagerTransitionParser.TERMINATE
 
-    
+    @staticmethod
+    def dynamic_oracle(configuration,action,reference_arcs,N):
+        """
+        @TODO :check for weirdnesses.
+
+        Computes the cost of an action given a configuration and a reference tree
+        @param configuration: a parser configuration tuple
+        @param reference_arcs a set of dependencies
+        @param N the size of the input sequence
+        @return a bool set to true if cost = 0 , false otherwise (cost > 0 or impossible action)
+        """
+        S,B,A,score = configuration
+        if S and B:
+            i,j = S[-1],B[0]
+            if action == ArcEagerTransitionParser.LEFTARC:
+                if any ([(k,i) in reference_arcs or (i,k) in reference_arcs for k in B]):
+                    return False
+                return True
+            elif action == ArcEagerTransitionParser.RIGHTARC:
+                if any([(k,j) in reference_arcs for k in B]):
+                    return False
+                if any([(k,j) or (j,k) in reference_arcs for k in S]):
+                    return False
+                return True
+        if S:
+            if action == ArcEagerTransitionParser.REDUCE:
+                if any([(i,k) in reference_arcs for k in B]):
+                    return False
+                return True
+
+        if B:
+            if action == ArcEagerTransitionParser.SHIFT:
+                if any([(j,k) in reference_arcs or (k,j) in reference_arcs for k in S]):
+                    return False
+                return True
+        if not B and action == ArcEagerTransitionParser.TERMINATE:
+            return True
+        
+        return False
+
+            
     def static_oracle_derivation(self,ref_parse):
         """
         This generates a static oracle reference derivation from a sentence
