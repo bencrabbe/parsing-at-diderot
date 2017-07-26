@@ -213,7 +213,6 @@ class ArcEagerTransitionParser:
         S,B,A,score = configuration
         return (S,B,A,score+self.score(configuration,ArcEagerTransitionParser.TERMINATE,tokens))        
 
-    
     def predict_local(self,configuration,sentence,allowed=None):
         """
         Statistical prediction of an action given a configuration
@@ -335,14 +334,13 @@ class ArcEagerTransitionParser:
     
     def choose(self,pred_action,optimal_actions):
         """
-        Choose next action in case of ambiguity
+        Choice function for dynamic oracle. Chooses next action in case of ambiguity.
         (does not perform exploration) 
         """
         if pred_action in optimal_actions:
             return pred_action
         else:
             return optimal_actions[randrange(0,len(optimal_actions))]
-
         
     def dynamic_train(self,treebank,step_size=1.0,max_epochs=100):
 
@@ -393,7 +391,7 @@ class ArcEagerTransitionParser:
             if loss == 0.0:
                 return
                             
-    def train(self,treebank,step_size=1.0,max_epochs=100):
+    def static_train(self,treebank,step_size=1.0,max_epochs=100):
         """
         Trains a model with a static oracle
         @param treebank : a list of dependency trees
@@ -449,7 +447,7 @@ istream2 =  io.StringIO(test2)
 d = DependencyTree.read_tree(istream)
 d2 = DependencyTree.read_tree(istream2)
 p = ArcEagerTransitionParser()
-#p.train([d,d2],max_epochs=10)
+#p.static_train([d,d2],max_epochs=10)
 #print(p.test([d,d2]))
 p.dynamic_train([d,d2],max_epochs=10)
 print(p.test([d,d2]))
