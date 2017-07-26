@@ -1,6 +1,7 @@
 import io
 from collections import defaultdict
 from SparseWeightVector import SparseWeightVector
+from random import randrange
 from math import inf
 
 
@@ -110,27 +111,28 @@ class ArcEagerTransitionParser:
         return ArcEagerTransitionParser.TERMINATE
 
     @staticmethod
-    def dynamic_oracle(configuration,action,reference_arcs,N):
+    def dynamic_oracle(configuration,action,reference_arcs):
         """
-        @TODO :check for weirdnesses.
-
         Computes the cost of an action given a configuration and a reference tree
         @param configuration: a parser configuration tuple
         @param reference_arcs a set of dependencies
-        @param N the size of the input sequence
         @return a bool set to true if cost = 0 , false otherwise (cost > 0 or impossible action)
         """
         S,B,A,score = configuration
         if S and B:
             i,j = S[-1],B[0]
             if action == ArcEagerTransitionParser.LEFTARC:
-                if any ([(k,i) in reference_arcs or (i,k) in reference_arcs for k in B]):
+                if any ([(k,i) in reference_arcs for k in B[1:]]):
+                    return False
+                if any([(i,k) in reference_arcs for k in B]):
                     return False
                 return True
             elif action == ArcEagerTransitionParser.RIGHTARC:
                 if any([(k,j) in reference_arcs for k in B]):
                     return False
-                if any([(k,j) or (j,k) in reference_arcs for k in S]):
+                if any([(k,j) in reference_arcs for k in S[:-1]]):
+                    return False
+                if any([(j,k) in reference_arcs for k in S]):
                     return False
                 return True
         if S:
@@ -212,30 +214,42 @@ class ArcEagerTransitionParser:
         return (S,B,A,score+self.score(configuration,ArcEagerTransitionParser.TERMINATE,tokens))        
 
     
-    def predict_local(self,configuration,sentence):
+    def predict_local(self,configuration,sentence,allowed=None):
         """
         Statistical prediction of an action given a configuration
         @param configuration: a tuple (S,B,A,score)
         @param sentence: a list of tokens
+        @param allowed:  a list of allowed actions
         @return (new_config,action_performed)
         """
+        action_set = set([ArcEagerTransitionParser.LEFTARC,ArcEagerTransitionParser.RIGHTARC,\
+                          ArcEagerTransitionParser.SHIFT,ArcEagerTransitionParser.REDUCE,\
+                          ArcEagerTransitionParser.TERMINATE])
+        if allowed :
+            action_set = set(allowed)
+        
         N = len(sentence)
         S,B,A,score = configuration
         candidates = []
-        if B:
+        if B and ArcEagerTransitionParser.SHIFT in action_set :
             candidates.append((self.shift(configuration,sentence),ArcEagerTransitionParser.SHIFT))
-        if S:
+            
+        if S and ArcEagerTransitionParser.REDUCE in action_set:
             i = S[-1]    
             if any([(k,i) in A for k in range(N)]):
                 candidates.append((self.reduce_config(configuration,sentence),ArcEagerTransitionParser.REDUCE))
+
         if S and B:
-            i = S[-1]     
-            if i != 0 and not any([(k,i) in A for k in range(N)]): 
-                candidates.append((self.leftarc(configuration,sentence),ArcEagerTransitionParser.LEFTARC))
-            j = B[0]
-            if not any([(k,j) in A for k in range(N)]):
-                candidates.append((self.rightarc(configuration,sentence),ArcEagerTransitionParser.RIGHTARC))
-        if not B:
+            if ArcEagerTransitionParser.LEFTARC in action_set:
+                i = S[-1]     
+                if i != 0 and not any([(k,i) in A for k in range(N)]): 
+                    candidates.append((self.leftarc(configuration,sentence),ArcEagerTransitionParser.LEFTARC))
+            if ArcEagerTransitionParser.RIGHTARC in action_set:
+                j = B[0]
+                if not any([(k,j) in A for k in range(N)]):
+                    candidates.append((self.rightarc(configuration,sentence),ArcEagerTransitionParser.RIGHTARC))
+
+        if not B and ArcEagerTransitionParser.TERMINATE in action_set:
             candidates.append((self.terminate(configuration,sentence),ArcEagerTransitionParser.TERMINATE))
 
         if candidates:
@@ -318,9 +332,70 @@ class ArcEagerTransitionParser:
             sum_acc   += ref_tree.accurracy(pred_tree)
         return sum_acc/N
 
+    
+    def choose(self,pred_action,optimal_actions):
+        """
+        Choose next action in case of ambiguity
+        (does not perform exploration) 
+        """
+        if pred_action in optimal_actions:
+            return pred_action
+        else:
+            return optimal_actions[randrange(0,len(optimal_actions))]
+
         
+    def dynamic_train(self,treebank,step_size=1.0,max_epochs=100):
+
+        ACTIONS = [ArcEagerTransitionParser.LEFTARC,ArcEagerTransitionParser.RIGHTARC,\
+                   ArcEagerTransitionParser.SHIFT,ArcEagerTransitionParser.REDUCE,\
+                   ArcEagerTransitionParser.TERMINATE]
+        
+        N = len(treebank)
+        for e in range(max_epochs):
+            loss, total = 0,0
+            for dtree in treebank:
+                ref_arcs = set(dtree.edges)
+                n = len(dtree.tokens)
+                C = ((0,),tuple(range(1,n)),tuple(),0.0) #A config is a hashable quadruple with score 
+                action = None
+                while action != ArcEagerTransitionParser.TERMINATE:
+                    pred_config,pred_action = self.predict_local(C,dtree.tokens)
+                    optimal_actions = list([a for a in ACTIONS if self.dynamic_oracle(C,a,ref_arcs)])
+                    total += 1
+                    if pred_action not in optimal_actions:
+                        loss +=1
+                        optimal_config,optimal_action = self.predict_local(C,dtree.tokens,allowed=optimal_actions)
+                        delta_ref = SparseWeightVector()
+                        S,B,A,score = C
+                        x_repr = self.__make_config_representation(S,B,dtree.tokens)
+                        delta_ref += SparseWeightVector.code_phi(x_repr,optimal_action)
+
+                        delta_pred = SparseWeightVector()
+                        S,B,A,score = C
+                        x_repr = self.__make_config_representation(S,B,dtree.tokens)
+                        delta_pred += SparseWeightVector.code_phi(x_repr,pred_action)
+
+                        self.model += step_size*(delta_ref-delta_pred)
+                        
+                    action = self.choose(pred_action,optimal_actions)
+                
+                    if action ==  ArcEagerTransitionParser.SHIFT:
+                        C = self.shift(C,dtree.tokens)
+                    elif action == ArcEagerTransitionParser.LEFTARC:
+                        C = self.leftarc(C,dtree.tokens)
+                    elif action == ArcEagerTransitionParser.RIGHTARC:
+                        C = self.rightarc(C,dtree.tokens)
+                    elif action == ArcEagerTransitionParser.REDUCE:
+                        C = self.reduce_config(C,dtree.tokens)
+                    elif action ==  ArcEagerTransitionParser.TERMINATE:
+                        C = self.terminate(C,dtree.tokens)
+            print('Loss = ',loss, "%Local accurracy = ",(total-loss)/total)
+            if loss == 0.0:
+                return
+                            
     def train(self,treebank,step_size=1.0,max_epochs=100):
         """
+        Trains a model with a static oracle
         @param treebank : a list of dependency trees
         """
         dataset = []
@@ -374,5 +449,7 @@ istream2 =  io.StringIO(test2)
 d = DependencyTree.read_tree(istream)
 d2 = DependencyTree.read_tree(istream2)
 p = ArcEagerTransitionParser()
-p.train([d,d2],max_epochs=10)
+#p.train([d,d2],max_epochs=10)
+#print(p.test([d,d2]))
+p.dynamic_train([d,d2],max_epochs=10)
 print(p.test([d,d2]))
