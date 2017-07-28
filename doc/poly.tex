@@ -15,6 +15,7 @@
 \usepackage{algpseudocode}
 \usepackage{algorithm}
 \usepackage{tikz}
+\usepackage{tikz-qtree}
 \usepackage{pgfplots}
 \usetikzlibrary{snakes}
 \usetikzlibrary{matrix}
@@ -23,7 +24,7 @@
 \usepackage{comment}
 \usepackage{minted}
 \usepackage{tikz-dependency}%dependency trees
-
+\usepackage{forest}
 
 
 
@@ -3205,9 +3206,6 @@ Le développement qui suit consiste à montrer comment utiliser les techniques d
 \end{align}
 Au terme de cette reformulation, l'évaluation du second terme revient à compter les occurrences de la feature $\phi_k$ --~pondérées par les probabilités de transitions où elles apparaissent~-- dans le \ac{dag} de programmation dynamique, et ce pour l'ensemble des exemples du jeu de données.
 
-
-
-
 {\color{red} Développement un peu sloppy en l'état, voir par ex.
 \url{http://perso.telecom-paristech.fr/~essid/teach/CRF_tutorial_ISMIR-2013.pdf}
 pour des détails supplémentaires.}
@@ -3220,7 +3218,536 @@ pour des détails supplémentaires.}
 \chapter{Analyse syntaxique en constituants}
 
 
-\section{Algorithme CKY}
+L'analyse en constituants est une représentation de la structure des phrases relativement 
+ancienne en linguistique formelle~: les constituants sont  un parenthésage des mots de la phrase 
+qui peut servir à en calculer sa sémantique à l'aide de méthodes compositionnelles.
+
+Traditionnellement les représentations en constituants sont vues comme des traces des opérations de réécriture successives 
+réalisées par une grammaire générative indépendante du contexte. 
+Une grammaire formelle définit un langage,  c'est-à-dire un ensemble de phrases dites grammaticales qu'il est possible de dériver de l'axiome 
+par réécritures successives. Les séquences de mots qu'il n'est pas possible d'engendrer à l'aide de la grammaire sont dites non grammaticales.
+
+Dans ce qui suit, on s'intéresse au problème d'analyse dit robuste. 
+C'est-à-dire que la notion de grammaticalité est délaissée au profit d'un mécanisme d'analyse statistique
+capable de donner une structure en arbre pour toute séquence de mots.
+
+De plus on sait que le problème d'ambiguité est massif pour l'analyse syntaxique, les causes proviennent essentiellement de problèmes
+liés à l'attachement de syntagmes prépositionnels et de résolution de portée de la coordination. C'est pour apporter une méthode de déterminisation
+(ou de choix) des analyses que l'on s'intéresse à ajouter une composante statistique destinée à la désambiguisation.
+
+\begin{figure}[htbp]
+\begin{center}
+\Tree [.S [.N Pierre ] [.V mange ] [.NP [.D une ] [.N salade ]  [.PP [.P avec ] [.NP [.D des ] [.N tomates ] ] ] ] ]
+\end{center}
+\caption{Un arbre de constituants}
+\end{figure}
+
+On introduit ici quelques algorithmes d'analyse syntaxique augmentés de pondérations statistiques
+calculées par  des modèles discriminants. Ces algorithmes supposent que les arbres à manipuler sont 
+sous-forme binaire (en forme normale de Chomsky). On commence donc par introduire ce type de transformation
+avant de présenter l'algorithme de Cocke Kasami Younger comme une extension de
+l'algorithme de Viterbi, l'algorithme de Knuth comme une extension de l'algorithme de Dijkstra et finalement
+les méthodes d'analyse en constituants par transitions.
+
+\section{Forme normale}
+
+Dans ce qui suit, on suppose manipuler des arbres de constituants engendrés par une grammaire 
+en forme normale de Chomsky ({\sc cnf})~: les arbres du treebank original sont transformés en arbres binaires et les résultats internes 
+d'analyse sont débinarisés en dernière étape.
+L'usage de cette transformation permet de simplifier la conception des algorithmes d'analyse.
+Il ne s'agit que de construire des arbres binaires.
+
+Une grammaire en forme normale de Chomsky est une grammaire
+dont les règles ont nécessairement une des formes suivantes~:
+\begin{eqnarray}
+\label{r-binary} A&\rightarrow& B\quad C\\
+\label{r-unary} A&\rightarrow& a
+\end{eqnarray}
+où $A,B, C \in N$ et $a \in \Sigma$.
+
+\paragraph{Longueur des dérivations} On peut remarquer que le nombre d'étapes de dérivation pour construire une séquence de terminaux de longueur $n \leq 1$ à partir de l'axiome 
+vaut  $\eta = 2n-1$ pour une grammaire en forme normale de Chomsky.
+On montre cela en considérant deux cas.
+Dans le cas où $n=1$, la seule opération de réécriture à partir de l'axiome fait intervenir la règle ({\ref{r-unary}}) $\eta = 1 = 2-1$.
+Dans le cas où $n > 1$, la première opération de réécriture  à partir de l'axiome fait intervenir la règle ({\ref{r-binary}}),
+ce qui crée une séquence de symboles de longeur 2. Toute opération de réécriture qui fait intervenir à nouveau la règle 
+({\ref{r-binary}}) augmente la longueur de la séquence de symboles de 1. Par conséquent il faut $n-1$ étapes de dérivation pour produire une 
+séquence de symboles non terminaux de longueur $n$. Comme il faut nécessairement utiliser $n$ fois la règle ({\ref{r-unary}}) pour produire les terminaux,
+on a au total $2n-1$ étapes de dérivation pour produire la séquence à l'aide d'une grammaire en forme normale de Chomsky.
+
+Cette propriété sur la longueur des dérivations est régulièrement réutilisée (parfois de manière très indirecte) pour borner le nombre d'étapes 
+de dérivation des algorithmes d'analyse syntaxique présentés dans ce document.
+
+\paragraph{Transformation des arbres}
+Une des première étapes de traitement lors de la mise au point d'un analyseur statistique en constituants consiste à transformer le treebank original
+en un treebank dont les arbres représentent des dérivations d'une grammaire en forme normale de Chomsky. 
+Pour ce faire, on suppose en général que les arbres du treebank ont tous le même symbole racine et que ce symbole n'est pas utilisé pour catégoriser des noeuds autres
+que la racine. 
+
+Les deux opérations de transformation qu'il faut réaliser consistent (a) à supprimer les branches unaires qui n'introduisent pas
+de non terminaux et (b) à réduire les branchements $n$-aires $(n > 2)$.
+
+Soit la branche unaire qui est la séquence de symboles  $X_1, X_2 \ldots X_d$ telle que $X_i\in N$, 
+l'algorithme de fermeture des symboles unaires consiste à remplacer cette branche par le nouveau symbole non terminal
+$X_1+X_2+\ldots + X_n$ (où $+$ représente la concaténation). On illustre le procédé sur l'exemple donné en Figure \ref{fig-unaries}.
+
+\begin{figure}[htbp]
+\begin{center}
+\begin{tabular}{cc}\toprule
+\Tree[.S  [.$X_1$ [.$X_2$  [.$X_3$  a ] ] ] [.Y b ] ]
+&
+\Tree[.S  [.$X_1+X_2+X_3$ a ] [.Y b ] ]\\\midrule
+Arbre original&Arbre en {\sc cnf}\\\bottomrule
+\end{tabular}
+\end{center}
+\caption{\label{fig-unaries}Exemple de réduction des règles unaires.}
+\end{figure}
+
+Lorsque l'arbre en constituants présente des sous-arbres qui instancient des règles de la forme $r_0 = X\rightarrow A_1, A_2\ldots A_n$ avec $n > 2$,
+l'algorithme de binarisation consiste à (1) remplacer $r_0$ par la règle $r_1 = X\rightarrow A_1 A_2+ \ldots +A_n$ 
+en créant le nouveau non terminal  $A_2+ \ldots +A_n$ et à (2) introduire
+la règle $r_2 = A_2+ \ldots +A_n \rightarrow A_2,\ldots , A_n$ sous ce nouveau non terminal. La transformation est récursive et s'applique à nouveau sur $r_2$
+puis sur toute nouvelle $r_i$ nouvellement introduite dans l'arbre d'arité supérieure à 2. 
+Cette méthode s'appelle la binarisation droite. On illustre le procédé sur l'exemple donné en Figure \ref{fig-markovization}.
+
+Alternativement, on peut binariser par la gauche. Dans ce cas on remplace $r_0 = X\rightarrow A_1,\ldots , A_{n-1},A_n$ par une règle de la forme
+$r_1 = X\rightarrow A_1 + \ldots + A_{n-1}, A_n$ et en introduisant la règle $r_2 = A_1 + \ldots + A_{n-1} \rightarrow A_1\ldots A_{n-1}$ 
+et ce recursivement jusqu'à ce que la règle $r_i$ nouvellement introduite ait une arité de 2. 
+Cette méthode s'appelle la binarisation gauche et on illustre le procédé sur l'exemple donné en Figure \ref{fig-markovization}.
+
+\begin{figure}[htbp]
+\begin{center}
+\scalebox{0.75}{
+\begin{tabular}{cccc}\toprule
+\Tree[.X [.$A_1$ a ] [.$A_2$ a ] [.$A_3$ a ] [.$A_4$ a ] ]
+&
+\Tree[.X [.$A_1$ a ] [.$A_2+A_3+A_4$ [.$A_2$ a ] [.$A_3+A_4$  [.$A_3$ a ] [.$A_4$  a ] ]  ]  ]
+&
+\Tree[.X [.$A_1+A_2+A_3$  [.$A_1+A_2$ [.$A_1$ a ] [.$A_2$ a ] ] [.$A_3$  a ] ] [.$A_4$  a ] ]
+&
+\Tree[.X [.${\cal X}$  [.${\cal X}$ [.$A_1$ a ] [.$A_2$ a ] ] [.$A_3$  a ] ] [.$A_4$  a ] ]
+\\
+\midrule
+Arbre original&Binarisation droite&Binarisation gauche&Markovisation gauche\\
+\bottomrule
+\end{tabular}
+}
+\end{center}
+\caption{\label{fig-markovization}Exemples de binarisations}
+\end{figure}
+Des variantes pratiques de binarisation sont utilisées sous le nom de markovisation des arbres. 
+Celles-ci consistent à réduire la quantité de symboles non terminaux artificiels créés par la procédure de binarisation.
+On peut par exemple décider d'utiliser un symbole artificiel ${\cal X}$ correspondant à la racine du sous arbre binarisé
+(c'est-à-dire au symbole en partie gauche de la règle $r_0$) en lieu et place des concaténations de symboles réalisées par la procédure exacte. On illustre le procédé sur l'exemple donné en Figure \ref{fig-markovization}.
+
+
+
+
+
+
+
+\section{Algorithmes de programmation dynamique et forêt d'analyse}
+
+\paragraph{Représentation} La représentation supposée par les algorithmes ascendants de Knuth et CKY est fondée sur la notion d'empan ({\em span}).
+Une phrase $w_1 \ldots w_n$ est représentée par une séquence d'états $0\ldots n$ 
+reliés par des transitions $(i,i+1)$ étiquetées  par le mot $w_{i+1}$. 
+On notera une telle transition par le triplet $\langle i,i+1,w_{i+1} \rangle$.
+
+Par exemple, on représente la phrase {\em le chat dort} comme suit~:
+\begin{center}
+\begin{tabular}{cccccccc}
+0  &le &1 &chat &2 &dort& 3
+\end{tabular}
+\end{center}
+et on représente que le mot {\em chat} couvre l'empan $(1,2)$ par le triplet $\langle 1,2,chat\rangle$. 
+La notion de triplet (ou d'item d'analyse) se généralise également pour représenter des empans couverts par des symboles
+non terminaux lors d'une analyse. Par exemple on notera $\langle 0,2, NP \rangle$ pour indiquer qu'un groupe nominal couvre l'empan 
+$(0,2)$. De manière générale un item d'analyse a la forme~:
+\begin{displaymath}
+\langle i,j, X\rangle
+\end{displaymath}
+où $i,j$ représentent l'empan de l'item et $X$ est un mot ($X\in \Sigma$) ou un symbole non terminal ($X \in N$).
+
+Les algorithmes asecendants combinent successivement des items contigus à l'aide d'une règle de réduction unique~:
+\begin{equation}
+\label{eq-cky-reduce}
+\frac{\langle i,k, Y_1\rangle\quad\langle k,j,Y_2 \rangle}{\langle i,j, X\rangle} \qquad X \in N
+\end{equation}
+qui indique que l'arbre de racine $Y_1$ qui couvre l'empan $(i,k)$ se combine avec l'arbre de racine
+$Y_2$ qui couvre l'empan contigu $(k,j)$ pour former l'arbre de racine $X$ qui couvre l'empan
+$(i,j)$.
+On peut résumer explicitement les opérations réalisées par ce type d'algorithme par le système déductif 
+donné en figure \ref{fig-deductive}.
+\begin{figure}[htbp]
+\begin{center}
+\begin{displaymath}
+\begin{array}{lll}
+\mathbf{init} & \langle i,i+1, w_{i+1} \rangle& 0\leq i < n\\
+\mathbf{reduce}&\frac{\langle i,k, Y_1\rangle\quad\langle k,j,Y_2 \rangle}{\langle i,j, X\rangle} & X \in N\\
+\mathbf{but}&\langle 0,n, X \rangle
+\end{array}
+\end{displaymath}
+On suppose une phrase : $w_1\ldots w_n$
+\end{center}
+\caption{\label{fig-deductive}Système de déduction pour l'analyse ascendante}
+\end{figure}
+
+
+On peut remarquer que contrairement à la présentation classique de CKY, la règle de réduction donnée en (\ref{eq-cky-reduce})
+ne suppose pas de règle de grammaire explicite (comme $X\rightarrow Y_1 Y_2$). 
+Au contraire tout symbole $X\in N$ peut servir de symbole  racine pour le nouvel arbre ainsi créé.
+ 
+\paragraph{Représenter l'ambiguité}
+Une telle procédure d'analyse crée de l'ambiguité. 
+Pour une même séquence de mots $w_0\ldots w_n$, on s'attend en théorie à  un nombre 
+exponentiel d'arbres d'analyse.
+La {\bf forêt} d'analyse est une structure de données qui permet de représenter formellement un tel ensemble d'analyses de manière compacte.
+On illustre en Figure \ref{fig-forest} une forêt (à droite) qui encode les deux analyses données à gauche.
+Formellement, 
+une forêt correspond à un hypergraphe $H=\langle V,E \rangle$ dont les noeuds sont les items d'analyse $\langle i,j,X\rangle$ et dont les hyperarcs
+sont des couples $(h,v_1\ldots v_k)$ où $h\in V$ et où $v_i \in V$.
+Ainsi en figure \ref{fig-forest}, la forêt comporte six noeuds 
+\begin{displaymath}
+V = \{ \langle 0,3,X \rangle, \langle 0,2,X \rangle, \langle 1,3,X \rangle , \langle 0,1,w_1 \rangle,
+ \langle 1,2,w_2 \rangle, \langle 2,3,w_3 \rangle \}
+\end{displaymath}
+et les hyperarcs~: 
+\begin{eqnarray*}
+E &= &\{( \langle 0,3,X \rangle, \langle 0,2,X \rangle  \langle 2,3,w_3 \rangle ),\\
+&&( \langle 0,3,X \rangle, \langle 0,1,w_1 \rangle  \langle 1,3,X \rangle ),\\
+&&( \langle 0,2,X \rangle, \langle 0,1,w_1 \rangle  \langle 1,2,w_2 \rangle ),\\
+&&( \langle 1,3,X \rangle, \langle 1,2,w_2 \rangle  \langle 2,3,w_3 \rangle ),\\
+&&( \langle 0,1,w_1 \rangle, \epsilon ),\\
+&&( \langle 1,2,w_2 \rangle, \epsilon ),\\
+&&( \langle 2,3,w_3 \rangle, \epsilon )\}
+\end{eqnarray*}
+
+ 
+\begin{figure}[htbp]
+\begin{center}
+\begin{tabular}{ccc}\toprule
+\begin{forest}
+ [X  [X [$w_1$,tier=word] [$w_2$,tier=word] ] [$w_3$,tier=word ] ]
+\end{forest}
+&
+\begin{forest}
+ [X  [$w_1$,tier=word] [X[$w_2$,tier=word] [$w_3$,tier=word ] ]  ]
+\end{forest}
+&
+\begin{tikzpicture}
+\node  (leftn) at (0,0) {$w_1$};
+\node (centern)  at (1,0) {$w_2$};
+\node (rightn) at (2,0) {$w_3$};
+
+\node (xleft) at (0.25,1) {X};
+\node (xright) at (1.75,1) {X};
+\node (xtop) at (1,2) {X};
+\draw[-] (xleft) --  (leftn);
+\draw[-] (xleft) --  (centern);
+\draw[-] (xtop) --  (xleft);
+\draw[-] (xtop) --  (rightn);
+
+\draw[-,dashed] (xtop) --  (leftn);
+\draw[-,dashed] (xtop) --  (xright);
+\draw[-,dashed] (xright) --  (rightn);
+\draw[-,dashed] (xright) --  (centern);
+\end{tikzpicture}\\\midrule
+{\sc Analyse A}&{\sc Analyse B}&{\sc Forêt}
+\\\bottomrule
+\end{tabular}
+\end{center}
+\caption{\label{fig-forest}Représentation de l'ambiguité}
+\end{figure}
+
+On va voir que les algorithmes de Knuth et CKY sont deux méthodes de construction d'une forêt d'analyse
+(ou d'hypergraphe pondéré) qui utilisent le système de déduction donné en figure \ref{fig-deductive})
+mais qui construisent les noeuds et les hyperarcs en utilisant un ordre différent.
+Pour celà on commence par définir formellement la notion d'hypergraphe telle qu'elle est utilisée en analyse syntaxique
+\cite{huang-2008,gallo-1993}.
+
+\subsection{Notion d'hypergraphe (et de forêt)}
+
+\begin{definition}[Hypergraphe] Un hypergraphe (orienté)  $H = \langle V,E \rangle$ est un couple
+où $V$ est un ensemble de noeuds et $E$ est un ensemble d'hyperarcs. Un hyperarc $e\in E$
+est un couple $e=\langle h, v_1\ldots v_k \rangle$ où $h\in V$ est la tête et $v_1\ldots v_k \in V^k$ est la queue.
+Dans le cas où l'hypergraphe est pondéré on définit une fonction de score $s :E\mapsto \mathbb{R}$ qui donne un score à chaque hyperarc.
+De plus on note $head(e)$ la fonction qui renvoie la tête $h$ d'un hyperarc $e$ et $tail(e)$ la fonction qui renvoie la queue $v_1\ldots v_k$
+d'un hyperarc $e$. On note  $|e| = k$  l'arité d'un hyperarc $e=\langle h, v_1\ldots v_k \rangle$.
+\end{definition}
+
+\begin{definition}[Arcs entrants]
+L'ensemble $AE(v)$ des arcs entrants sur un noeud $v$ est l'ensemble $\{e \in E | v =  head(e) \}$.
+\end{definition}
+
+\begin{definition}[Arcs sortants]
+L'ensemble $AS(v)$ des arcs sortants du noeud $v$ est l'ensemble $\{e \in E | v \in tail(e) \}$.
+\end{definition}
+
+On peut également définir une extension de la notion de chemin pour un graphe 
+qui est appelée ici dérivation dans le cas des hypergraphes. Cette notion correspond également à la notion d'arbre syntaxique.
+
+\begin{definition}[Dérivation]
+La dérivation $D$ d'un noeud $v \in V$ se définit récursivement comme suit~: 
+\begin{itemize}
+\item {\bf Base:} Si $e \in AE(v)$ et que $|e| = 0$ alors $D = \langle e,\epsilon\rangle$ est une dérivation de $v$.
+\item {\bf Récurrence:} Si $e \in AE(v)$ et $|e| > 0$ et que $D_i$ est une dérivation de tout $v_i \in tail(e) \quad (1\leq i \leq k)$   
+alors $D = \langle v, D_1\ldots D_k \rangle$ est une dérivation de $v$. 
+\end{itemize}
+\end{definition}
+Comme plusieurs dérivations sont possibles pour un même noeud $v$ (cas d'ambiguité),
+on notera ${\cal D}(v)$ l'ensemble des dérivations d'un noeud $v$. Voyons maintenant comment pondérer les dérivations.
+
+\begin{definition}[Fonction de pondération]
+La fonction de pondération $s:E\mapsto \mathbb{R}$ est une fonction qui attribue un score sous forme de valeur réelle
+à un hyperarc $e$. 
+\end{definition}
+Dans la pratique pour un hyperarc $e=\langle h, v_1\ldots v_k \rangle$, la fonction de pondération attribue un score
+à un hyperarc en ayant accès à la valeur de chacun des noeuds. Autrement dit, elle prend la forme $s(h,e_1,\ldots e_k)$.
+
+\begin{definition}[Pondération d'une dérivation]
+Le poids $w(D(v))$ d'une dérivation $D(v)$ d'un noeud $v$ se définit récursivement comme suit~: 
+\begin{itemize}
+\item {\bf Base:} Si $e \in AE(v)$ et que $|e| = 0$ alors $w(D(v))  = \mathbf{\bar{1}}$. 
+\item {\bf Récurrence:} Si $e \in AE(v)$ et que $|e| = k > 0$ alors $w(D(v)) = \otimes(s(e), w(D_1(v_1)), \ldots , w(D_k(v_k)))$.
+\end{itemize}
+\end{definition}
+où $\otimes$ est une fonction qui combine les scores des $D_i$ dérivations qui mènent à $e$ avec le score $s(e)$ de $e$
+(il s'agit en général d'une multiplication  ou d'une addition selon le semi-anneau).
+
+\begin{definition}[Poids maximal d'un noeud]
+Le poids maximal d'un noeud $\delta(v)$ est le poids de la meilleure dérivation qui mène à $v$~:
+\begin{displaymath}
+\delta(v) = 
+\begin{array}{ll}
+\bar{1} & \text{si $v$ est un noeud source}\\
+\bigoplus_{D \in {\cal D}(v)} w(D)&\text{sinon}
+\end{array}
+\end{displaymath}
+\end{definition}
+
+
+\paragraph{Problème d'analyse syntaxique} 
+Les deux algorithmes que nous présentons ci-dessous permettent de
+résoudre le problème d'analyse syntaxique d'une phrase $w_1\ldots w_n$.
+La résolution consiste à extraire la dérivation de poids maximal de tout item $\langle 0,n , X \rangle \quad (X\in N)$.
+En considérant l'ensemble ${\cal D}(\mathbf{x}) = \bigcup_{X \in N} {\cal D} (\langle 0, n, X \rangle) $ de toutes les dérivations qui couvrent la phrase,
+les algorithmes qui suivent permettent de résoudre le problème~:
+\begin{equation}
+\hat{D} = \mathop{\text{argmax}}_{D \in {\cal D}(\mathbf{x})} w(D)
+\end{equation}
+On peut finalement remarquer que les définitions qui précèdent 
+ont pour conséquence que le score d'une dérivation $D$ se décompose comme le produit des scores de ses hyperarcs~:
+\begin{equation}
+w(D) = \bigotimes_{e\in D} w(e) 
+\end{equation}
+
+\subsection{Algorithme CKY}
+
+L'algorithme CKY réalise les réductions en commençant par combiner les items qui couvrent les petits empans, en créeant itérativement des items qui 
+couvrent des empans de plus en plus grands et ce jusqu'à créer un item qui couvre toute la phrase.
+Formellement cet algorithme crée la forêt en suivant un ordre topologique sur les noeuds de cette forêt.
+On définit l'ordre topologique sur un hypergraphe comme suit.
+
+\begin{definition}[Graphe projeté]
+Le graphe projeté d'un hypergraphe orienté $H=\langle V, E\rangle$ est le graphe orienté $G=\langle V,E'\rangle$
+tel que $E' = \{(u,v) | \exists e \in AE(v) \land u \in tail(v) \}$. Si $H$ est acyclique alors $G$ est acyclique.
+\end{definition}
+
+\begin{definition}[Ordre topologique]
+Un ordre topologique pour $H$ est tout ordonnancement total de ses noeuds 
+qui est un ordre topologique pour son graphe projeté $G$.
+\end{definition}
+
+L'algorithme prend alors la forme générale donnée en algorithme \ref{algo-cky}.
+L'algorithme associe à chaque noeud $v$ le poids $\delta(v)$ de la meilleure dérivation qui mène à $v$.
+
+\begin{algorithm}
+\begin{algorithmic}[htbp]
+\Function{Viterbi-Cky}{$w_1\ldots w_n$}
+\For{$ 0 \leq i < n$}\Comment{Initialisation}
+\State $v \gets \langle i,i+1,w_{i+1} \rangle$
+\State $\delta(v) \gets \bar{1}$
+\EndFor
+\ForAll{$v \in V$ en suivant un ordre topologique}\Comment{Récurrence}
+\For {$e\in AE(v)$}
+\State $\langle h, v_1\ldots v_k\rangle \gets e$
+\State $\delta(v) \gets \oplus (\delta(v) , \otimes(s(e),\delta(v_1) ,\ldots \delta (v_k)))$
+\EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-cky} Algorithme Viterbi-CKY}
+\end{algorithm}
+
+L'algorithme est également souvent présenté en explicitant la table de programmation dynamique et en fixant un ordre topologique 
+qui tire parti de la longueur des empans créés, comme illustré en algorithme \ref{algo-cky-verbose}.
+Cette dernière version permet de voir que la complexité de l'algorithme est en ${\cal O}(n^3)$ car il comporte trois boucles de longueur $n$
+dans le pire des cas.
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{Viterbi-Cky}{$w_1\ldots w_n$}
+\For{$ 0 \leq i < n$}\Comment{Initialisation}
+\State $v \gets \langle i,i+1,w_{i+1} \rangle$
+\State $\delta(v) \gets \bar{1}$
+\EndFor
+\For{$1 < span \leq n $}\Comment{Récurrence}
+\For{$0\leq i \leq n - span $}
+\State $j \gets i+span$
+\For{$X \in N$}\Comment{Boucle sur non terminaux}
+\State $v \gets \langle i,j,X \rangle$
+\State $\delta(v) = \bar{0}$
+\For{$i < k < j$}\Comment{Applications de la règle de réduction}
+\State $v_1,v_2 \gets \langle i,k,Y_1 \rangle,\langle k,j,Y_2 \rangle$
+\State $\delta(v) \gets \oplus(\delta(v), \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2))$
+\EndFor
+\EndFor
+\EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-cky-verbose} Algorithme Viterbi-CKY (version classique binaire)}
+\end{algorithm}
+
+\begin{exo}[Historique]
+Donner une extension de l'algorithme \ref{algo-cky-verbose} qui permet de renvoyer la dérivation de poids maximal.
+\end{exo}
+
+
+\paragraph{Estimation de paramètres}
+L'algorithme CKY décompose les scores des dérivations comme suit~:
+\begin{equation}
+w(D) = \bigotimes_{e\in D} w(e) 
+\end{equation}
+ce type de décomposition permet d'entraîner des modèles structurés à large marge très facilement.
+On donne un exemple pour l'algorithme du perceptron en Algorithme \ref{perceptron-cky}.
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{CKY-perceptron}{$\mathop{(\mathbf{x}_i,\mathbf{D}_i)}^N_{i=1}$,$E$}
+\State $\mathbf{w} \gets \bar{\mathbf{0}}$
+\For{$1\leq e \leq E $}
+\For{$1\leq i \leq N$}
+\State
+$\hat{\mathbf{D}} \gets \mathop{\text{argmax}}_{\mathbf{D}\in
+  \mathbf{\cal D}(\mathbf{x})} 
+\sum_{e\in \mathbf{D}} \mathbf{w}^T \boldsymbol\Phi(e,\mathbf{x}_i)$
+\Comment{Parsing}
+\If{$\hat{\mathbf{D}} \not = \mathbf{D}_i$}
+     \State $\mathbf{w} \gets  \mathbf{w} +
+     \left[ \sum_{e\in \mathbf{D}} \boldsymbol\Phi(e,\mathbf{x}_i) 
+       - \sum_{\hat{e} \in \hat{\mathbf{D}}} \boldsymbol\Phi(\hat{e},\mathbf{x}_i)   \right]$ 
+\EndIf
+\EndFor
+\EndFor
+\State \Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{perceptron-cky}Perceptron pour estimer les paramètres d'un système d'analyse
+  CKY}
+\end{algorithm}
+
+L'estimation des paramètres pour un modèle {\sc crf} est plus complexe. 
+Cela demande de déployer une contrepartie de l'algorithme
+{\em forward backward} pour calculer le second terme du gradient. Il existe un algorithme appelé dedans-dehors
+({\em inside-outside}) qui permet de calculer ce terme par programmation dynamique à partir de toute la forêt d'analyse. 
+Cependant, il est en général peu utilisé tel quel car trop coûteux en temps de calcul pour des cas d'utilisation rééls. 
+
+
+
+\subsection{Algorithme de Knuth}
+
+On présente ici l'algorithme de Knuth en utilisant le même système déductif que précedemment (Figure \ref{fig-deductive}).
+L'algorithme de Knuth, ou algorithme de recherche du meilleur d'abord peut être vu comme
+ une reformulation de l'algorithme de Dijkstra pour la recherche de court chemin sur des graphes pondérés.
+On peut faire l'analogie entre cet algorithme et le problème traditionnel de recherche de court chemin~:
+lorsqu'on combine deux chemins on s'attend à ce que le score du chemin global augmente.
+
+Informellement l'algorithme de Knuth suppose que le score d'une dérivation augmente lorsqu'on la combine avec une autre dérivation.
+Ce type de comportement est typiquement celui du demi-anneau tropical (et plus généralement des demi-anneaux qui satisfont 
+la condition dite de supériorité)
+Ce sont des poids qui se dérivent naturellement de probabilités 
+($w = -\log(p)$) ou à des sorties de modèles de régression logistique multinomiale ou de réseaux de neurones
+à couche de sortie softmax.
+
+\begin{algorithm}
+\begin{algorithmic}[htbp]
+\Function{Knuth-parser}{$w_1\ldots w_n$}
+\For{$ 0 \leq i < n$}\Comment{Initialisation}
+\State $v \gets \langle i,i+1,w_{i+1} \rangle$
+\State $\delta(v) \gets \bar{1}$
+\State  \Call{RéordonnerClé}{$Q$,$b$}
+\EndFor
+\State   $rest(e) \gets |e| \quad (\forall e \in E)$ \Comment{Init arités hyperarcs}
+\While{$Q \not = \emptyset$}
+\State $v \gets $ \Call{Extract-Min}{$Q$}
+\ForAll{$e \in AS(v)$}
+\State $h, (v_1, v_2) \gets e$
+\State $rest(e) \gets rest(e) - 1$
+\If{$rest(e) = 0$}
+\State $\delta(h) \gets \oplus( \delta(h),  \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$
+\State \Call{RéordonnerClé}{$Q$,$h$}
+\EndIf
+\EndFor
+\EndWhile
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-knuth} Algorithme de Knuth}
+\end{algorithm}
+
+
+
+
+L'algorithme de Knuth (Algorithme \ref{algo-knuth}) construit l'hypergraphe en expansant en priorité 
+les noeuds les plus prometteurs, c'est-à-dire les noeuds de poids minimal.
+L'ordre de priorité est géré par une file de priorité (file de Fibonacci).
+Il faut remarquer que contrairement aux arcs d'un graphe, les hyperarcs ne peuvent être expansés 
+si l'ensemble des noeuds de leur queue n'ont pas été engendrés. Pour cette raison l'algorithme maintient une table d'arité des hyperarcs
+(noté $rest(e)$) qui enregistre combien de noeuds de la queue ont déjà été engendrés.
+
+
+Relation avec $A\star$ et algos de Charniak.
+
+
+
+\begin{algorithm}
+\begin{algorithmic}[htbp]
+\Function{Knuth-parser}{$w_1\ldots w_n$}
+\For{$ 0 \leq i < n$}\Comment{Initialisation}
+\State $v \gets \langle i,i+1,w_{i+1} \rangle$
+\State $\delta(v) \gets \bar{1}$
+\State  \Call{RéordonnerClé}{$Q$,$b$}
+\EndFor
+\State   $rest(e) \gets |e| \quad (\forall e \in E)$ \Comment{Init arités hyperarcs}
+\While{$Q \not = \emptyset$}
+\State $v \gets $ \Call{Extract-Min}{$Q$}
+\State $\langle i , k , L \rangle \gets v$
+\For{$k\leq j \leq n$}
+\ForAll {$(X_1,X_2) \in N\times N$}
+\State $e \gets \langle i,j , X_1 \rangle , \langle i , k , L \rangle \langle k , j , X_2 \rangle$
+\State $rest(e) \gets rest(e) - 1$
+\If{$rest(e) = 0$}
+\State $\delta(h) \gets \oplus( \delta(h),  \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$
+\State \Call{RéordonnerClé}{$Q$,$h$}
+\EndIf
+\EndFor
+\EndFor
+\State $\langle k , j , L \rangle \gets v$
+\For{$0\leq i \leq k$}
+\ForAll {$(X_1,X_2) \in N\times N$}
+\State $e \gets \langle i,j , Y \rangle , \langle i , k , X_1 \rangle \langle k , j , L \rangle$
+\State $rest(e) \gets rest(e) - 1$
+\If{$rest(e) = 0$}
+\State $\delta(h) \gets \oplus( \delta(h),  \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$
+\State \Call{RéordonnerClé}{$Q$,$h$}
+\EndIf
+\EndFor
+\EndFor
+\EndWhile
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-knuth-verbose} Algorithme de Knuth (version binaire)}
+\end{algorithm}
 \section{Analyse par transitions}
 
 
@@ -4097,7 +4624,7 @@ $j\stackrel{*}{\rightarrow} i$.
 
 \For {$1 \leq span \leq n$}
   \For{$1\leq i \leq n-span$}
-     \State $j \gets s + span$
+     \State $j \gets i + span$
      \State\Comment{Arbres incomplets}
      \State C[i][j][$\curvearrowleft$][$\bot$] $\gets
      \mathop{\text{max}}_{i\leq k < j}(C[i][k][\curvearrowright][\top]
