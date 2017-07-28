@@ -4,6 +4,11 @@ from numpy import inf
 from SparseWeightVector import SparseWeightVector
 
 
+"""
+@TODO: change the scoring system for scoring actual cliques
+@TODO: the parsing method should be able to output edges that do not need retroconversion
+"""
+
 class ConsTree:
 
     def __init__(self,label,children=None):
