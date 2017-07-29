@@ -461,8 +461,11 @@ class ViterbiCKY:
             
 x = ConsTree.read_tree('(S (NP (D le) (N chat)) (VN (V mange)) (NP (D la) (N souris)) (PP (P sur) (NP (D le) (N paillasson))) (PONCT .))')
 y = ConsTree.read_tree('(S (NP (D la) (N souris)) (VN (V dort)) (PONCT .))')
+z = ConsTree.read_tree('(S (NP (D le) (N cuisinier)) (VN (V mange)) (NP (D une) (N salade) (PP (P avec) (NP (D des) (N cornichons)))) (PONCT .))')
+
 parser = ViterbiCKY()
-parser.train([x,y],max_epochs=10,left_markov=False)
+parser.train([x,y,z],max_epochs=10,left_markov=False)
 x = ConsTree.read_tree('(S (NP (D le) (N chat)) (VN (V mange)) (NP (D la) (N souris)) (PP (P sur) (NP (D le) (N paillasson))) (PONCT .))')
 y = ConsTree.read_tree('(S (NP (D la) (N souris)) (VN (V dort)) (PONCT .))')
-print("F score = ",parser.test([x,y]))
+z = ConsTree.read_tree('(S (NP (D le) (N cuisinier)) (VN (V mange)) (NP (D une) (N salade) (PP (P avec) (NP (D des) (N cornichons)))) (PONCT .))')
+print("F score = ",parser.test([x,y,z]))
