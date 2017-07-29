@@ -3598,7 +3598,7 @@ dans le pire des cas.
 \State $v \gets \langle i,j,X \rangle$
 \State $\delta(v) = \bar{0}$
 \For{$i < k < j$}\Comment{Applications de la règle de réduction}
-\State $v_1,v_2 \gets \langle i,k,Y_1 \rangle,\langle k,j,Y_2 \rangle$
+\State $v_1,v_2 \gets \langle i,k,Y_1 \rangle,\langle k,j,Y_2 \rangle$ \qquad $\forall (Y_1,Y_2) \in N\times N$
 \State $\delta(v) \gets \oplus(\delta(v), \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2))$
 \EndFor
 \EndFor
@@ -3617,10 +3617,15 @@ Donner une extension de l'algorithme \ref{algo-cky-verbose} qui permet de renvoy
 \paragraph{Estimation de paramètres}
 L'algorithme CKY décompose les scores des dérivations comme suit~:
 \begin{equation}
+\label{cky-decomp}
 w(D) = \bigotimes_{e\in D} w(e) 
 \end{equation}
 ce type de décomposition permet d'entraîner des modèles structurés à large marge très facilement.
-On donne un exemple pour l'algorithme du perceptron en Algorithme \ref{perceptron-cky}.
+On donne un exemple pour l'algorithme du perceptron en Algorithme \ref{perceptron-cky} 
+pour lequel (\ref{cky-decomp}) s'instancie comme suit~:
+\begin{displaymath}
+w(\mathbf{x},\mathbf{D}) = \sum_{e\in \mathbf{D}} \mathbf{w}^T \boldsymbol\Phi(e,\mathbf{x}) 
+\end{displaymath}
 
 \begin{algorithm}[htbp]
 \begin{algorithmic}[1]
@@ -3752,8 +3757,6 @@ Relation avec $A\star$ et algos de Charniak.
 
 
 
-
-
 \chapter{Analyse syntaxique en dépendances}
 
 \section{Arbres de dépendances}
@@ -3807,7 +3810,6 @@ i\rightarrow j  \in E \quad\Rightarrow\quad \lnot \exists k  (k\rightarrow j)\in
 \end{enumerate}
 La condition (\ref{it:projectif}) est parfois relâchée pour traiter
 les langues à ordre des mots libre.
-
 
 
 \section{Analyse par transitions}

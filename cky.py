@@ -5,18 +5,15 @@ from SparseWeightVector import SparseWeightVector
 
 
 """
-@TODO: change the scoring system for scoring actual cliques
-@TODO: the parsing method should be able to output edges that do not need int<->string retroconversion
+This is an exact Viterbi perceptron parser
+working with spans.
 """
 
 class ConsTree:
 
     def __init__(self,label,children=None):
         self.label = label
-        if children is None:
-            self.children = []
-        else:
-            self.children = children
+        self.children = [] if children is None else children
 
     def is_leaf(self):
         return self.children == []
@@ -37,10 +34,7 @@ class ConsTree:
         """
         pretty prints the tree
         """
-        if self.is_leaf():
-            return self.label
-        else:
-            return '(%s %s)'%(self.label,' '.join([str(child) for child in self.children]))
+        return self.label if self.is_leaf() else '(%s %s)'%(self.label,' '.join([str(child) for child in self.children]))
 
     def tokens(self,labels=True):
         """
@@ -49,23 +43,19 @@ class ConsTree:
         @return the list of words at the leaves of the tree
         """
         if self.is_leaf():
-            if labels:
-                return [self.label]
-            else:
-                return [self]
+                return [self.label] if labels else [self]
         else:
             result = []
             for child in self.children:
                 result.extend(child.tokens(labels))
             return result
-        
+                
     def index_leaves(self):
         """
-        adds an numeric index to each leaf node
+        Adds an numeric index to each leaf node
         """
         for idx,elt in enumerate(self.tokens(labels=False)):
             elt.idx = idx
-
             
     def triples(self):
         """
@@ -90,6 +80,8 @@ class ConsTree:
         @param other: the predicted tree
         @return (precision,recall,fscore)
         """
+        self.index_leaves()
+        other.index_leaves()
         ref_triples  = set(self.triples())
         pred_triples = set(other.triples())
         intersect = ref_triples.intersection(pred_triples)
@@ -226,7 +218,9 @@ class ViterbiCKY:
     def transform(self,dataset,left_markov = True):
         """
         In place (destructive) conversion of a treebank to Chomsky Normal Form.
-        Builds the list of the parser nonterminals as a side effect. 
+        Builds the list of the parser nonterminals as a side effect
+        and indexes references trees.
+         
         @param dataset a list of ConsTrees
         @param left_markov: if true -> left markovization else right markovization
         """
@@ -240,17 +234,31 @@ class ViterbiCKY:
             all_nonterminals.update(tree.collect_nonterminals()) 
         self.nonterminals_decode = list(all_nonterminals)
         self.nonterminals_code = dict(zip(self.nonterminals_decode,range(len(self.nonterminals_decode))))
+        for tree in dataset:
+            tree.index_leaves()
 
-        
-    def score(self,Nroot,Nleft,Nright):
+    @staticmethod
+    def ngram_tokens(toklist):
         """
-        Scores an edge
+        Returns the input with additional fields for ngrams based features
+        """
+        BOL = '@@@'
+        EOL = '$$$'
+        wordlist = [BOL] + toklist + [EOL]
+        word_trigrams = list(zip(wordlist,wordlist[1:],wordlist[2:]))
+        return list(zip(wordlist[1:-1],word_trigrams))
+
+    def score_edge(self,Nroot,Nleft,Nright,i,j,k,sentence):
+        """
+        Scores an edge.
         @param Nroot,Nleft,Nright : the root node, the left node and
         the right node
+        @param i,j,k: the i,j,k indexes of the clique to be scored
+        @param sentence: the list of words to be parsed
         @return a perceptron score
         """
-        edge_repr = self.__make_edge_representation(Nleft,Nright)
-        return self.model.dot(edge_repr,Nroot)
+        edge_repr = self.__make_edge_representation(i,j,k,sentence)
+        return self.model.dot(edge_repr,(Nroot,Nleft,Nright))
         
     def score_unary(self,Nroot,word_idx,sentence):
         """
@@ -262,11 +270,12 @@ class ViterbiCKY:
         unary_repr = self.__make_unary_representation(word_idx,sentence)
         return self.model.dot(unary_repr,Nroot)
 
-    def __make_edge_representation(self,Nleft,Nright):
+    def __make_edge_representation(self,i,j,k,sentence):
         """
         Builds features for an edge.
+        @param i,j,k: the i,j,k indexes of the clique to be scored
         """
-        return [(Nleft,Nright),Nleft,Nright]
+        return [sentence[i],sentence[k-1],sentence[k],sentence[j-1]]
 
     def __make_unary_representation(self,word_idx,sentence):
         """
@@ -290,18 +299,39 @@ class ViterbiCKY:
         if k-i > 1: 
             self.__build_tree((i,k,labelL),left,history,sentence)
         else:
-            left.add_child(ConsTree(sentence[i]))
+            left.add_child(ConsTree(sentence[i][0]))
         if j-k > 1:
             self.__build_tree((k,j,labelR),right,history,sentence)
         else:
-            right.add_child(ConsTree(sentence[k]))
+            right.add_child(ConsTree(sentence[k][0]))
         return tree_root
 
-    def parse_one(self,sentence,untransform=True):
+    def __build_edges(self,root_vertex,history):
+        """
+        Extracts the hyperedges of the best tree from the chart and history
+        (method useful for running the update while training)
+        """
+        left,right = history[root_vertex]
+        result = [(root_vertex,left,right)]
+        
+        i,k,lblA = left
+        k,j,lblB = right
+        if k-i == 1:
+            result.append((left,i))
+        else:
+            result.extend(self.__build_edges(left,history))
+        if j-k == 1:
+            result.append((right,k))
+        else:
+            result.extend(self.__build_edges(right,history))
+        return result
+
+    def parse_one(self,sentence,untransform=True,edges=False):
         """
         Parses a sentence with the cky viterbi algorithm
         @param sentence: a list of word strings
-        @param unbinarize: if true, untransforms the result
+        @param untransform: if true, untransforms the result
+        @param edges: if true returns hyperedges instead of a parse tree
         @return a ConsTree
         """
         N = len(sentence)
@@ -310,7 +340,7 @@ class ViterbiCKY:
         chart.fill(-inf)       # 0 for perceptron
         history = {}
         
-        for i in range(N):#init (part of speech tagging)
+        for i in range(N):#init (= part of speech tagging)
             for Nt in range(G):
                 chart[i,i+1,Nt] = self.score_unary(Nt,i,sentence)
                                 
@@ -321,43 +351,66 @@ class ViterbiCKY:
                     for k in range(i+1,j):
                         for Nt1 in range(G):
                             for Nt2 in range(G):
-                                score = chart[i,k,Nt1]+chart[k,j,Nt2]+self.score(Nt,Nt1,Nt2)
+                                score = chart[i,k,Nt1]+chart[k,j,Nt2]+self.score_edge(Nt,Nt1,Nt2,i,j,k,sentence)
                                 if score > chart[i,j,Nt]:
                                     chart[i,j,Nt] = score
                                     history[(i,j,Nt)] = ((i,k,Nt1),(k,j,Nt2))
                                     
-                    #print(i,j,self.nonterminals_decode[Nt], chart[i,j,Nt] )
         #Finds the max
         max_succ,argmax_succ = chart[0,N,0],(0,N,0)
         for Nt in range(1,G):
             if chart[0,N,Nt] > max_succ:
                 max_succ,argmax_succ = chart[0,N,Nt],(0,N,Nt)
-        #Builds parse tree
+                
         i,j,label = argmax_succ
-        result =  self.__build_tree(argmax_succ,ConsTree(self.nonterminals_decode[label]),history,sentence)
-        if untransform:
-            result.unbinarize()
-            result.expand_unaries()
-        return result
+        if edges:
+            return self.__build_edges(argmax_succ,history)
+        else:#builds a ConsTree
+            result =  self.__build_tree(argmax_succ,ConsTree(self.nonterminals_decode[label]),history,sentence)
+            if untransform:
+                result.unbinarize()
+                result.expand_unaries()
+            return result
     
-    @staticmethod
-    def tree_as_edges(tree_root):
+    def tree_as_edges(self,tree_root):
         """
-        Returns a list of hyperedges from a Constree
+        Returns a list of hyperedges from a *binary* Constree
         Supposes that leaves a indexed by a field 'idx'
         @param tree_root: a constree
-        @return : a list of tuples
+        @return : a list of hyperedges
         @see ConsTree.index_leaves(...) 
         """
-        if len(tree_root.children) == 1:
-            return [(tree_root.label,tree_root.get_child().idx)]
-        else:
-            result = [(tree_root.label,tree_root.children[0].label,tree_root.children[1].label)]
-            for child in tree_root.children:
-                result.extend(ViterbiCKY.tree_as_edges(child))
+        assert(len(tree_root.children) <= 2)
+        if len(tree_root.children) == 1: #unary edges
+            idx = tree_root.get_child().idx
+            jdx = idx + 1
+            return [((idx,jdx,self.nonterminals_code[tree_root.label]),idx)]
+
+        elif len(tree_root.children) == 2:#binary edges
+            left_edges = self.tree_as_edges(tree_root.children[0])
+            right_edges = self.tree_as_edges(tree_root.children[1])
+            i,k,lblA = left_edges[0][0]
+            k,j,lblB = right_edges[0][0]
+            result = [((i,j,self.nonterminals_code[tree_root.label]),(i,k,lblA),(k,j,lblB))]
+            result.extend(left_edges)
+            result.extend(right_edges)
             return result
 
-            
+    def test(self,treebank):
+        """
+        Tests a model against a treebank
+        and returns the average F-score.
+        """
+        Fscore = []
+        for ref_tree in treebank:
+            xinput = ViterbiCKY.ngram_tokens(ref_tree.tokens())
+            pred_tree = self.parse_one(xinput)
+            print(pred_tree)
+            P,R,F = ref_tree.compare(pred_tree)
+            Fscore.append(F)
+        return sum(Fscore)/len(Fscore)
+
+    
     def train(self,treebank,step_size=1.0,max_epochs=100,left_markov=True):
         """
         Trains the parser with a structured perceptron
@@ -365,47 +418,40 @@ class ViterbiCKY:
         @param: left_markov :uses left markovization or right markovization 
         """
         
-        self.transform(treebank,left_markov) #binarizes the treebank        
-        dataset = list( [ (tree.tokens(),tree) for tree in treebank] )#makes a (x,y) pattern for the data set 
-        for (tokens,tree) in dataset:
-            tree.index_leaves()
-            
+        self.transform(treebank,left_markov) #binarizes the treebank
+        #makes a (x,y) pattern for the data set 
+        dataset = list( [(ViterbiCKY.ngram_tokens(tree.tokens()),self.tree_as_edges(tree)) for tree in treebank] )
+        
         N = len(dataset)
         
         for e in range(max_epochs):
             loss = 0.0
-            for sentence,ref_tree in dataset:
-                                
-                pred_tree = self.parse_one(sentence,untransform=False)
-                pred_tree.index_leaves()
-                P,R,F = ref_tree.compare(pred_tree)
-                
-                if F < 1.0 : #update
+            for sentence,ref_edges in dataset:
+                pred_edges = set(self.parse_one(sentence,edges=True))
+                ref_edges  = set(ref_edges) 
+                if pred_edges != ref_edges: #update
                     loss += 1.0
-                    pred_edges = ViterbiCKY.tree_as_edges(pred_tree)
-                    ref_edges  = ViterbiCKY.tree_as_edges(ref_tree)
-                    
                     delta_ref = SparseWeightVector()
                     for r_edge in ref_edges:
                         if len(r_edge) == 3:
-                            root,left,right = r_edge
-                            x_repr = self.__make_edge_representation(self.nonterminals_code[left],self.nonterminals_code[right])
-                            delta_ref += SparseWeightVector.code_phi(x_repr,self.nonterminals_code[root])
+                            (i,j,Nroot),(i,k,Nl),(k,j,Nr) = r_edge
+                            x_repr = self.__make_edge_representation(i,j,k,sentence)
+                            delta_ref += SparseWeightVector.code_phi(x_repr,(Nroot,Nl,Nr))
                         elif len(r_edge) == 2:
-                            root,widx = r_edge
+                            (i,j,pos),widx = r_edge
                             x_repr = self.__make_unary_representation(widx,sentence)
-                            delta_ref += SparseWeightVector.code_phi(x_repr,self.nonterminals_code[root])
+                            delta_ref += SparseWeightVector.code_phi(x_repr,pos)
 
                     delta_pred = SparseWeightVector()
                     for p_edge in pred_edges:
                         if len(p_edge) == 3:
-                            root,left,right = p_edge
-                            x_repr = self.__make_edge_representation(self.nonterminals_code[left],self.nonterminals_code[right])
-                            delta_pred += SparseWeightVector.code_phi(x_repr,self.nonterminals_code[root])
+                            (i,j,Nroot),(i,k,Nl),(k,j,Nr) = p_edge
+                            x_repr = self.__make_edge_representation(i,j,k,sentence)
+                            delta_pred += SparseWeightVector.code_phi(x_repr,(Nroot,Nl,Nr))
                         elif len(p_edge) == 2:
-                            root,widx = p_edge
+                            (i,j,pos),widx = p_edge
                             x_repr = self.__make_unary_representation(widx,sentence)
-                            delta_pred += SparseWeightVector.code_phi(x_repr,self.nonterminals_code[root])
+                            delta_pred += SparseWeightVector.code_phi(x_repr,pos)
 
                     self.model += step_size * (delta_ref-delta_pred)
             print('Loss = ',loss, "%Local accurracy = ",(N-loss)/N)
@@ -413,11 +459,10 @@ class ViterbiCKY:
                 return
   
             
-x = ConsTree.read_tree('(S (NP (D le) (N chat)) (VN (V mange)) (NP (D la) (N souris)) (PP (P sur) (NP (D le) (N paillasson))))')
+x = ConsTree.read_tree('(S (NP (D le) (N chat)) (VN (V mange)) (NP (D la) (N souris)) (PP (P sur) (NP (D le) (N paillasson))) (PONCT .))')
 y = ConsTree.read_tree('(S (NP (D la) (N souris)) (VN (V dort)) (PONCT .))')
 parser = ViterbiCKY()
-parser.train([x,y],max_epochs=10)
-t = parser.parse_one(x.tokens())
-print(t)
-t = parser.parse_one(y.tokens())
-print(t)
+parser.train([x,y],max_epochs=10,left_markov=False)
+x = ConsTree.read_tree('(S (NP (D le) (N chat)) (VN (V mange)) (NP (D la) (N souris)) (PP (P sur) (NP (D le) (N paillasson))) (PONCT .))')
+y = ConsTree.read_tree('(S (NP (D la) (N souris)) (VN (V dort)) (PONCT .))')
+print("F score = ",parser.test([x,y]))
