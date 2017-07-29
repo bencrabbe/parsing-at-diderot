@@ -363,7 +363,7 @@ class ViterbiCKY:
                 max_succ,argmax_succ = chart[0,N,Nt],(0,N,Nt)
                 
         i,j,label = argmax_succ
-        if edges:
+        if edges:#returns a list of hyperedges, useful for updates
             return self.__build_edges(argmax_succ,history)
         else:#builds a ConsTree
             result =  self.__build_tree(argmax_succ,ConsTree(self.nonterminals_decode[label]),history,sentence)
