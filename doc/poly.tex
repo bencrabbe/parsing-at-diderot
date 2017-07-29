@@ -3656,7 +3656,7 @@ L'estimation des paramètres pour un modèle {\sc crf} est plus complexe.
 Cela demande de déployer une contrepartie de l'algorithme
 {\em forward backward} pour calculer le second terme du gradient. Il existe un algorithme appelé dedans-dehors
 ({\em inside-outside}) qui permet de calculer ce terme par programmation dynamique à partir de toute la forêt d'analyse. 
-Cependant, il est en général peu utilisé tel quel car trop coûteux en temps de calcul pour des cas d'utilisation rééls. 
+Cependant, il est en général peu utilisé tel quel car trop coûteux en temps de calcul pour des cas d'utilisation réels. 
 
 
 
@@ -3740,7 +3740,7 @@ Relation avec $A\star$ et algos de Charniak.
 \State $\langle k , j , L \rangle \gets v$
 \For{$0\leq i \leq k$}
 \ForAll {$(X_1,X_2) \in N\times N$}
-\State $e \gets \langle i,j , Y \rangle , \langle i , k , X_1 \rangle \langle k , j , L \rangle$
+\State $e \gets \langle i,j , X_1 \rangle , \langle i , k , X_2 \rangle \langle k , j , L \rangle$
 \State $rest(e) \gets rest(e) - 1$
 \If{$rest(e) = 0$}
 \State $\delta(h) \gets \oplus( \delta(h),  \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$

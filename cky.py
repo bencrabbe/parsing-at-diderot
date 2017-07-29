@@ -6,6 +6,7 @@ from SparseWeightVector import SparseWeightVector
 
 """
 This is an exact CKY-Viterbi perceptron span-based parser.
+It does the pos tagging too.
 """
 
 class ConsTree:
