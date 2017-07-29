@@ -5,8 +5,7 @@ from SparseWeightVector import SparseWeightVector
 
 
 """
-This is an exact Viterbi perceptron parser
-working with spans.
+This is an exact CKY-Viterbi perceptron span-based parser.
 """
 
 class ConsTree:
