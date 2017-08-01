@@ -3700,8 +3700,7 @@ Ce sont des poids qui se dérivent naturellement de probabilités
 \caption{\label{algo-knuth} Algorithme de Knuth}
 \end{algorithm}
 
-
-
+*TODO : DEFINE SUPERIORITY*
 
 L'algorithme de Knuth (Algorithme \ref{algo-knuth}) construit l'hypergraphe en expansant en priorité 
 les noeuds les plus prometteurs, c'est-à-dire les noeuds de poids minimal.
@@ -3710,10 +3709,11 @@ Il faut remarquer que contrairement aux arcs d'un graphe, les hyperarcs ne peuve
 si l'ensemble des noeuds de leur queue n'ont pas été engendrés. Pour cette raison l'algorithme maintient une table d'arité des hyperarcs
 (noté $rest(e)$) qui enregistre combien de noeuds de la queue ont déjà été engendrés.
 
-
-Relation avec $A\star$ et algos de Charniak.
-
-
+L'algorithme de Knuth est une contrepartie de l'algorithme de Dijkstra 
+pour le cas des hypergraphes. Il a été utilisé et étudié sous des noms divers et notamment
+{\em best first parsing} principalement 
+pour mettre au point des heuristiques de recherche (exactes ou non) 
+de la famille $A\star$ pour des modèles probabilistes génératifs.
 
 \begin{algorithm}
 \begin{algorithmic}[htbp]
@@ -3753,7 +3753,169 @@ Relation avec $A\star$ et algos de Charniak.
 \end{algorithmic}
 \caption{\label{algo-knuth-verbose} Algorithme de Knuth (version binaire)}
 \end{algorithm}
+
+{\bf TODO Dire qq part qu'il faut contraindre légèrement:  pas de root en temporaire, pas deux fils temporaires etc.}
 \section{Analyse par transitions}
+
+Les méthodes d’analyse par transition en constituants sont très anciennes
+et ont pour origine la théorie de la compilation avec les algorithmes à décalage réduction (algorithme d'analyse {\sc lr} et {\sc glr})
+ainsi que des formalisations d’algorithmes de planification (comme {\sc strips}) et de démonstration automatique.
+
+L’ensemble de ces algorithmes travaillent avec une structure de donnée 
+appelée configuration (ou état d'analyse) et qui est essentiellement un couple 
+$\langle \mathbf{S},\mathbf{B} \rangle$ fait d’une pile et d’une file (ou buffer). 
+
+Contrairement aux algorithmes présentés précédemment qui autorisent la programmation dynamique, ici
+l’ensemble des configurations possibles est en général très vaste de telle sorte que mener une procédure exacte de recherche de solutions 
+d’analyse est infaisable en pratique. Par conséquent les algorithmes présentés dans cette section sont en général 
+associés à des méthodes de recherche inexactes de solution. 
+Le caractère inexact de la méthode de recherche de solution est compensé 
+par la richesse de l’information stockée dans les configurations, ce qui permet de prendre des décisions très bien informées localement.
+
+On donne en figure \ref{fig-transition-cfg} un système de transitions pour l'analyse en constituants qui suppose des arbres binarisés 
+suivant les méthodes décrites dans les sections précédentes. L'algorithme commence avec un buffer rempli pas la séquence de mots à analyser
+et termine lorsque la pile ne contient plus qu'un seul élément et que la pile est vide. L'action de décalage insère en sommet de pile le tag du premier mot de la file
+(tagging) alors que les actions de réduction remplacent les deux non terminaux au sommet de la pile par un nouveu 
+non terminal $X$. Notons qu'il y a autant d'actions de décalage qu'il y a de tags et autant d'actions de reduction qu'il y a de non terminaux ($x\in \Sigma$).
+
+\begin{figure}[htbp]
+\begin{displaymath}
+\begin{array}{rccll}
+\mathbf{init}  &\langle \epsilon , w_0 \ldots w_n \rangle\\
+\mathbf{but}  & \langle X ,\epsilon  \rangle & &&X\in N \\
+\mathbf{shift}(X) & \langle \mathbf{S} ,  w_i | \mathbf{B}  \rangle
+&\Rightarrow &\langle \mathbf{S} | X ,  \mathbf{B}    \rangle & X\in Tags\\
+\mathbf{reduce}(X) &\langle \mathbf{S}| X_i | X_j , \mathbf{B}\rangle 
+&\Rightarrow& \langle \mathbf{S}| X , \mathbf{B}  \rangle&X \in N
+\end{array}
+\end{displaymath}
+\caption{\label{fig-transition-cfg}Un système de transitions pour l'analyse en constituants}
+\end{figure}
+
+L’algorithme est fondamentalement non déterministe. 
+Il est par conséquent habituel de l’augmenter (1) d’une méthode de pondération des hypothèses et 
+(2) d’une méthode de recherche de solutions approximative.
+
+\paragraph{Dérivations et pondérations}
+Un pas de dérivation est le passage d’une configuration $c_i$ à  une configuration $c_{i+1}$ 
+en utilisant une transition (ou action) parmi les $|X|$ actions de décalage  et les $|X|$ actions de réduction.
+On peut éventuellement ajouter une action {\bf stop}  qui indique la fin de l'analyse.
+Une dérivation est une séquence $\mathbf{d} = (c_0,t_0) (c_1,t_1) \ldots (c_m,t_m)$
+de couples associant des configurations à des actions à exécuter. Lorsque la grammaire est en {\sc cnf}
+une dérivation pour le système de transitions décrit en figure \ref{fig-transition-cfg} a une longueur $m = 2n-1$.
+Le score global d'une dérivation se calcule en décomposant le score global par le produit des scores locaux~:
+\begin{equation}
+\Psi(\mathbf{d}) = \sum_{i=0}^m \psi (c_i,t_i,\mathbf{x})
+\end{equation}
+où $\mathbf{x}$ représente la séquence de mots à analyser. Le problème d'analyse syntaxique consiste à résoudre~:
+\begin{equation}
+\hat{\mathbf{d}} = \mathop{\text{argmax}}_{\mathbf{d} \in \mathbf{D}(\mathbf{x})} \Psi(\mathbf{d})
+\end{equation}
+
+Les dérivations complètes du système de transitions ont comme
+propriété que leur longueur est de $2n-1$ pas de dérivation pour une
+phrase de $w_0\ldots w_n$ mots~:  pour obtenir une analyse complète,
+il faut réaliser $n$ décalages et $n-1$ opérations de réduction.
+Lorsqu'on ajoute une action {\bf stop} la longueur de la dérivation
+vaut $2n$.
+
+Cette propriété facilite l'usage du système de transitions en
+combinaison avec une méthode de recherche de solutions en faisceau.
+En effet, on observe empriquement que le score d'une dérivation tel
+que donné par un modèle discriminant est à peu près linéairement
+corrélé à sa longueur~: plus une dérivation est longue, plus son score
+est élevé. Ici, comme toutes les dérivations concurrentes ont la même
+longueur, ce problème de biais lié à la longueur ne se manifeste pas
+(contrairement à la plupart des systèmes de transitions présentés par la suite).
+
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[0]
+\Function{ConstituantsBeamParse}{$\mathbf{x}$,K}
+\State ${\cal B} \gets \langle \epsilon, w_0\ldots w_n,\emptyset\rangle$
+\For  {$0\leq i < 2n-1$}
+\For {$c \in \mathop{\text{K-argmax}}_{c \in {\cal B}} \delta(c)$}
+\For{$t \in T$}\Comment{$T$ est l' ensemble des actions}
+\State $c' \gets t(c)$
+\State $\delta(c') \gets \delta(c) + \psi(c,t,\mathbf{x})$
+\State ${\cal B}' \gets {\cal B}\cup c'$
+\EndFor
+\EndFor
+\State ${\cal B} \gets {\cal B}'$
+\EndFor
+\State \Return $\mathop{\text{argmax}}_{c\in \cal B} \delta(c)$
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-cfg-beam}Algorithme d'analyse en constituants en
+faisceau}
+\end{algorithm}
+
+
+
+\paragraph{Estimation des paramètres} Les données d'entrainement pour l'analyse en constituants se présentent
+naturellement sous la forme d'un treebank. La première étape de traitement des données consiste à 
+mettre le treebank en forme normale de Chomsky. 
+La seconde étape de traitement consiste à transformer les arbres en dérivations de référence à l'aide d'une fonction oracle
+de telle sorte que le jeu de données ait la forme $\mathop{(\mathbf{x}_i,\mathbf{d}_i)}_{i=1}^N$ où $\mathbf{x}_i$ est une séquence de mots
+et $\mathbf{d}_i$ une dérivation pour l'arbre de référence.
+
+La fonction oracle simule une analyse en ayant pour information supplémentaire $V$ l'ensemble des noeuds de l'hypergraphe qui 
+correspond à l'arbre d'analyse de référence. \`A chaque étape de dérivation, l'action suivie par l'oracle est donnée par l'algorithme \ref{algo-oracle-cfg}.
+\begin{algorithm}
+\begin{algorithmic}
+\Function{StaticOracle}{$\mathbf{S}$,$\mathbf{B}$,$V$}
+\If {$S | ( i , k ,X_1) | ( k , j , X_2)$} \Comment{Il y a au moins un élément dans $S$}
+    \If {$(i,j,X_0) \in V$}
+        \State \Return {\bf reduce}($X_0$)
+\EndIf
+\EndIf
+\If{ $w_i | B \not = \epsilon$} \Comment{Il y a au moins un élément $w_i$ dans $B$}
+   \If{$(i,i+1,T) \in V$}
+        \State \Return {\bf shift}($T$)
+\EndIf
+\EndIf
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-oracle-cfg}Oracle statique pour l'analyse en constituants par transitions }
+\end{algorithm}
+
+L'estimation des paramètres à partir des données se fait en comparant les dérivations de référence produites par la fonction oracle
+aux prédictions de l'analyseur. 
+L'estimation se fait en général avec un modèle à large marge ou un modèle local car un modèle {\sc crf}  
+exige de calculer l'ensemble de dérivations pour obtenir le facteur de normalisation. Ce calcul est en général infaisable exhaustivement avec un système 
+de transitions.  On donne ici un exemple de procédure d'estimation avec l'algorithme du perceptron 
+en algorithme \ref{perceptron-cfg}.
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{constituants-perceptron}{$\mathop{(\mathbf{x}_i,\mathbf{d}_i)}^N_{i=1}$,$E$}
+\State $\mathbf{w} \gets \bar{\mathbf{0}}$
+\For{$1\leq e \leq E $}
+\For{$1\leq i \leq N$}
+\State
+$\hat{\mathbf{d}} \gets \mathop{\text{argmax}}_{\mathbf{d}\in
+  \mathbf{D}(\mathbf{x})} 
+\sum_{j = 0}^m \mathbf{w}^T \boldsymbol\Phi(\mathbf{x}_i,c_j,t_j)$
+\Comment{Parsing}
+\If{$\hat{\mathbf{d}} \not = \mathbf{d}_i$}
+     \State $\mathbf{w} \gets  \mathbf{w} +
+     \left[ \sum_{j=0}^m \boldsymbol\Phi(\mathbf{x}_i,c_j,t_j) 
+       - \sum_{j=0}^m \boldsymbol\Phi(\mathbf{x}_i,\hat{c}_j,\hat{t}_j)   \right]$ 
+\EndIf
+\EndFor
+\EndFor
+\State \Return $\mathbf{w}$
+\EndFunction
+\end{algorithmic}
+\caption{\label{perceptron-cfg}Perceptron pour un système d'analyse
+  en constituants par transitions}
+\end{algorithm}
+
+
+
+
+
+\section{Analyse lexicalisée}
 
 
 
