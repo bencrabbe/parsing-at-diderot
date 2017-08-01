@@ -484,10 +484,24 @@ class ConstituentTransitionParser:
             early_prefix.reverse()
             return (True,ref_parse,early_prefix)
                 
-                
+
+    def test(self,treebank,beam_size=4):
+        """         
+        @param treebank a list of ConsTrees
+        @param left_markov: if true -> left markovization else right markovization
+        @return the avg f-score
+        """
+        Fscores = []
+        for tree in treebank:
+            result = self. parse_one(tree.tokens(),beam_size)
+            print(result)
+            P,R,F = tree.compare(result)
+            Fscores.append(F)
+        return sum(Fscores)/len(Fscores)
+            
     def train(self,treebank,step_size=1.0,max_epochs=100,beam_size=4,left_markov=True):
         """         
-        @param dataset a list of ConsTrees
+        @param treebank a list of ConsTrees
         @param left_markov: if true -> left markovization else right markovization
         """
         self.transform(treebank,left_markov)
@@ -532,10 +546,10 @@ z = ConsTree.read_tree('(S (NP (D le) (N cuisinier)) (VN (V mange)) (NP (D une) 
 
 parser = ConstituentTransitionParser()
 parser.train([x,y,z])
-t = parser.parse_one(x.tokens())
-print(t)
-t = parser.parse_one(y.tokens())
-print(t)
-t = parser.parse_one(z.tokens())
-print(t)
 
+x = ConsTree.read_tree('(S (NP (D le) (N chat)) (VN (V mange)) (NP (D la) (N souris)) (PP (P sur) (NP (D le) (N paillasson))) (PONCT .))')
+y = ConsTree.read_tree('(S (NP (D la) (N souris)) (VN (V dort)) (PONCT .))')
+z = ConsTree.read_tree('(S (NP (D le) (N cuisinier)) (VN (V mange)) (NP (D une) (N salade) (PP (P avec) (NP (D des) (N cornichons)))) (PONCT .))')
+
+
+print(parser.test([x,y,z]))
