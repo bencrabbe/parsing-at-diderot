@@ -512,8 +512,6 @@ class ConstituentTransitionParser:
             for sentence,ref_derivation in dataset:
                 pred_beam = (self.parse_one(sentence,get_beam=True))
                 (update, ref_prefix,pred_prefix) = self.early_prefix(ref_derivation,pred_beam)
-                #print('R::',ref_prefix)
-                #print('P::',pred_prefix)
                 if update:
                     loss += 1.0
                     delta_ref = SparseWeightVector()

@@ -3912,11 +3912,95 @@ $\hat{\mathbf{d}} \gets \mathop{\text{argmax}}_{\mathbf{d}\in
 \end{algorithm}
 
 
+\paragraph{Problème d'approximation par recherche en faisceau}
+L' algorithme \ref{perceptron-AS} est en général utilisé avec un
+algorithme de recherche en faisceau, ce qui a pour conséquence que la
+meilleure analyse prédite n'est pas nécessairement celle qui a le meilleur
+poids pour le modèle (celle-ci peut avoir été sortie prématurément du faisceau).
+
+Dans ce cas de figure, il est donc possible que l'algorithme
+d'estimation réalise une mise à jour des poids alors que sans
+l'approximation introduite par le faisceau
+le modèle aurait prédit la bonne analyse. Ce comportement peut
+perturber la descente de gradient jusqu'à causer une divergence.
+
+Pour garantir que la descente de gradient converge il faut garantir
+que la mise à jour a lieu lorsqu'il y a bien une violation effective de la marge
+et que celle-ci ne provient pas de l'approximation en faisceau.
+
+Pour cette raison on s'autorise dans la pratique à réaliser la mise à
+jour sur des sous-séquences de dérivation pour lesquelles on a la
+garantie que la marge est effectivement violée indépendamment des
+approximations introduites par le faisceau. Autrement dit une mise à
+jour valide respecte la condition suivante\footnote{
+La mise à jour invalide qui consiste à comparer la meilleure analyse complète
+dans le faisceau en fin d'analyse avec la référence ne vérifie pas cette condition dans tous les cas. 
+}~:
+\begin{equation}
+\Psi(\tilde{\mathbf{y}}^*_{0\ldots k}) > \Psi(\mathbf{y}_{0\ldots k})
+\end{equation}
+La méthode la plus utilisée en pratique est la mise à jour rapide
+({\bf early update}) où la mise à jour est réalisée sur des
+sous-dérivations dont le préfixe $0\ldots k$ correspond à l'étape de
+dérivation où la dérivation de référence sort du faisceau. Une méthode
+alternative est la mise à jour à violation maximale de la marge ({\bf max violation update}). 
+Dans ce cas on choisit $k$ tel que 
+\begin{displaymath}
+k = \mathop{\text{argmax}}_{0 \leq k
+ < 2n-1}\Psi(\tilde{\mathbf{y}}^*_{0\ldots k}) -
+\Psi(\mathbf{y}_{0\ldots k})
+\end{displaymath}
 
 
 
 \section{Analyse lexicalisée}
 
+L'analyse en constituants est parfois utilisée dans un cadre d'analyse dite lexicalisée. 
+Dans ce contexte les arbres sont augmentés d'informations qui permettent d'identifier les têtes syntaxiques.
+On parle d'annotations en têtes et d'arbres annotés par les têtes.
+
+La lexicalisation est utilisée pour donner des indices destinés à aider à la désambiguisation lors de l'analyse.
+On illustre l'idée en Figure \ref{fig-lexicalisation}. Celle-ci illustre un problème dit d'attachement de groupe prépositionnel.
+La structure illustrée en (a) suggère que le dépendant {\em tomates} est à mettre en relation avec {\em salade} (les tomates sont des ingrédients de 
+la salade) alors que la structure (b) suggère que le dépendant {\em couvert} est à mettre en relation avec le verbe  {\em manger} (les couverts
+ sont des instruments pour manger). 
+
+\begin{figure}[htbp]
+\begin{center}
+\scalebox{0.75}{ 
+(a) \Tree [.S(mange) [.N(Pierre) Pierre ] [.V(mange) mange ] [.NP(salade) [.D(une) une ] [.N(salade) salade ]  [.PP(tomates) [.P(avec) avec ] [.NP(tomates) [.D(des) des ] [.N(tomates) tomates ] ] ] ] ]
+}
+\scalebox{0.75}{
+(b) \Tree [.S(mange) [.N(Pierre) Pierre ] [.V(mange) mange ] [.NP(salade) [.D(une) une ] [.N(salade) salade ] ] [.PP(couverts) [.P(couverts) avec ] [.NP(couverts) [.D(des) des ] [.N(couverts) couverts ] ] ] ]
+}
+\end{center}
+\caption{\label{fig-lexicalisation}Arbres lexicalisés}
+\end{figure}
+
+D'un point de vue formel, les deux phrases peuvent (a) et (b) recevoir l'une ou l'autre analyse. La décision de structure se prend
+ sur base de la relation entre le groupe prépositionnel et son gouverneur.
+Comme la représentation est lexicalisée on peut voir que les relations de dépendances critiques (salade, tomates) et (manger,couverts)
+sont explicitées, ce qui donne à l'algorithme d'analyse la possibilité de réaliser le choix approprié.
+
+La plupart des treebanks existants ne donnent pas une telle annotation de têtes.
+Celle-ci est souvent ajoutée par une heuristique qui se formalise par une table de propagation des têtes.
+Et l'analyse lexicalisée est formalisée comme une variante des algorithmes qui précèdent en utilisant une représentation 
+binarisée de la grammaire qui est une variante de la forme normale de Chomsky,
+parfois appelée {\sc 2-lcfg} et dont les règles sont de la forme suivante~:
+\begin{eqnarray*}
+A [h] &\rightarrow & B[h]\quad C[w]\\
+A [h] &\rightarrow & B[w]\quad C[h]\\
+A[h] &\rightarrow & h
+\end{eqnarray*}
+Les algorithmes présentés précédemment se généralisent au cas lexicalisé. En substance les items d'analyse 
+comportent un indice supplémentaire $\langle i,j,h, X\rangle$ qui indique la position de la tête dans cet item.
+De plus, commme il y a deux types de règles binaires~: l'une assignant comme tête du nouveau syntagme la tête de son fils gauche, l'autre la tête de son fils droit.
+Par contre la conception naïve d'algorithmes pour ces systèmes à un indice supplémentaire mène à des algorithmes dont la complexité est en 
+${\cal O}(n^5)$.
+
+Comme on peut le remarquer les arbres d'analyse en constituants lexicalisés encodent des 
+arbres de dépendances projectifs. On propose donc d'illustrer ces différents aspects
+dans le chapitre consacré à l'analyse en dépendances.
 
 
 \chapter{Analyse syntaxique en dépendances}
