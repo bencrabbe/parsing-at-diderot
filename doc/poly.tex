@@ -60,14 +60,41 @@
 
 \begin{document}
 
+\chapter*{Plan et Notations}
 
-\chapter*{Notations}
+\paragraph{Plan}
+\begin{enumerate}
+\item Algorithmes de recherche de solutions (séquences ; arbres)
+\item Méthodes de prédiction discriminante non structurées (rappels + descente de gradient)
+\item Méthodes de prédiction de séquences (pos tagging)
+\begin{enumerate}
+\item Perceptron structuré
+\item Champs conditionnels aléatoires
+\item Prédiction stucturée avec des modèles locaux (MEMM, NN)
+\end{enumerate}
+\item Méthodes de prédiction d'arbres (analyse syntaxique)
+\begin{enumerate}
+\item Analyse en constituants
+\item Analyse en dépendances
+\end{enumerate}
+\end{enumerate}
 
-\url{http://www-users.cs.umn.edu/~karypis/parbook/Lectures/AG/chap12_slides.pdf}
-\url{http://www.aclweb.org/anthology/C08-5001}
-\url{http://www.cs.columbia.edu/~mcollins/}
+\paragraph{Support de cours}
+\url{https://github.com/bencrabbe/parsing-at-diderot}
+
+
+\paragraph{\'Evaluation}
+\begin{itemize}
+\item Test descente de gradient (5pts)
+\item Test tagging (5pts)
+\item Test parsing (10pts)
+\end{itemize}
+
+
+
 
 \paragraph{Pseudo Code}
+
 \begin{description}
 \item $X|Y$ concatène les listes $X$ et $Y$
 \item $x_i$ le $i$-ème élément de la liste $X$
@@ -75,6 +102,102 @@
 \item $X_{\ominus}$ la liste $X$ sans son dernier élément
 \end{description}
  
+
+\url{http://www-users.cs.umn.edu/~karypis/parbook/Lectures/AG/chap12_slides.pdf}
+\url{http://www.aclweb.org/anthology/C08-5001}
+\url{http://www.cs.columbia.edu/~mcollins/}
+
+
+\chapter{Représentations}
+
+En {\sc Tal}, on fait de l'analyse syntaxique et de la syntaxe non pas pour décider
+de la grammaticalité des phrases mais pour leur donner une structure
+destinée à en construire le sens.
+
+La problématique d'analyse syntaxique en {\sc tal} diffère de
+la problématique d'analyse syntaxique en compilation où seuls les
+programmes syntaxiquement corrects sont analysés sémantiquement.
+En {\sc tal} il y a volonté de robustesse, c'est-à-dire que tout
+énoncé doit recevoir une interprétation sémantique.
+
+Deux types de représentations syntaxiques sont utilisées~: les
+représentations dites en dépendances et les représentations dites en
+constituants.
+
+Les représentations en constituants sont utilisées traditionellement en linguistique
+pour représenter la strucuration des phrases en groupes de mots~:
+\begin{center}
+\Tree[.S  [.NP [.N  Pierre ] ] [.VN  [.V mange ] ] [.NP [.D une ] [.N salade ] ] ]
+\end{center}
+Elles sont aussi utilisées explicitement pour aider à la construction de la représentation sémantique 
+en indiquant un parenthésage qui permet de décider comment associer les sous-phrases pour calculer compositionnellement le sens
+(\ref{fig-bracketing})
+
+\begin{figure}[htbp]
+\begin{center}
+\begin{tabular}{cc}\toprule
+\Tree[.$\times$ [.$\times$ ( 3 [.+ ( 3 2 ) ] ) ]  4  ]
+&
+\Tree[.+ [.$\times$ ( 3 3 ) ] [.$\times$ 2 4 ]  ] \\\midrule
+(3 $\times$ ( 3 + 2 ) ) $\times$ 4
+&
+(3 $\times$  3) + ( 2  $\times$ 4)\\
+\bottomrule
+\end{tabular}
+\end{center}
+\caption{\label{fig-bracketing} Le parenthésage permet de changer l'interprétation de la phrase}
+\end{figure}
+
+
+Les arbres en dépendances sont en général utilisés directement (en tous cas les relations qu'ils représentent)
+pour extraire un contenu sémantique de la phrase, comme par exemple pour interfacer avec une base de données.
+\begin{center}
+\begin{dependency}
+\begin{deptext}[column sep=.5cm]
+N        \& V         \& D    \& N\\
+Pierre \& mange \& une \& salade\\
+\end{deptext}
+\depedge[hide label]{2}{1}{ }
+\depedge[hide label]{2}{4}{ }
+\depedge[hide label]{4}{3}{ }
+\end{dependency}
+\end{center}
+
+
+\paragraph{Arbres en constituants} Les arbres en constituants sont généralement vus comme des traces de dérivation de grammaires \ac{cfg}.
+En général la grammaire n'est pas définie explicitement car pour un ensemble de symboles non terminaux $N$ et un ensemble 
+de mots $W$ on autorise toute règle de la forme~:
+\begin{eqnarray*}
+X_i &\rightarrow &X_j X_k \qquad \{X_i,X_j,X_k\} \in N^3\\
+X_i &\rightarrow &X_k X_j \qquad \{X_i,X_j,X_k\} \in N^3\\
+X_i & \rightarrow & w       \qquad w \in W
+\end{eqnarray*}
+
+Dans ce contexte le problème d'analyse syntaxique consiste à déterminer le (ou les) arbres d'analyse 
+les plus plausibles parmi l'ensemble exponentiel des parenthésages possibles de la phrase.
+
+Voir les arbres en constituants comme des traces de dérivations d'une grammaire libre de contexte (même laxiste) permet de préserver les définitions valables pour \ac{pcfg},
+qui sert de référentiel commun utilisé pour ordonner les différentes arbres d'analyse est {\sc pcfg} à partir duquel sont dérivés les modèles d'apprentissage alternatifs.
+
+
+
+
+
+
+
+
+
+
+
+\section{Arbres de dépendances}
+
+
+
+
+
+
+
+
 
 \chapter{Aspects algorithmiques}
 
@@ -2660,9 +2783,10 @@ aux problèmes de \ac{tal}.
 
 
 \section{Réseaux de neurones}
-    word vectors
-    SGD
 
+\subsection{Réseau à Propagation avant}
+\subsection{Word vectors}
+\subsection{Neural Network Language model}
 
 \chapter{Perceptron structuré}
 
@@ -3215,6 +3339,73 @@ pour des détails supplémentaires.}
 
 
 
+\chapter{Modèles locaux}
+
+
+\section{Modèles markoviens à maximum d'entropie}
+
+Des modèles d'étiquetage de la famille {\sc crf} supposent d'assigner une séquence de tags
+$\mathbf{y}$ à une séquence de mots $\mathbf{x}$, ce qui est résumé par la formule (\ref{eq-crf-argmax})
+répétée ici~:
+\begin{equation}
+\hat{\mathbf{y}} =  \mathop{\text{argmax}}_{\mathbf{y}\in \mathbf{Y}}
+\, P(\mathbf{Y}=\mathbf{y} | \mathbf{x} ; \mathbf{w})
+\end{equation}
+On a vu que le problème d'optimisation de {\sc crf} fait intervenir des algorithmes coûteux en temps de calcul. 
+La difficulté vient du fait que l'ensemble $\mathbf{Y}$ de toutes les séquences de tags possibles croit exponentiellement en 
+fonction de la longueur de la phrase.
+
+La motivation des modèles locaux est de simplifier la procédure d'estimation  des paramètres 
+en reformulant (\ref{eq-crf-argmax}) par l'approximation suivante~:
+\begin{equation}
+\label{eq-local-model}
+P(\mathbf{Y}=\mathbf{y} | \mathbf{x} ; \mathbf{w}) \approx \prod_{i=2}^n P(y_i | y_{i-1}, \mathbf{x} ; \mathbf{w})
+\end{equation}
+ce qui est une réutilisation de l'approximation markovienne classique 
+\begin{displaymath}
+P(\mathbf{y} = y_1\ldots y_n | \mathbf{x};\mathbf{w}) \approx \prod_{i=2}^n P(y_i|y_{i-1},\mathbf{x};\mathbf{w})
+\end{displaymath}
+
+L'équation (\ref{eq-local-model}) permet de réduire le problème d'apprentissage structuré à un cas d'apprentissage 
+non structuré où la tâche de prédiction consiste à prédire la probabilité du tag $y_i$ d'un mot donné sachant la séquence de mots 
+$\mathbf{x}$ et le tag du mot précédent $y_{i-1}$.  
+Un tel modèle se réduit donc à un modèle de régression logistique multinomiale (ou modèle à maximum d'entropie).
+
+Les paramètres du modèle étant connus, on peut réaliser la prédiction avec tout algorithme de recherche de solutions approprié
+(Viterbi, Dijkstra ou toute approximation gloutonne).
+
+\paragraph{Estimation des paramètres}
+Un jeu de données pour un modèle local est un ensemble de couples $\mathop{(\mathbf{x}_i y_{i-1}, y_i)}_{i=1}^N$
+où $\mathbf{x}_i$ est une séquence de mots (et le tag $y_{i-1}$ dans le corpus)  et $y_i$ est une catégorie morphosyntaxique.
+L'estimation des paramètres du modèle se fait donc en optimisant la log-vraisemblance des données en utilisant par exemple un algorithme de descente
+de gradient stochastique ou tout algorithme d'optimisation approprié.
+
+
+On peut remarquer que contrairement à un {\sc crf}, un modèle markovien à maximum d'entropie ne visite pas tous les états.
+Il ne voit que les états supposés ``gold'', c'est-à-dire que $y_{i-1}$ sera toujours supposé correct dans les données d'entrainement.
+Par conséquent ce type de modèle est en théorie exposé à des effets de propagation d'erreur~: le modèle n'est pas naturellement entraîné pour traiter des 
+états où il est est arrivé par erreur.
+
+({\bf formalize here the label bias problem})
+
+\section{Modèles neuronaux}
+
+Une autre famille importante de modèles locaux sont constitués par des réseaux de neurones à propagation avant (ou récurrents) dont
+la couche de sortie est de type softmax de telle sorte que les sorties du réseau s'interprètent comme des probabilités de la forme
+$P(y_t|y_{t-1},\mathbf{x};\mathbf{w})$.
+
+Notons que d'autres modèles peuvent être utilisés de manière locale, ainsi il est courant d'utiliser des
+ modèles à large marge de type perceptron comme des modèles locaux plutôt que dans leur version structurée.
+
+
+ 
+
+
+ 
+
+
+
+
 \chapter{Analyse syntaxique en constituants}
 
 
@@ -3668,15 +3859,9 @@ L'algorithme de Knuth, ou algorithme de recherche du meilleur d'abord peut être
 On peut faire l'analogie entre cet algorithme et le problème traditionnel de recherche de court chemin~:
 lorsqu'on combine deux chemins on s'attend à ce que le score du chemin global augmente.
 
-Informellement l'algorithme de Knuth suppose que le score d'une dérivation augmente lorsqu'on la combine avec une autre dérivation.
-Ce type de comportement est typiquement celui du demi-anneau tropical (et plus généralement des demi-anneaux qui satisfont 
-la condition dite de supériorité)
-Ce sont des poids qui se dérivent naturellement de probabilités 
-($w = -\log(p)$) ou à des sorties de modèles de régression logistique multinomiale ou de réseaux de neurones
-à couche de sortie softmax.
 
-\begin{algorithm}
-\begin{algorithmic}[htbp]
+\begin{algorithm}[htbp]
+\begin{algorithmic}
 \Function{Knuth-parser}{$w_1\ldots w_n$}
 \For{$ 0 \leq i < n$}\Comment{Initialisation}
 \State $v \gets \langle i,i+1,w_{i+1} \rangle$
@@ -3700,23 +3885,17 @@ Ce sont des poids qui se dérivent naturellement de probabilités
 \caption{\label{algo-knuth} Algorithme de Knuth}
 \end{algorithm}
 
-*TODO : DEFINE SUPERIORITY*
 
-L'algorithme de Knuth (Algorithme \ref{algo-knuth}) construit l'hypergraphe en expansant en priorité 
-les noeuds les plus prometteurs, c'est-à-dire les noeuds de poids minimal.
-L'ordre de priorité est géré par une file de priorité (file de Fibonacci).
-Il faut remarquer que contrairement aux arcs d'un graphe, les hyperarcs ne peuvent être expansés 
-si l'ensemble des noeuds de leur queue n'ont pas été engendrés. Pour cette raison l'algorithme maintient une table d'arité des hyperarcs
-(noté $rest(e)$) qui enregistre combien de noeuds de la queue ont déjà été engendrés.
+Informellement l'algorithme de Knuth suppose que le score d'une dérivation augmente lorsqu'on la combine avec une autre dérivation.
+Ce type de comportement est typiquement celui du demi-anneau tropical (et plus généralement des demi-anneaux qui satisfont 
+la condition dite de supériorité)
+Ce sont des poids qui se dérivent naturellement de probabilités 
+($w = -\log(p)$) ou à des sorties de modèles de régression logistique multinomiale ou de réseaux de neurones
+à couche de sortie softmax.
 
-L'algorithme de Knuth est une contrepartie de l'algorithme de Dijkstra 
-pour le cas des hypergraphes. Il a été utilisé et étudié sous des noms divers et notamment
-{\em best first parsing} principalement 
-pour mettre au point des heuristiques de recherche (exactes ou non) 
-de la famille $A\star$ pour des modèles probabilistes génératifs.
 
-\begin{algorithm}
-\begin{algorithmic}[htbp]
+\begin{algorithm}[htbp]
+\begin{algorithmic}
 \Function{Knuth-parser}{$w_1\ldots w_n$}
 \For{$ 0 \leq i < n$}\Comment{Initialisation}
 \State $v \gets \langle i,i+1,w_{i+1} \rangle$
@@ -3753,6 +3932,37 @@ de la famille $A\star$ pour des modèles probabilistes génératifs.
 \end{algorithmic}
 \caption{\label{algo-knuth-verbose} Algorithme de Knuth (version binaire)}
 \end{algorithm}
+
+
+Plus formellement, la fonction de pondération doit satisfaire les conditions dites de monotonie et de supériorité.
+\begin{definition}[Fonction de pondération monotone]
+Une fonction $f: \mathbb{R}^d \mapsto \mathbb{R}$ est monotone pour la relation d'ordre $\preceq$ si pour tout $(x,x') \in \mathbb{R}^2$ 
+\begin{displaymath}
+x \preceq x' \qquad \Rightarrow\qquad f(\ldots,x,\ldots) \preceq f(\ldots,x',\ldots)
+\end{displaymath}
+\end{definition}
+\begin{definition}[Fonction de pondération supérieure]
+Une fonction $f: \mathbb{R}^d \mapsto \mathbb{R}$ est supérieure si le résultat de la fonction
+est plus grand que chacun de ses arguments~:
+\begin{displaymath}
+x_i \preceq f(x_1 \ldots,x_i,\ldots x_m) \qquad (1\leq i \leq m )
+\end{displaymath}
+\end{definition}
+
+
+L'algorithme de Knuth (Algorithme \ref{algo-knuth}) construit l'hypergraphe en expansant en priorité 
+les noeuds les plus prometteurs, c'est-à-dire les noeuds de poids minimal.
+L'ordre de priorité est géré par une file de priorité (file de Fibonacci).
+Il faut remarquer que contrairement aux arcs d'un graphe, les hyperarcs ne peuvent être expansés 
+si l'ensemble des noeuds de leur queue n'ont pas été engendrés. Pour cette raison l'algorithme maintient une table d'arité des hyperarcs
+(noté $rest(e)$) qui enregistre combien de noeuds de la queue ont déjà été engendrés.
+
+L'algorithme de Knuth est une contrepartie de l'algorithme de Dijkstra 
+pour le cas des hypergraphes. Il a été utilisé et étudié sous des noms divers et notamment
+{\em best first parsing} principalement 
+pour mettre au point des heuristiques de recherche (exactes ou non) 
+de la famille $A\star$ pour des modèles probabilistes génératifs.
+
 
 {\bf TODO Dire qq part qu'il faut contraindre légèrement:  pas de root en temporaire, pas deux fils temporaires etc.}
 \section{Analyse par transitions}
@@ -5128,14 +5338,6 @@ en arcs}
 
 
 
-\chapter{Approximations par modèles locaux}
-
-Motivation = réduire temps d'entrainement.
-
-\section{Modèles markoviens à maximum d'entropie}
-\section{Perceptrons locaux}
-\section{Modèles à oracles dynamiques}
-
 
 \appendix
 \chapter{Représentations pour les modèles creux}
@@ -5383,6 +5585,48 @@ class SparseWeightVector:
                 s += 'phi(%s,%s) = 1 : w = %f\n'%(key,Y,value)
         return s
 \end{minted}
+
+\appendix
+
+\chapter{Exercice noté (descente de gradient)}
+
+Implémenter sur le même jeu de données avec Y catégorique : 
+
+\begin{itemize}
+\item Descente de gradient (régression logistique hyperparamètres)
+\item Une descente de gradient en vecteur sparse de type (modèle à large marge ; 
+utiliser le fichier \url{multiclass.py} et ajouter la méthode d'entrainement à large marge)
+\item Une descente de gradient multiclasse avec une librairie comme Keras
+\item Donnez l'accurracy du classifieur résultant sur les données.
+\end{itemize}
+
+\chapter{Exercice Noté (tagger)}
+
+Le fichier \url{nn_tagger.py} propose un exemple de tagger unigramme avec un système de pondération basé sur 
+un réseau de neurones à propagation avant.
+
+\begin{itemize}
+\item Méthode baseline : produire un tagger qui assigne à chaque mot le tag le plus fréquent observé avec les données
+\item Exercice principal (base) : transformer le tagger unigramme en tagger bigramme, ce qui implique de changer la forme du jeu de données 
+pour l'entrainement et d'implémenter l'algorithme de Viterbi pour la prédiction.  (ou de Dijkstra)
+\item Exercice principal (alternative) : implémenter un tagger bigramme de la famille \ac{MEMM}
+\item Formalisez une méthode de gestion des mots inconnus.  
+\item Evaluez votre tagger en divisant les données en train et en test.
+\end{itemize}
+Vous pouvez vous insipirer des fichiers \url{crf.py} et \url{structured_perceptron.py} pour vous aider à formuler la solution.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 \end{document}
