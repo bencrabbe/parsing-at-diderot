@@ -337,29 +337,38 @@ vu jusqu'à présent est qu'il réplique une quantité très importante de calcu
 Pour nous en rendre compte, considérons deux séquences de tags 
 \begin{center}
 \begin{tabular}{ccccc}\toprule
-D &A& N& D& V\\
-D& A& N& P& V\\\midrule
+D &A& N& Cl& V\\
+D& N& N& Cl& V\\\midrule
 La&belle&porte&le&cache\\\bottomrule
 \end{tabular}
 \end{center}
-qui diffèrent par un élément.  On constate qu'une méthode de recherche en arbre (qui procède ici de droite à gauche)  va recalculer au moins deux foix la valeur du préfixe {\sl D A N}.  De manière générale la méthode de recherche de solutions en arbre reduplique une quantité considérable de calculs de préfixes, ce qui est largement inefficace.
+qui diffèrent par un élément.  On constate qu'une méthode de recherche
+en arbre va recalculer au moins deux foix la valeur du préfixe {\sl N Cl V}. 
+De manière générale la méthode de recherche de solutions en arbre reduplique une quantité considérable de calculs de suffixes, ce qui est largement inefficace.
 \begin{center}
 \begin{tikzpicture}[xscale=1.75,yscale=1.75]
 
 \node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
-\node[shape=circle,draw=black,double=red] (E) at (6,0) {E};
-\node[shape=circle,draw=black] (A1) at (5,0) {V};
-\node[shape=circle,draw=black] (A2) at (4,-1) {P};
-\node[shape=circle,draw=black] (B2) at (4,1) {D};
+%\node[shape=circle,draw=black,double=red] (E) at (6,0) {E};
+\node[shape=circle,draw=black] (A) at (1,0) {D};
+\node[shape=circle,fill opacity=0.2,draw=black] (B2) at (2,-1) {N};
+\node[shape=circle,fill opacity=0.2,draw=black] (B1) at (2,1){A};
 \node[shape=circle,fill=red,fill opacity=0.2,draw=black] (C2) at (3,-1) {N};
-\node[shape=circle,fill=red,fill opacity=0.2,draw=black] (C1) at (3,1) {N};
-\draw [->,opacity=0.5](E) -- (A1);
-\draw [->,opacity=0.5](A1) -- (A2);
-\draw [->,opacity=0.5](A1) -- (B2);
-\draw [->,opacity=0.5](A2) -- (C2);
-\draw [->,opacity=0.5](B2) -- (C1);
-\draw [->,opacity=0.5, decorate,decoration={snake,amplitude=.2mm,segment length=2mm,post length=1mm}] (C1) -- (S.east);
-\draw [->,opacity=0.5, decorate,decoration={snake,amplitude=.2mm,segment length=2mm,post length=1mm}] (C2) -- (S.east);
+\node[shape=circle,fill=red,fill opacity=0.2,draw=black] (C1) at (3,1){N};
+\node[shape=circle,fill=red,fill opacity=0.2,draw=black] (D2) at (4,-1) {Cl};
+\node[shape=circle,fill=red,fill opacity=0.2,draw=black] (D1) at (4,1){Cl};
+\node[shape=circle,fill=red,fill opacity=0.2,draw=black] (E2) at (5,-1) {V};
+\node[shape=circle,fill=red,fill opacity=0.2,draw=black] (E1) at (5,1){V};
+
+\draw [->,opacity=0.5](S) -- (A);
+\draw [->,opacity=0.5](A) -- (B1);
+\draw [->,opacity=0.5](A) -- (B2);
+\draw [->,opacity=0.5](B1) -- (C1);
+\draw [->,opacity=0.5](B2) -- (C2);
+\draw [->,opacity=0.5](C1) -- (D1);
+\draw [->,opacity=0.5](C2) -- (D2);
+\draw [->,opacity=0.5](D1) -- (E1);
+\draw [->,opacity=0.5](D2) -- (E2);
 \end{tikzpicture}
 \end{center}
 L'idée des méthodes de \kw{programmation dynamique}, c'est d'éviter les reduplications de calculs inutiles pour réutiliser des résultats intermédiaires (partage de calcul). Ainsi l'espace des états est organisé en  graphe (\ac{dag}) plutôt qu'en arbre. Cette nouvelle organisation permet de proposer des solutions algorithmiques en temps polynomial plutôt qu'en temps exponentiel aux problèmes de recherche qui nous concernent.
@@ -368,17 +377,21 @@ L'idée des méthodes de \kw{programmation dynamique}, c'est d'éviter les redup
 \begin{tikzpicture}[xscale=1.75,yscale=1.75]
 
 \node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
-\node[shape=circle,draw=black,double=red] (E) at (6,0) {E};
-\node[shape=circle,draw=black] (A1) at (5,0) {V};
-\node[shape=circle,draw=black] (A2) at (4,-1) {P};
-\node[shape=circle,draw=black] (B2) at (4,1) {D};
-\node[shape=circle,fill=green,fill opacity=0.2,draw=black] (C1) at (3,0) {N};
-\draw [->,opacity=0.5](E) -- (A1);
-\draw [->,opacity=0.5](A1) -- (A2);
-\draw [->,opacity=0.5](A1) -- (B2);
-\draw [->,opacity=0.5](A2) -- (C1);
-\draw [->,opacity=0.5](B2) -- (C1);
-\draw [->,opacity=0.5, decorate,decoration={snake,amplitude=.2mm,segment length=2mm,post length=1mm}] (C1) -- (S.east);
+%\node[shape=circle,draw=black,double=red] (E) at (6,0) {E};
+\node[shape=circle,draw=black] (A) at (1,0) {D};
+\node[shape=circle,fill opacity=0.2,draw=black] (B2) at (2,-1) {N};
+\node[shape=circle,fill opacity=0.2,draw=black] (B1) at (2,1){A};
+\node[shape=circle,fill=green,fill opacity=0.2,draw=black] (C) at (3,0) {N};
+\node[shape=circle,fill=green,fill opacity=0.2,draw=black] (D) at (4,0) {Cl};
+\node[shape=circle,fill=green,fill opacity=0.2,draw=black] (E) at (5,0) {V};
+
+\draw [->,opacity=0.5](S) -- (A);
+\draw [->,opacity=0.5](A) -- (B1);
+\draw [->,opacity=0.5](A) -- (B2);
+\draw [->,opacity=0.5](B1) -- (C);
+\draw [->,opacity=0.5](B2) -- (C);
+\draw [->,opacity=0.5](C) -- (D);
+\draw [->,opacity=0.5](D) -- (E);
 \end{tikzpicture}
 \end{center}
 
@@ -414,7 +427,7 @@ Soit un \ac{dag} dont un noeud distingué $s\in V$ est appelé noeud source. En 
 \begin{displaymath}
 \delta(x)  = \left\{ 
 \begin{array}{ll}
-\bar{0} & \text{si } $x = s$ \\
+\bar{1} & \text{si } $x = s$ \\
 \bigoplus_{\pi \in P(x)} \sigma(\pi) &\text{sinon}
 \end{array}
 \right.
@@ -447,7 +460,7 @@ Notons $\sigma(x)$ le coût d'un chemin entre le noeud initial du \ac{dag} et un
 \label{eq-bellmann}
 \delta(x) = \left\{ 
 \begin{array}{ll}
-\bar{0} & \text{si }  x = q_0\\
+\bar{1} & \text{si }  x = q_0\\
 \oplus \left[ \alpha(x_{-1}) \otimes \psi(x_{-1},x), \ldots ,\alpha(x_{-k}) \otimes \psi(x_{-k},x) \right] &\text{sinon}
 \end{array}
 \right.
