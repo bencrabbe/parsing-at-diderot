@@ -137,9 +137,6 @@ if __name__ == '__main__':
     p = FeedForwardTagger()
     p.train(D)
     print(p.test(D))
-    #p = StructuredPerceptron()
-    #p.train(D)
-    #print(p.test(D))
 
     s ="Le chat mange la souris .".split()
     print(p.tag(s))
