@@ -37,7 +37,7 @@ class SparseWeightVector:
         """
         w = SparseWeightVector()
         for xkey in xvec_keys:
-            w[(xkey,ykey)] = 1.0
+            w[(xkey,ykey)] += 1.0
         return w
 
     def __getitem__(self,key):

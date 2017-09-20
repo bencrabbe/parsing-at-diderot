@@ -162,7 +162,6 @@ Bien que de taille finie, l'ensemble des solutions est en général de taille co
 
 
 \section{Arbre de recherche de solutions}
-\marginpar{Biblio (AIMA : a modern approach)}
 
 La recherche de solutions à des problèmes de type (\ref{eq-combi-optim}) 
 peut s'exprimer sous la forme générale d'un problème de recherche~:
@@ -174,7 +173,7 @@ peut s'exprimer sous la forme générale d'un problème de recherche~:
 \item Un ensemble $T\subseteq Q\times Q \times A$ de transitions qui induit une structure d'arbre.
 \item Une fonction de coût $\sigma$ ou de score qui représente le score d'une séquence d'états calculé depuis l'état initial. On suppose que toute transition  $(q_i,q_{i+1},a_i) \in T$ se voit attribuer un coût $\psi(q_i,q_{i+1},a_i)$ par une fonction $\psi: T \mapsto \mathbb{R}$. On pose par convention que le coût de la séquence de transitions qui mène à l'état $q_k$ est le produit des coûts des transitions qui la composent~: 
 \begin{displaymath}
-\sigma(q_k) = \bigotimes_{0\leq i < k} \psi(q_i,q_{i+1},a_i)
+\sigma(q_k) = \prod_{0\leq i < k} \psi(q_i,q_{i+1},a_i)
 \end{displaymath}
 \end{itemize}
 \begin{figure}[htbp]
@@ -239,11 +238,11 @@ On peut illustrer la  structure d'un problème de recherche par un arbre comme e
 \begin{algorithmic}[1]
 \Function{MaxSearch}{$q$}
 \If{$q \not\in F$}
-\State maxscore $\gets \bar{0}$
+\State maxscore $\gets 0$
 \State hist $\gets \epsilon$
 \ForAll{$(q,q',a) \in T$}
 \State  (suffscore, hist) $\gets$ \Call{MaxSearch}{$q'$}
-\State suffscore $\gets \psi(q,q',a) \,\otimes$ suffscore
+\State suffscore $\gets \psi(q,q',a) \,\times$ suffscore
 \If{suffscore $>$ maxscore}
 \State maxscore $\gets$ suffscore
 \State hist $\gets$ a $|$ hist 
@@ -251,7 +250,7 @@ On peut illustrer la  structure d'un problème de recherche par un arbre comme e
 \EndFor
 \State\Return (maxscore,hist)
 \Else
-  \State\Return ($\bar{1}$,$\epsilon$)
+  \State\Return ($1$,$\epsilon$)
 \EndIf
 \EndFunction
 \end{algorithmic}
@@ -273,7 +272,7 @@ pour que le résultat renvoyé soit maintenant un couple qui comporte la valeur 
 
 
 
-\section{Systèmes de transition}
+\section{Systèmes de transitions}
 
 Pour spécifier explicitement un problème de recherche de solutions en \ac{tal}, on utilise fréquemment une spécification sous forme de système de transitions. Ce type de spécification a été popularisé par la tâche d'analyse syntaxique en dépendances.  Mais celle-ci est très générale, on trouve ce type de systèmes également pour spécifier des problèmes de planification en intelligence artificielle et (parfois) des méthodes de démonstration automatique. 
 
@@ -304,11 +303,11 @@ Réécrire l'algorithme de parcours d'un arbre de recherche pour qu'il renvoie l
 \begin{algorithmic}[1]
 \Function{MaxSearch}{S,B}
 \If{$B \not = \epsilon$}
-\State maxscore $\gets \bar{0}$
+\State maxscore $\gets 0$
 \State hist $\gets \epsilon$
 \ForAll{$t \in A$}
 \State  (suffscore, hist) $\gets$ \Call{MaxSearch}{$S|t$,$_{\ominus}B$}
-\State suffscore $\gets \psi(S,B,t) \,\otimes$ suffscore
+\State suffscore $\gets \psi(S,B,t) \,\times$ suffscore
 \If{suffscore $>$ maxscore}
 \State maxscore $\gets$ suffscore
 \State hist $\gets$ t $|$ hist 
@@ -316,7 +315,7 @@ Réécrire l'algorithme de parcours d'un arbre de recherche pour qu'il renvoie l
 \EndFor
 \State\Return (maxscore,hist)
 \Else
-  \State\Return ($\bar{1}$,$\epsilon$)
+  \State\Return ($1$,$\epsilon$)
 \EndIf
 \EndFunction
 \end{algorithmic}
@@ -328,13 +327,172 @@ Modifier la formulation de l'exercice précédent pour faire en sorte qu'il renv
 Lorsque l'espace des solutions est trop grand (ce qui est généralement le cas pour la plupart des problèmes de \ac{tal}) l'algorithme naïf de recherche vu jusqu'à présent, qui a une complexité exponentielle en $\mathcal{O}(A^n)$ est inutilisable. On se tourne alors vers des solutions qui s'appuient sur de la programmation dynamique (Section \ref{sec-DP}) ou des solutions  de recherche approximative ou une combinaison des deux.
 
 
+\section{Les méthodes de recherche approximatives}
+
+Si il existe des algorithmes comme Viterbi et Dijkstra (et
+A$\star$, sections \ref{sec-DP}, \ref{sec-viterbi},\ref{sec-dijkstra}) qui sont conçus pour donner une solution optimale au problème de
+recherche du chemin de poids maximal (resp. minimal)
+et que ces algorithmes ont une complexité polynomiale --~considérée
+comme acceptable~-- ces algorithmes sont potentiellement lents lorsque
+les phrases sont longues où lorsque l'espace des états est de taille
+considérable. Par exemple, Viterbi a une complexité en ${\cal
+  O}(NK^2)$, lorsque la taille du jeu de tags $K$ est importante (ce
+qui est notamment le cas pour des modèles dont l'historique est très riche)
+les temps de calcul deviennent potentiellement prohibitifs.
+
+Dans ce type de situation, on peut faire le choix d'utiliser des
+méthodes de recherche de solutions qui ne garantissent pas
+l'optimalité, comme la recherche gloutonne ou la recherche par
+faisceau. Il s'agit de méthodes qui n'explorent qu'une petite partie
+de l'espace de solutions et qui sont en général très efficaces.
+
+Comme il s'agit de méthodes qui n'explorent qu'une toute petite
+partie de l'espace des solutions (séquences de tags possibles)
+celle-ci sont généralement utilisées en combinaison avec une fonction
+de score très bien informée sur le problème à traiter de telle sorte que la
+partie de l'espace explorée a, par hypothèse, de grandes chances de contenir la
+solution optimale. 
+
+On présente ici deux méthodes couramment utilisées~:  la recherche
+gloutonne et la recherche par faisceau (beam) comme des variantes de
+la méthode de recherche dans un arbre de solutions (Algorithme
+\ref{algo-searchtree}) pour des systèmes de transitions. 
+Mais ces méthodes pourraient également se formuler dans un contexte où l'espace de
+recherche est représenté par un graphe.
+
+\subsection{Recherche gloutonne}
+
+La méthode de recherche gloutonne est le cas dégénéré de la méthode de
+recherche du meilleur d'abord. \`A chaque itération, l'algorithme évalue
+le score de tous les successeurs d'un état. C'est l'unique successeur
+de meilleur score qui est sélectionné pour la suite de la recherche
+(Algorithme \ref{algo-greedy-tree}).
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{GreedySearch}{S,B,$\sigma$}
+\If{$B \not = \epsilon$}
+\State maxscore $\gets \bar{0}$
+\State argmaxt $\gets \emptyset$ 
+\ForAll{$t \in T$}
+	\State localscore $\gets \sigma \times \psi(S,B,t)$
+        \If {localscore $>$ maxscore} 
+              \State maxscore $\gets$ localscore
+              \State argmaxt $\gets$ t
+        \EndIf
+\EndFor
+\State\Return \Call{GreedySearch}{$S|\text{argmaxt}$,$_{\ominus}$B, maxscore}
+\Else
+  \State\Return $\sigma$
+\EndIf
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-greedy-tree}Algorithme de recherche glouton}
+\end{algorithm}
+Il est évident que cet algorithme donne des solutions approximatives
+et sans garantie d'optimalité. Par contre la complexité de cet
+algorithme, en ${\cal O}(n K)$,  est linéaire en temps. Autrement dit,
+cet algorithme est très efficace à l'usage.
+
+L'aspect approximatif de cet algorithme peut être contrebalancé
+en utilisant des scores locaux  très bien choisis pour guider la recherche vers une solution proche de
+l'optimum global. Ce
+scénario est très utilisé à l'heure actuelle par les systèmes pondérés
+par des réseaux de neurones profonds. Ceux-ci  obtiennent
+empiriquement de très
+bons résultats.
+
+\begin{exo}
+Augmenter l'algorithme \ref{algo-greedy-tree} pour qu'il renvoie
+non seulement le score du chemin de poids maximal, mais aussi
+la séquence de tags de ce chemin.
+\end{exo}
+\begin{exo}
+Comparer le meilleur chemin renvoyé par l'algorithme glouton avec
+celui 
+renvoyé par l'algorithme de Viterbi à partir de l'exemple \ref{fig-viterbi-general-dag}.
+\end{exo}
+
+\subsection{Recherche par faisceau}
+
+La recherche par faisceau est une extension de la méthode par recherche gloutonne.
+La recherche par faisceau est un algorithme qui progresse
+essentiellement en largeur dans l'arbre de recherche. \`A chaque itération il avance en
+profondeur dans $|\mathcal{B}|$ branches de l'arbre jusqu'à atteindre les
+feuilles, et ce sans jamais faire marche arrière.
+
+Les $|\mathcal{B}|$ branches sélectionnées pour continuer l'exploration à l'étape
+suivante constituent le faisceau. 
+Le choix des branches destinées à continuer l'exploration 
+est heuristique. Généralement on choisit les $|\mathcal{B}|$ branches qui ont le
+plus haut score. 
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}[1]
+\Function{BeamSearch}{$\mathcal{B}$}
+\State $\mathcal{B}' \gets \emptyset$
+\ForAll {$\langle S,B,\sigma\rangle \in \mathcal{B}$}
+\If {$B = \epsilon$}\Comment{par hypothèse le faisceau est trié}
+\State \Return $\sigma$
+\EndIf
+\ForAll{$t \in T$}
+	\State localscore $\gets \sigma \times \psi(S,B,t)$
+        \State $\mathcal{B'} \gets \mathcal{B}' \cup \{\langle
+        S|t,_\ominus B,\text{localscore}\rangle\}$
+\EndFor
+\EndFor
+\State $\mathcal{B} \gets$ \Call{$\mathcal{B}$-Select}{$\mathcal{B'}$}
+\State \Return \Call{BeamSearch}{$\mathcal{B}$}
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-beam-tree}Algorithme de recherche en faisceau}
+\end{algorithm}
+L'algorithme est donné en Algorithme \ref{algo-beam-tree}.
+Notons que la fonction \ac{$\mathcal{B}$-Select} est chargée de sélectionner $|\mathcal{B}|$ éléments dans un
+ensemble. Il s'agit dans la très grande généralité des cas
+ de sélectionner les $|\mathcal{B}|$ éléments de scores les plus élevés 
+ mais des variantes sont envisageables. Par exemple la recherche par faisceau
+ stochastique consiste à sélectionner $|\mathcal{B}|$ éléments aléatoirement
+ proportionnellement à leur score. 
+
+L'intérêt de cette méthode est son efficacité~: la complexité reste faible~:
+${\cal O}(n K |\mathcal{B}|)$, c'est-à-dire essentiellement linéaire.
+
+On peut penser que le faisceau peut corriger les faiblesses de la méthode
+gloutonne mais en pratique on observe souvent que les faisceaux
+contiennet des hypothèses très similaires.
+Comme la méthode gloutonne, l'algorithme de recherche en faisceau ne
+garantit pas de renvoyer une solution optimale. 
+En effet, une solution optimale qui a un mauvais score préfixe lors
+des premières itérations ne sera plus jamais considérée. 
+
+Il faut bien garder à l'esprit que cette méthode renvoie un
+pseudo-résultat maximal, ce qui peut poser problème
+ dans certains contextes d'utilisation (comme illustré en chapitre XX)
+
+\begin{exo}
+Augmenter l'algorithme \ref{algo-beam-tree} pour qu'il renvoie
+non seulement le score du chemin de poids maximal, mais aussi
+la séquence de tags de ce chemin.
+\end{exo}
 
 
 \section{Programmation dynamique}
 \label{sec-DP}
-Une des faiblesses de l'algorithme de recherche de solutions
-vu jusqu'à présent est qu'il réplique une quantité très importante de calculs.
-Pour nous en rendre compte, considérons deux séquences de tags 
+
+Une des faiblesses de l'algorithme de recherche naïf de solutions
+structuré en arbre (Algorithme \ref{algo-searchtree})  est qu'il
+réplique une quantité très importante de calculs. 
+
+Les solutions approximatives présentées jusqu'à présent
+permettent d'éviter une reduplication outrancière des calculs
+en limitant le nombre d'hypothèses explorées.
+L'inconvénient est qu'elles ne garantissent pas l'optimalité de la
+solution renvoyée. 
+
+Les méthodes de programmation dynamique cherchent à renvoyer une
+solution optimale au problème de recherche en évitant la reduplication
+de calculs. On propose de motiver la technique par un exemple introductif
+en considérant deux séquences de tags~:
 \begin{center}
 \begin{tabular}{ccccc}\toprule
 D &A& N& Cl& V\\
@@ -343,7 +501,7 @@ La&belle&porte&le&cache\\\bottomrule
 \end{tabular}
 \end{center}
 qui diffèrent par un élément.  On constate qu'une méthode de recherche
-en arbre va recalculer au moins deux foix la valeur du préfixe {\sl N Cl V}. 
+en arbre va recalculer au moins deux foix la valeur du suffixe {\sl N Cl V}. 
 De manière générale la méthode de recherche de solutions en arbre reduplique une quantité considérable de calculs de suffixes, ce qui est largement inefficace.
 \begin{center}
 \begin{tikzpicture}[xscale=1.75,yscale=1.75]
@@ -417,7 +575,7 @@ Soit un noeud $x\in V$, l'ensemble $AS(x) = \{(x,y) \,|\, (x,y) \in E , y \in V 
 \begin{definition}[Chemin]
 Un chemin de longeur $n$ est une séquence de noeuds $\pi \in V^n$ de la forme $\pi = v_1 v_2\ldots v_n$ tel que $(v_i,v_{i+1}) \in E$ pour tout $1\leq i < n$. Le score $\sigma(\pi)$ d'un chemin est le produit :
 \begin{displaymath}
-\sigma(\pi) = \bigotimes_{i=1}^{n-1} \psi(v_i,v_{i+1}) 
+\sigma(\pi) = \prod_{i=1}^{n-1} \psi(v_i,v_{i+1}) 
 \end{displaymath}
 \end{definition}
 
@@ -427,139 +585,95 @@ Soit un \ac{dag} dont un noeud distingué $s\in V$ est appelé noeud source. En 
 \begin{displaymath}
 \delta(x)  = \left\{ 
 \begin{array}{ll}
-\bar{1} & \text{si } $x = s$ \\
-\bigoplus_{\pi \in P(x)} \sigma(\pi) &\text{sinon}
+1 & \text{si } $x = s$ \\
+\mathop{\text{max}}_{\pi \in P(x)} \sigma(\pi) &\text{sinon}
 \end{array}
 \right.
 \end{displaymath}
 \end{definition}
 
 
-\subsection{Optimisation de fonctions récursives}
-Un problème de programmation dynamique est typiquement formulé comme un problème d'optimisation entre différentes alternatives~: il s'agit par exemple de trouver un chemin de poids maximum parmi plusieurs chemins pondérés.
+\subsection{Mémorisation de résultats intermédiaires}
+Un problème de programmation dynamique est typiquement formulé comme
+un problème d'optimisation entre différentes alternatives~: il s'agit
+par exemple de trouver un chemin de poids maximum parmi plusieurs
+chemins pondérés. On illustre en figure \ref{fig-DP-dag-intro} un
+exemple de structuration du problème de recherche en \ac{dag}.
 
+\begin{figure}[htbp]
 \begin{center}
-\begin{tikzpicture}[xscale=2,yscale=2]
-\node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
-\node[shape=circle,draw=black,double=red] (E) at (4,0) {E};
-\node[shape=circle,draw=black] (1) at (1,1) {A};
-\node[shape=circle,draw=black] (2) at (3,1) {C};
-\node[shape=circle,draw=black] (3) at (2,0) {B};
-\draw [->,opacity=0.5](S) -- (1) node[midway,fill=white]{$s(S,A)$};
-\draw [->,opacity=0.5](S) -- (3) node[midway,fill=white]{$s(S,B)$};
-\draw [->,opacity=0.5](1) -- (3) node[midway,fill=white]{$s(A,B)$};
-\draw [->,opacity=0.5](1) -- (2) node[midway,fill=white]{$s(A,C)$};
-\draw [->,opacity=0.5](3) -- (2) node[midway,fill=white]{$s(B,C)$};
-\draw [->,opacity=0.5](2) -- (E) node[midway,fill=white]{$s(C,E)$};
-\draw [->,opacity=0.5](3) -- (E) node[midway,fill=white]{$s(B,E)$};
+\begin{tikzpicture}[xscale=2,yscale=3]
+\def\x{0.0}
+\def\y{0.2}
+\node[shape=circle,draw=black,double=red] (S) at (0,0.5) {S};
+\node[shape=circle,draw=black,double=red] (E) at (4,0.5) {E};
+\node[shape=circle,draw=black] (1) at (1,0) {A};
+\node[shape=circle,draw=black] (2) at (1,1) {B};
+\node[shape=circle,draw=black] (3) at (2,0) {A};
+\node[shape=circle,draw=black] (4) at (2,1) {B};
+\node[shape=circle,draw=black] (5) at (3,0) {A};
+\node[shape=circle,draw=black] (6) at (3,1) {B};
+
+\draw [->,opacity=0.75](S) -- (1) node[midway,fill=white]{5};
+\draw [->,opacity=0.75](S) -- (2) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](1) -- (3) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](1) -- (4) node[near end,fill=white]{4};
+\draw [->,opacity=0.75](2) -- (3) node[near end,fill=white]{7};
+\draw [->,opacity=0.75](2) -- (4) node[midway,fill=white]{4};
+\draw [->,opacity=0.75](3) -- (5) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](3) -- (6) node[near end,fill=white]{3};
+\draw [->,opacity=0.75](4) -- (5) node[near end,fill=white]{2};
+\draw [->,opacity=0.75](4) -- (6) node[midway,fill=white]{1};
+\draw [->,opacity=0.75](5) -- (E) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](6) -- (E) node[midway,fill=white]{3};
+
+%deltas
+% \node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (0+\x,0.5+\y){1};
+% \node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (4+\x,0.5+\y){135};
+% \node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,0+\y){5};
+% \node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,1+\y){2};
+% \node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,0+\y){15};
+% \node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,1+\y){20};
+% \node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,0+\y){40};
+% \node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,1+\y){45};
 \end{tikzpicture}
 \end{center}
+\caption{\label{fig-DP-dag-intro}Exemple de \ac{dag} de programmation dynamique}
+\end{figure}
 
-Notons $\sigma(x)$ le coût d'un chemin entre le noeud initial du \ac{dag} et un noeud $x$. En notant $x_{-1},x_{-2}\ldots x_{-k}$ les prédécesseurs d'un noeud $x$ dans le graphe ($x_{-i} \in AE(x)$), on a que le chemin de poids maximal pour arriver à $x$ depuis ses prédécesseurs est donné par l'équation :
-\begin{equation}
-\label{eq-bellmann}
-\delta(x) = \left\{ 
-\begin{array}{ll}
-\bar{1} & \text{si }  x = q_0\\
-\oplus \left[ \alpha(x_{-1}) \otimes \psi(x_{-1},x), \ldots ,\alpha(x_{-k}) \otimes \psi(x_{-k},x) \right] &\text{sinon}
-\end{array}
-\right.
-\end{equation}
-qui est appelée équation de programmation dynamique ou \kw{équation de Bellmann}. Il s'agit d'une formule récursive qui fait intervenir deux opérations~: $\oplus$ est une opération d'aggrégation parmi plusieurs alternatives comme typiquemen {\sl max} ou {\sl min} et $\otimes$ est un opération de composition destinée à calculer le score de chemins dans un \ac{dag} comme typiquement $+$ ou $\times$. 
 
-La récurrence exprimée en (\ref{eq-bellmann})  indique que pour déterminer le poids du chemin optimal qui mène à $x$, il faut comparer le poids de l'ensemble des chemins qui passent par les prédécesseurs de $x$ dans le \ac{dag}.
-
-Mais cette récurrence indique surtout que pour déterminer le coût du chemin optimal pour atteindre $x$ il faut essentiellement réutiliser la solution du sous-problème pour chacun des prédécesseurs de $x$, ce qui revient à déterminer le chemin optimal qui mène à chacun des $x_{-i}$.
 
 Lorsque certains sous-problèmes sont à recalculer plusieurs fois, on  dit qu'il y a \kw{recouvrement de sous-problèmes}. Les techniques de programmation dynamique consistent à éviter l'évaluation multiple d'un même sous-problème en mémorisant les solutions intermédiaires.
 
-Plusieurs techniques pour réaliser la mémorisation seront présentées mais celles-ci font généralement appel à une table dite table de programmation dynamique pour mémoriser les résultats intermédiaires. Celle-ci mémorise les valeurs $\delta(x)$ des états $x$ visités lors de la résolution du problème.
+Plusieurs techniques pour réaliser la mémorisation seront présentées
+mais celles-ci font généralement appel à une table dite table de
+programmation dynamique pour mémoriser les résultats
+intermédiaires. Celle-ci mémorise les valeurs $\delta(x)$ des états
+$x$ intermédiaires (noeuds du \ac{dag}) évalués lors de la résolution du problème.
 
-Une solution simple et directe pour exprimer ce qui précède est la technique de \kw{mémoisation}. Celle-ci repose sur l'usage de \kw{mémo-fonctions}. L'idée est de mémoriser la solution $\delta(x)$ dans une table dès que celle-ci est déterminée. Cette table est alors consultée dans les étapes ultérieures de l'algorithme de telle sorte que la valeur mémorisée est réutilisée au lieu de réexécuter l'appel récursif.
+Une solution directe pour exprimer cette idée est la technique dite de \kw{mémoisation}. Celle-ci repose sur l'usage de \kw{mémo-fonctions}. L'idée est de mémoriser la solution $\delta(x)$ dans une table dès que celle-ci est déterminée. Cette table est alors consultée dans les étapes ultérieures de l'algorithme de telle sorte que la valeur mémorisée est réutilisée au lieu de réexécuter l'appel récursif.
 
-L'algorithme \ref{algo-searchMemo} illustre le principe de la mémoisation. On suppose que le \ac{dag} a un état final $q_f$, et que la table {\sl memo} est initialisée à $\delta(x) = \bar{0}$ pour tout  $x\in V$ (sauf $\delta(q_0) = \bar{1}$). La fonction est initialement appelée avec le paramètre $q_f$.  
+L'algorithme \ref{algo-searchMemo} illustre le principe de la mémoisation. On suppose que le \ac{dag} a un état final $q_f$, et que la table {\sl memo} est initialisée à $\delta(x) = 0$ pour tout  $x\in V$ (sauf $\delta(q_0) = 1$). La fonction est initialement appelée avec le paramètre $q_f$.  
 
 \begin{algorithm}[htbp]
 \begin{algorithmic}[1]
 \Function{MaxSearchMemo}{x}
-\If{$\text{memo}[x] \not = \bar{0}$}
+\If{$\delta(x) \not = 0$}
 \Comment{Score mémoisé}
-\State\Return memo[x]
+\State\Return $\delta(x)$
 \EndIf
 \ForAll{$y \in AE(x)$}
-\State memo[x] $\gets$ \Call{$\oplus$}{}(memo[x],\Call{MaxSearchMemo}{y} $\otimes \psi(y,x)$)
+\State $\delta(x)\gets$ \Call{Max}{}($\delta(x)$,\Call{MaxSearchMemo}{y} $\times \psi(y,x)$)
 \EndFor
-\State\Return memo[x]
+\State\Return $\delta(x)$
 \EndFunction
 \end{algorithmic}
 \caption{\label{algo-searchMemo}Algorithme de recherche d'une valeur optimale mémoisé}
 \end{algorithm}
 
-\begin{exo}Donner une valuation numérique aux arcs du \ac{dag} suivant et  simuler l'exécution de l'algorithme \ref{algo-searchMemo} sur papier.
-\begin{center}
-\begin{tikzpicture}[xscale=2,yscale=2]
-\node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
-\node[shape=circle,draw=black,double=red] (E) at (4,0) {E};
-\node[shape=circle,draw=black] (1) at (1,1) {A};
-\node[shape=circle,draw=black] (2) at (3,1) {C};
-\node[shape=circle,draw=black] (3) at (2,0) {B};
-\draw [->,opacity=0.5](S) -- (1) node[midway,fill=white]{$s(S,A)$};
-\draw [->,opacity=0.5](S) -- (3) node[midway,fill=white]{$s(S,B)$};
-\draw [->,opacity=0.5](1) -- (3) node[midway,fill=white]{$s(A,B)$};
-\draw [->,opacity=0.5](1) -- (2) node[midway,fill=white]{$s(A,C)$};
-\draw [->,opacity=0.5](3) -- (2) node[midway,fill=white]{$s(B,C)$};
-\draw [->,opacity=0.5](2) -- (E) node[midway,fill=white]{$s(C,E)$};
-\draw [->,opacity=0.5](3) -- (E) node[midway,fill=white]{$s(B,E)$};
-\end{tikzpicture}
-\end{center}
-\end{exo}
-\begin{exo}
-Reformuler l'algorithme \ref{algo-searchMemo} de telle sorte que le chemin optimal 
-soit celui de poids minimum.  Simuler son exécution sur papier.
-\end{exo}
-\begin{exo}
-Reformuler l'algorithme \ref{algo-searchMemo} en utilisant la notation en opérations abstraites $\oplus$ et $\otimes$
-\end{exo}
-\begin{exo}
-Reformuler l'algorithme \ref{algo-searchMemo} en supprimant la conditionnelle qui réalise la mémoisation.  Tenter de le simuler sur papier.
-\end{exo}
-
-\section{Algorithme de Viterbi}
-L'algorithme mémoisé présenté dans la section précédente peut se reformuler par une version souvent plus pratique à l'usage. C'est l'\kw{algorithme de Viterbi}.
-
-\begin{definition}[Ordre topologique] Un ordre topologique sur un \ac{dag} $G=(V,E)$ est tout ordre total sur les noeuds $V$ de ce \ac{dag} tel que pour tout couple de noeuds $(x,y) \in E$,  $x \prec y$. Il existe en général plusieurs ordres topologiques valides pour un \ac{dag} donné.
-\end{definition}
-
-L'algorithme de Viterbi est un algorithme de recherche du chemin de
-poids maximal dans un \ac{dag} (Figure \ref{algo-viterbi-general}). 
- En supposant un noeud source $s$ unique dont le poids $\delta(s)$ est
- initialisé à 1, l'algorithme parcourt le \ac{dag} en suivant l'ordre
- topologique. Chaque noeud est à son tour valué par le poids
- $\delta(s)$ du chemin maximal qui mène de la source jusqu'à ce
- noeud. Toute l'idée de l'algorithme consiste à mémoriser les poids
- $\delta(s)$ au fur et à mesure qu'ils sont calculés pour les
- réutiliser lors de calculs ultérieurs.
-
-\begin{algorithm}[htbp]
-\begin{algorithmic}
-\Function{Viterbi}{S,V,s}
-\State \Call{TriTopologique}{$S,V,s$}
-\State $\delta(s) \gets \bar{1}$
-\ForAll {$s \in  S$ (suivant ordre topologique)}
-\State $\delta(s) \gets \bar{0}$
-\ForAll {$(s',s) \in AE(s)$}
-\State  $\delta(s) \gets \Call{$\oplus$}{\delta(s) , \delta(s')  \otimes \psi(s',s) $}
-\EndFor
-\EndFor
-\EndFunction
-\end{algorithmic}
-\caption{\label{algo-viterbi-general}Algorithme de Viterbi}
-\end{algorithm}
-
-On donne en figure \ref{fig-viterbi-general-dag} un exemple de
-résultat de l'exécution de l'algorithme sur un cas concret. Chacun des
-noeuds du \ac{dag} est annoté (case bleue) par la valeur du $\delta(x)$
-qui lui correspond.
+On illustre en figure \ref{fig-viterbi-general-dag} le \ac{dag}
+résultant de l'exécution de l'algorithme de mémoisation sur
+le \ac{dag} donné en Figure \ref{fig-DP-dag-intro}. 
 
 \begin{figure}[htbp]
 \begin{center}
@@ -601,6 +715,91 @@ qui lui correspond.
 \end{center}
 \caption{\label{fig-viterbi-general-dag}\ac{dag} annoté par $\delta(x)$}
 \end{figure}
+
+
+% \begin{center}
+% \begin{tikzpicture}[xscale=2,yscale=2]
+% \node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
+% \node[shape=circle,draw=black,double=red] (E) at (4,0) {E};
+% \node[shape=circle,draw=black] (1) at (1,1) {A};
+% \node[shape=circle,draw=black] (2) at (3,1) {C};
+% \node[shape=circle,draw=black] (3) at (2,0) {B};
+% \draw [->,opacity=0.5](S) -- (1) node[midway,fill=white]{$s(S,A)$};
+% \draw [->,opacity=0.5](S) -- (3) node[midway,fill=white]{$s(S,B)$};
+% \draw [->,opacity=0.5](1) -- (3) node[midway,fill=white]{$s(A,B)$};
+% \draw [->,opacity=0.5](1) -- (2) node[midway,fill=white]{$s(A,C)$};
+% \draw [->,opacity=0.5](3) -- (2) node[midway,fill=white]{$s(B,C)$};
+% \draw [->,opacity=0.5](2) -- (E) node[midway,fill=white]{$s(C,E)$};
+% \draw [->,opacity=0.5](3) -- (E) node[midway,fill=white]{$s(B,E)$};
+% \end{tikzpicture}
+% \end{center}
+
+% \begin{exo}Donner une valuation numérique aux arcs du \ac{dag} suivant et  simuler l'exécution de l'algorithme \ref{algo-searchMemo} sur papier.
+% \begin{center}
+% \begin{tikzpicture}[xscale=2,yscale=2]
+% \node[shape=circle,draw=black,double=red] (S) at (0,0) {S};
+% \node[shape=circle,draw=black,double=red] (E) at (4,0) {E};
+% \node[shape=circle,draw=black] (1) at (1,1) {A};
+% \node[shape=circle,draw=black] (2) at (3,1) {C};
+% \node[shape=circle,draw=black] (3) at (2,0) {B};
+% \draw [->,opacity=0.5](S) -- (1) node[midway,fill=white]{$s(S,A)$};
+% \draw [->,opacity=0.5](S) -- (3) node[midway,fill=white]{$s(S,B)$};
+% \draw [->,opacity=0.5](1) -- (3) node[midway,fill=white]{$s(A,B)$};
+% \draw [->,opacity=0.5](1) -- (2) node[midway,fill=white]{$s(A,C)$};
+% \draw [->,opacity=0.5](3) -- (2) node[midway,fill=white]{$s(B,C)$};
+% \draw [->,opacity=0.5](2) -- (E) node[midway,fill=white]{$s(C,E)$};
+% \draw [->,opacity=0.5](3) -- (E) node[midway,fill=white]{$s(B,E)$};
+% \end{tikzpicture}
+% \end{center}
+% \end{exo}
+\begin{exo}
+Reformuler l'algorithme \ref{algo-searchMemo} de telle sorte que le chemin optimal 
+soit celui de poids minimum.  Simuler son exécution sur papier.
+\end{exo}
+\begin{exo}
+Reformuler l'algorithme \ref{algo-searchMemo} en supprimant la conditionnelle qui réalise la mémoisation.  Tenter de le simuler sur papier.
+\end{exo}
+
+\section{Algorithme de Viterbi}
+\label{sec-viterbi}
+
+L'algorithme mémoisé présenté dans la section précédente peut se
+reformuler par une version plus directe. C'est l'\kw{algorithme de Viterbi}.
+
+\begin{definition}[Ordre topologique] Un ordre topologique sur un \ac{dag} $G=(V,E)$ est tout ordre total sur les noeuds $V$ de ce \ac{dag} tel que pour tout couple de noeuds $(x,y) \in E$,  $x \prec y$. Il existe en général plusieurs ordres topologiques valides pour un \ac{dag} donné.
+\end{definition}
+
+L'algorithme de Viterbi est un algorithme de recherche du chemin de
+poids maximal dans un \ac{dag} (Figure \ref{algo-viterbi-general}). 
+ En supposant un noeud source $s$ unique dont le poids $\delta(s)$ est
+ initialisé à 1, l'algorithme parcourt le \ac{dag} en suivant l'ordre
+ topologique. Chaque noeud est à son tour valué par le poids
+ $\delta(s)$ du chemin maximal qui mène de la source jusqu'à ce
+ noeud. Toute l'idée de l'algorithme consiste à mémoriser les poids
+ $\delta(s)$ au fur et à mesure qu'ils sont calculés pour les
+ réutiliser lors de calculs ultérieurs.
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{Viterbi}{S,V,s}
+\State \Call{TriTopologique}{$S,V,s$}
+\State $\delta(s) \gets 1$
+\ForAll {$s \in  S$ (suivant ordre topologique)}
+\State $\delta(s) \gets 0$
+\ForAll {$(s',s) \in AE(s)$}
+\State  $\delta(s) \gets \Call{Max}{\delta(s) , \delta(s')  \times \psi(s',s) $}
+\EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-viterbi-general}Algorithme de Viterbi}
+\end{algorithm}
+
+On donne en figure \ref{fig-viterbi-general-dag} un exemple de
+résultat de l'exécution de l'algorithme sur un cas concret. Chacun des
+noeuds du \ac{dag} est annoté (case bleue) par la valeur du $\delta(x)$
+qui lui correspond.
+
 
 
 \begin{exo}[Limitation aux \ac{dags}]
@@ -786,7 +985,8 @@ aussi la séquence de tags de ce chemin.
 
 \end{tikzpicture}
 \end{center}
-\caption{\label{fig-pos-dag}Graphe acyclique orienté pour énumérer les solutions de manière compacte}
+\caption{\label{fig-pos-dag}Graphe acyclique orienté pour énumérer les
+  solutions de manière compacte dans un cas de tagging}
 \end{figure}
 
 
@@ -806,7 +1006,7 @@ $w_i$  avant ceux de $w_{i+1}$ revient à valuer le graphe suivant un
 ordre topologique valide.
 
 Dans ce contexte spécifique, il est classique de stocker les quantités
-$\delta(s)$ dans une matrice $\Delta$ à $i$ colonnes et $j$ lignes.
+$\delta$ dans une matrice $\Delta$ à $i$ colonnes et $j$ lignes.
 Chaque ligne correspond à un pos tag parmi un ensemble de $K$ tags et chaque colonne à une position
 dans une phrase de $N$ mots. Ainsi $\delta(i,j)$ correspond au score du noeud en
 position $i$ taggué par le tag $j$. L'algorithme prend alors la forme
@@ -822,15 +1022,15 @@ résolution naïve est en temps exponentiel.
 \begin{algorithm}[htbp]
 \begin{algorithmic}
 \Function{Viterbi}{$N$,$K$,$s$}
-\For{$j \leq 0 < K $}\Comment{Initialisation}
-\State $\delta(0,j) \gets \psi(s ,[0,j]$) 
+\For{$0 \leq j < K $}\Comment{Initialisation}
+\State $\delta(0,j) \gets \psi(s , j$) 
 \EndFor
 \For {$0 < i <  N$}\Comment{Recurrence}
-    \For{$j \leq 0 < K $}
-        \State $\delta(i,j) \gets \bar{0}$
+    \For{$0 \leq j < K $}
+        \State $\delta(i,j) \gets 0$
         \For {$0\leq  k < K$}
-        \State  $\delta(i,j) \gets \Call{$\oplus$}{\delta(i,j) ,
-          \delta(i-1,k)  \otimes \psi([i-1,k] ,[i,j]) $}
+        \State  $\delta(i,j) \gets \Call{Max}{\delta(i,j) ,
+          \delta(i-1,k)  \otimes \psi(k , j) $}
 \EndFor
 \EndFor
 \EndFor
@@ -848,6 +1048,36 @@ construire directement la matrice de scores $\Delta$.
 Augmenter l'algorithme \ref{algo-viterbi-table} pour qu'il renvoie
 également la séquence de tags de score maximal.
 \end{exo}
+
+\paragraph{Equation de Bellmann}
+Les techniques de programmation dynamique ne sont pas limitées
+au cas du tagging mais sont héritées de méthodes plus générales de
+résolution de problèmes d'optimisation de fonctions récursives.
+
+En notant $\delta(x_{-1}) ,\delta(x_{-2})\ldots \delta(x_{-k})$ 
+les solutions de sous problèmes qu'il faut résoudre récursivement pour
+trouver la solution du problème $\delta(x)$, la résolution par
+programmation dynamique consiste à calculer $\delta(x)$
+à partir des valeurs mémorisées pour les sous-problèmes à traiter $\delta(x_{-1}) ,\delta(x_{-2})\ldots \delta(x_{-k})$ 
+en suivant le schéma donné par l'équation suivante~:
+\begin{equation}
+\label{eq-bellmann}
+\delta(x) = \left\{ 
+\begin{array}{ll}
+1 & \text{si }  x = q_0\\
+\text{max} \bigg( \delta(x_{-1}) \times \psi(x_{-1},x), \ldots ,\delta(x_{-k}) \times \psi(x_{-k},x) \bigg) &\text{sinon}
+\end{array}
+\right.
+\end{equation}
+qui est appelée équation de programmation dynamique ou \kw{équation de
+  Bellmann}. Il s'agit d'une formule récursive 
+qui fait intervenir deux opérations~: {\sc Max} 
+ est une opération d'aggrégation et $\times$ est une opération de
+ composition destinée à calculer le score de chemins dans le \ac{dag}
+de calcul. 
+
+Des variantes et des généralisations sur les opérations d'aggrégation et de composition sont
+possibles, c'est ce qu'on propose d'examiner dans la section suivante.
 
 \section{Abstractions algébriques}
 \label{sec-semi-ring}
@@ -903,8 +1133,32 @@ $\bar{1}$ le neutre pour la multiplication.
 L'intérêt d'utiliser cette généralisation dans la spécification des
 algorithmes est de donner une formulation unique d'un algorithme qu'il
 ne reste plus qu'à instancier avec le demi-anneau correspondant au
-problème d'apprentissage à traiter. On donne en figure \ref{fig-semirings} quelques exemples de
+problème d'apprentissage à traiter. 
+
+On donne en Figure \ref{algo-viterbi-semiring} une reformulation de
+l'algorithme de Viterbi (Algorithme \ref{algo-viterbi-general}) en utilisant la notation
+en semi-anneau. Par ailleurs, on donne en figure \ref{fig-semirings} quelques exemples de
 demi-anneaux qui sont utilisés dans ce cours.
+
+
+\begin{algorithm}[htbp]
+\begin{algorithmic}
+\Function{Viterbi}{S,V,s}
+\State \Call{TriTopologique}{$S,V,s$}
+\State $\delta(s) \gets \bar{1}$
+\ForAll {$s \in  S$ (suivant ordre topologique)}
+\State $\delta(s) \gets \bar{0}$
+\ForAll {$(s',s) \in AE(s)$}
+\State  $\delta(s) \gets \Call{$\oplus$}{\delta(s) , \delta(s')  \otimes \psi(s',s) $}
+\EndFor
+\EndFor
+\EndFunction
+\end{algorithmic}
+\caption{\label{algo-viterbi-semiring}Algorithme de Viterbi avec
+  opérations abstraites}
+\end{algorithm}
+
+
 
 \begin{figure}[htbp]
 \begin{center}
@@ -960,6 +1214,7 @@ ce que cet algorithme calcule.
 
 
 \section{Algorithme de Dijkstra et recherche A$\star$}
+\label{sec-dijkstra}
 
 Dans certains cas, il est possible de reformuler le problème de recherche de la séquence
 de poids maximal dans un \ac{dag} comme un problème du plus court
@@ -968,7 +1223,7 @@ l'algorithme de Dijkstra.
  
 Intuitivement l'algorithme de Dijkstra peut s'utiliser dans un
 contexte de tagging lorsque les scores associés aux arcs
-s'interprètent comme des mesures dites de surprise (\cite{hale}) que l'on obtient à partir
+s'interprètent comme des mesures dites de \kw{surprise} que l'on obtient à partir
 de probabilités $(\text{surprise} =  -\log_2(p))$.
 
 
@@ -1317,151 +1572,6 @@ souvent dans la littérature des heuristiques approximatives qui sacrifient l'op
 mettre commentaires sur complexité -> depth first plus haute
 complexité pire des cas mais espoir d'atteindre la solution plus rapidement.
 
-\section{Les méthodes de recherche approximatives}
-
-Tant l'algorithme de Viterbi que l'algorithme de Dijsktra (et
-A$\star$) sont conçus pour donner une solution optimale au problème de
-recherche du chemin de poids maximal (resp. minimal).
-
-Bien que ces algorithmes ont une complexité polynomiale --~considérée
-comme acceptable~-- ces algorithmes sont potentiellement lents lorsque
-les phrases sont longues où lorsque l'espace des états est de taille
-considérables. Par exemple, Viterbi a une complexité en ${\cal
-  O}(NK^2)$, lorsque la taille du jeu de tags $K$ est importante (ce
-qui est notamment le cas pour des modèles dont l'historique est très riche)
-les temps de calcul deviennent potentiellement prohibitifs.
-
-Dans ce type de situation, on peut faire le choix d'utiliser des
-méthodes de recherche de solutions qui ne garantissent pas
-l'optimalité, comme la recherche gloutonne ou la recherche par
-faisceau. Il s'agit de méthodes qui n'explorent qu'une petite partie
-de l'espace de solutions et qui sont en général très efficaces.
-
-Comme il s'agit de méthodes qui n'explorent qu'une toute petite
-partie de l'espace des solutions (séquences de tags possibles)
-celle-ci sont généralement utilisées en combinaison avec une fonction
-de score très bien informée sur le problème à traiter de telle sorte que la
-partie de l'espace explorée a, par hypothèse, de grandes chances de contenir la
-solution optimale. 
-
-On présente ici deux méthodes couramment utilisées~:  la recherche
-gloutonne et la recherche par faisceau (beam) comme des variantes de
-la méthode de recherche dans un arbre de solutions (Algorithme
-\ref{algo-searchtree}) pour des systèmes de transitions. 
-Mais ces méthodes pourraient également se formuler dans un contexte où l'espace de
-recherche est représenté par un graphe.
-
-\subsection{Recherche gloutonne}
-
-La méthode de recherche gloutonne est le cas dégénéré de la méthode de
-recherche du meilleur d'abord. \`A chaque itération, l'algorithme évalue
-le score de tous les successeurs d'un état. C'est l'unique successeur
-de meilleur score qui est sélectionné pour la suite de la recherche
-(Algorithme \ref{algo-greedy-tree}).
-\begin{algorithm}[htbp]
-\begin{algorithmic}[1]
-\Function{GreedySearch}{S,B,$\sigma$}
-\If{$B \not = \epsilon$}
-\State maxscore $\gets \bar{0}$
-\ForAll{$t \in T$}
-	\State localscore $\gets \sigma \otimes \psi(S,B,t)$
-        \State maxscore $\gets$ \Call{$\oplus$}{maxscore,localscore}
-\EndFor
-\State\Return \Call{GreedySearch}{$S|t$,$_{\ominus}$B, maxscore}
-\Else
-  \State\Return $\sigma$
-\EndIf
-\EndFunction
-\end{algorithmic}
-\caption{\label{algo-greedy-tree}Algorithme de recherche glouton}
-\end{algorithm}
-Il est évident que cet algorithme donne des solutions approximatives
-et sans garantie d'optimalité. Par contre la complexité de cet
-algorithme, en ${\cal O}(n K)$,  est linéaire en temps. Autrement dit,
-cet algorithme est très efficace à l'usage.
-
-L'aspect approximatif de cet algorithme peut être contrebalancé
-en utilisant des scores locaux  très bien choisis pour guider la recherche vers une solution proche de
-l'optimum global. Ce
-scénario est très utilisé à l'heure actuelle par les systèmes pondérés
-par des réseaux de neurones profonds. Ceux-ci  obtiennent
-empiriquement de très
-bons résultats.
-
-\begin{exo}
-Augmenter l'algorithme \ref{algo-greedy-tree} pour qu'il renvoie
-non seulement le score du chemin de poids maximal, mais aussi
-la séquence de tags de ce chemin.
-\end{exo}
-\begin{exo}
-Comparer le meilleur chemin renvoyé par l'algorithme glouton avec
-celui 
-renvoyé par l'algorithme de Viterbi à partir de l'exemple \ref{fig-viterbi-general-dag}.
-\end{exo}
-
-\subsection{Recherche par faisceau}
-
-La recherche par faisceau est une extension de la méthode par recherche gloutonne.
-La recherche par faisceau est un algorithme qui progresse
-essentiellement en largeur dans l'arbre de recherche. \`A chaque itération il avance en
-profondeur dans $|\mathcal{B}|$ branches de l'arbre jusqu'à atteindre les
-feuilles, et ce sans jamais faire marche arrière.
-
-Les $|\mathcal{B}|$ branches sélectionnées pour continuer l'exploration à l'étape
-suivante constituent le faisceau. 
-Le choix des branches destinées à continuer l'exploration 
-est heuristique. Généralement on choisit les $|\mathcal{B}|$ branches qui ont le
-plus haut score. 
-
-\begin{algorithm}[htbp]
-\begin{algorithmic}[1]
-\Function{BeamSearch}{$\mathcal{B}$}
-\State $\mathcal{B}' \gets \emptyset$
-\ForAll {$\langle S,B,\sigma\rangle \in \mathcal{B}$}
-\If {$B = \epsilon$}
-\State \Return $\sigma$
-\EndIf
-\ForAll{$t \in T$}
-	\State localscore $\gets \sigma \otimes \psi(S,B,t)$
-        \State $\mathcal{B'} \gets \mathcal{B}' \cup \{\langle
-        S|t,_\ominus B,\text{localscore}\rangle\}$
-\EndFor
-\EndFor
-\State $\mathcal{B} \gets$ \Call{$\mathcal{B}$-Select}{$\mathcal{B'}$}
-\State \Return \Call{BeamSearch}{$\mathcal{B}$}
-\EndFunction
-\end{algorithmic}
-\caption{\label{algo-beam-tree}Algorithme de recherche en faisceau}
-\end{algorithm}
-L' algorithme est donné en Algorithme \ref{algo-beam-tree}.
-Notons que la fonction \ac{$\mathcal{B}$-Select} est chargée de sélectionner $|\mathcal{B}|$ éléments dans un
-ensemble. Il s'agit dans la très grande généralité des cas
- de sélectionner les $|\mathcal{B}|$ éléments de scores les plus élevés (ou plus faibles)
- mais des variantes sont envisageables. Par exemple la recherche par faisceau
- stochastique consiste à sélectionner $|\mathcal{B}|$ éléments aléatoirement
- proportionnellement à leur score. 
-
-L'intérêt de cette méthode est son efficacité~: la complexité reste faible~:
-${\cal O}(n K |\mathcal{B}|)$, c'est-à-dire essentiellement linéaire.
-
-On peut penser que le faisceau peut corriger les faiblesses de la méthode
-gloutonne mais en pratique on observe souvent que les faisceaux
-contiennet des hypothèses très similaires.
-Comme la méthode gloutonne, l'algorithme de recherche en faisceau ne
-garantit pas de renvoyer une solution optimale. 
-En effet, une solution optimale qui a un mauvais score préfixe lors
-des premières itérations ne sera plus jamais considérée. 
-
-Il faut bien garder à l'esprit que cette méthode renvoie un
-pseudo-résultat maximal, ce qui peut avoir des conséquences non
-négligeables dans certains contextes d'utilisation
-(comme illustré en chapitre XX)
-
-\begin{exo}
-Augmenter l'algorithme \ref{algo-beam-tree} pour qu'il renvoie
-non seulement le score du chemin de poids maximal, mais aussi
-la séquence de tags de ce chemin.
-\end{exo}
 
 \chapter{Rappels de classification non structurée}
 
@@ -2720,9 +2830,278 @@ aux problèmes de \ac{tal}.
 
 \section{Réseaux de neurones}
 
+On propose d'introduire l'usage de réseaux de neurones en \ac{tal}
+comme une généralisation des modèles de régression logistique multinomiale.
+
+La difficulté pratique quand on utilise un modèle
+de régression logistique multinomiale consiste à définir les
+fonctions features et notamment leurs interactions. Deux problèmes se
+posent~:
+\begin{itemize}
+\item Le nombre de features et notamment d'interactions est en général
+  considérable {\bf (feature engineering)}
+\item Quelles features (interactions) inclure dans le modèle ? {\bf
+    (feature selection)}
+\end{itemize}
+
+En \ac{tal} on utilise des réseaux de neurones pour construire de
+meilleures représentations numériques de symboles discrets, comme par
+exemple des représentations des mots appelées plongements lexicaux ou {\em word embeddings}).
+
 \subsection{Réseau à Propagation avant}
-\subsection{Word vectors}
-\subsection{Neural Network Language model}
+
+On peut voir le modèle de régression logistique multinomiale (ou
+modèle de régression softmax) tel que présenté en équation
+(\ref{eq-multinomial-logistic-numeric}) et réécrite ici sous forme
+plus compacte à l'aide de la notation softmax~:
+\begin{equation}
+\mathbf{y} = \text{softmax}(\mathbf{W}_1 \mathbf{x})
+\end{equation}
+
+Pour exprimer une contrepartie aux interactions et à la réduction de
+dimensionnalité (feature selection) des modèles traditionnels, un
+réseau de neurones à propagation avant introduit une couche cachée $\mathbf{h}$
+supplémentaire à (\ref{eq-multinomial-logistic-numeric}).
+
+\begin{eqnarray} 
+\mathbf{h} &=& g(\mathbf{W}_2\mathbf{x})\\
+\mathbf{y} &=& \text{softmax}(\mathbf{W}_1 \mathbf{h})
+\end{eqnarray}
+où $g$ dénote une fonction non linéaire de la forme $\mathbb{R}^d \mapsto
+\mathbb{R}^d$ dite fonction d'activation. Celle-ci est typiquement
+choisie parmi la fonction logistique, la fonction tangente
+hyperbolique ou la fonction relu (Figure \ref{fig-activations}).
+
+\begin{figure}[htbp]
+\begin{center}
+\scalebox{0.5}{
+\begin{tikzpicture}
+\foreach \x in {-3,-2,-1,0,1,2,3}
+    {        
+      \coordinate (A\x) at ($(0,0)+(\x*1cm,0)$) {};
+      \draw ($(A\x)+(0,5pt)$) -- ($(A\x)-(0,5pt)$);
+      \node at ($(A\x)+(0,-3ex)$) {\x};
+    }
+
+\foreach \y in {-1,1}
+    {        
+      \coordinate (A\y) at ($(0,0)+(0,\y*1cm)$) {};
+      \draw ($(A\y)+(5pt,0)$) -- ($(A\y)-(5pt,0)$);
+      \node at ($(A\y)+(-3ex,0)$) {\y};
+    }
+    \draw[->] (-4,0) -- (4,0) node[right] {$x$};
+    \draw[->] (0,-1.5) -- (0,1.5) node[above] {$f(x) = tanh(x)$};
+    \draw[scale=1,domain=-3:3,smooth,variable=\x,blue] plot({\x},{tanh(\x )});
+\end{tikzpicture}
+\begin{tikzpicture}
+\foreach \x in {-3,-2,-1,0,1,2,3}
+    {        
+      \coordinate (A\x) at ($(0,0)+(\x*1cm,0)$) {};
+      \draw ($(A\x)+(0,5pt)$) -- ($(A\x)-(0,5pt)$);
+      \node at ($(A\x)+(0,-3ex)$) {\x};
+    }
+
+\foreach \y in {-1,1}
+    {        
+      \coordinate (A\y) at ($(0,0)+(0,\y*1cm)$) {};
+      \draw ($(A\y)+(5pt,0)$) -- ($(A\y)-(5pt,0)$);
+      \node at ($(A\y)+(-3ex,0)$) {\y};
+    }
+    \draw[->] (-4,0) -- (4,0) node[right] {$x$};
+    \draw[->] (0,-1.5) -- (0,1.5) node[above] {$f(x) = \frac{1}{1+e^{-x}}$};
+    \draw[scale=1,domain=-3:3,smooth,variable=\x,blue]
+    plot({\x},{exp(\x )/(1+exp(\x ))});
+\end{tikzpicture}
+\begin{tikzpicture}
+\foreach \x in {-3,-2,-1,0,1,2,3}
+    {        
+      \coordinate (A\x) at ($(0,0)+(\x*1cm,0)$) {};
+      \draw ($(A\x)+(0,5pt)$) -- ($(A\x)-(0,5pt)$);
+      \node at ($(A\x)+(0,-3ex)$) {\x};
+    }
+
+\foreach \y in {-1,1}
+    {        
+      \coordinate (A\y) at ($(0,0)+(0,\y*1cm)$) {};
+      \draw ($(A\y)+(5pt,0)$) -- ($(A\y)-(5pt,0)$);
+      \node at ($(A\y)+(-3ex,0)$) {\y};
+    }
+    \draw[->] (-4,0) -- (4,0) node[right] {$x$};
+    \draw[->] (0,-1.5) -- (0,1.5) node[above] {$f(x) = \text{max}(0,x)$};
+    \draw[scale=1,domain=-3:1.5,smooth,variable=\x,blue]
+    plot({\x},{max(0,\x )});
+\end{tikzpicture}
+}
+\end{center}
+\caption{\label{fig-activations}Fonctions d'activation}
+\end{figure}
+
+On illustre en figure \ref{fig-ffwd} l'allure schématique d'un réseau
+de ce type. En général la couche cachée a une dimension qui est choisie
+plus petite que la dimension du vecteur d'entrée de telle sorte
+qu'elle encode une représentation des données en dimension réduite. 
+
+\begin{figure}[htbp]
+\begin{center}
+\scalebox{0.6}{
+\begin{tikzpicture}
+
+ \matrix (mat) at (-0.5,0) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $z_{y_1}$\\
+      $z_{y_2}$\\
+      $z_{y_3}$\\
+    };
+
+    \node (A) at (0.5,0){=};
+    \matrix (mat) at (4,0) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $w_{11}$ \& $w_{12}$ \& $w_{13}$ \& $w_{14}$ \&  $w_{15}$ \& $w_{16}$\\
+      $w_{21}$ \& $w_{22}$ \& $w_{23}$ \& $w_{24}$ \&  $w_{25}$ \& $w_{26}$\\
+      $w_{31}$ \& $w_{32}$ \& $w_{33}$ \& $w_{34}$ \&  $w_{35}$ \& $w_{36}$\\    
+    };
+
+  \matrix (mat) at (8,0) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $h_{1}$ \\
+      $h_{2}$ \\
+      $h_{3}$ \\
+      $h_{4}$ \\
+      $h_{5}$ \\
+      $h_{6}$\\
+    };
+
+\matrix (mat) at (13,0) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+{
+      $w_{11}$ \& $w_{12}$ \& $w_{13}$ \&  $w_{14}$ \& $w_{15}$ \& $w_{16}$\&  $w_{17}$ \& $w_{18}$\\
+      $w_{21}$ \& $w_{22}$ \& $w_{23}$ \& $w_{24}$ \& $w_{25}$ \& $w_{26}$\&  $w_{27}$ \& $w_{28}$\\
+      $w_{31}$ \& $w_{32}$ \& $w_{33}$ \& $w_{34}$ \& $w_{35}$ \& $w_{36}$\&  $w_{37}$ \& $w_{38}$ \\
+      $w_{41}$ \& $w_{42}$ \& $w_{43}$ \&  $w_{44}$ \& $w_{45}$ \& $w_{46}$\&  $w_{47}$ \& $w_{48}$\\
+      $w_{51}$ \& $w_{52}$ \& $w_{53}$ \& $w_{54}$ \& $w_{55}$ \& $w_{56}$ \&  $w_{57}$ \& $w_{58}$\\
+      $w_{61}$ \& $w_{62}$ \& $w_{63}$ \& $w_{64}$ \& $w_{65}$ \& $w_{66}$\&  $w_{67}$ \& $w_{68}$\\
+    };
+
+\matrix (mat) at (18,0) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $x_{1}$ \\
+      $x_{2}$ \\
+      $x_{3}$ \\
+      $x_{4}$ \\
+      $x_{5}$ \\
+      $x_{6}$\\
+      $x_{7}$ \\
+      $x_{8}$\\
+    };
+\end{tikzpicture}
+}
+\end{center}
+\caption{\label{fig-ffwd}$\mathbf{y} = \text{softmax}(\mathbf{W}_1 g(\mathbf{W}_2\mathbf{x} ) )$}
+\end{figure}
+
+\paragraph{Estimation des paramètres} L'estimation des paramètres 
+consiste généralement à maximiser la vraisemblance (on parle également
+de minimisation de l'entropie croisée) d'un jeu de données. 
+La méthode d'optimisation utilisée est en général la descente de gradient
+stochastique ( \ac{sgd} ).
+Si le principe reste le même que pour les cas précédents, le calcul du
+gradient à chaque itération est plus complexe. Il est réalisé à l'aide
+d'un algorithme appelé rétropropagation du gradient. Par ailleurs la
+fonction objective d'un réseau de neurone n'est en général pas
+convexe. Il existe en général un grand nombre de minima locaux et il y
+a peu de garanties de trouver un minimum global. 
+
+TODO (backprop) \url{http://colah.github.io/posts/2015-08-Backprop/}
+
+
+
+Notons pour terminer que l'utilisation d'une couche de sortie softmax
+n'a rien d'obligatoire, on peut utiliser des couches de sorties à
+large marge ou du perceptron. Il reste que la couche de sortie softmax
+est en pratique très utilisée.
+
+\paragraph{Plongements lexicaux}
+Reste la question de l'interface d'un réseau de neurones avec des
+données langagières. On a implicitement supposé que le vecteur de
+données $\mathbf{x}$ est un vecteur de réels. Or en \ac{tal} 
+les données sont des symboles discrets (des mots). 
+
+L'interface est réalisée par une couche de dictionnaire (dite parfois
+couche de lookup ou couche de plongement) qui consiste à encoder un
+dictionnaire qui envoie des mots sur des vecteurs.
+
+Dans ce contexte, on suppose que les données du réseau 
+sont des symboles codés par la méthode one-hot. 
+La couche de plongement est alors une simple matrice $\mathbf{E}$ dont
+la multiplication avec chaque vecteur one-hot renvoie l'embedding $\mathbf{e}$
+correspondant. Le vecteur d'entrée $\mathbf{x}$ est la concaténation
+des vecteurs d'embeddings correspondant à chacun de ces symboles,
+comme illustré en Figure \ref{fig-embedding}.
+
+\begin{figure}
+\begin{tikzpicture}
+\matrix (mat) at (0,0) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $x_{1}$ \\
+      $x_{2}$ \\
+      $x_{3}$ \\
+      $x_{4}$ \\
+      $x_{5}$ \\
+      $x_{6}$\\
+      $x_{7}$ \\
+      $x_{8}$\\
+    };
+
+\node (A) at (1.5,0){=};
+
+ \matrix (mat) at (5,2.25) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $e_{11}$ \& $e_{12}$ \& $e_{13}$\& $e_{14}$\& $e_{15}$\\
+      $e_{21}$ \& $e_{22}$ \& $e_{23}$\& $e_{24}$\& $e_{25}$\\
+      $e_{31}$ \& $e_{32}$ \& $e_{33}$\& $e_{34}$\& $e_{35}$\\
+      $e_{41}$ \& $e_{42}$ \& $e_{43}$\& $e_{44}$\& $e_{45}$\\
+    };
+
+ \matrix (mat) at (5,-2.25) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $e_{11}$ \& $e_{12}$ \& $e_{13}$\& $e_{14}$\& $e_{15}$\\
+      $e_{21}$ \& $e_{22}$ \& $e_{23}$\& $e_{24}$\& $e_{25}$\\
+      $e_{31}$ \& $e_{32}$ \& $e_{33}$\& $e_{34}$\& $e_{35}$\\
+      $e_{41}$ \& $e_{42}$ \& $e_{43}$\& $e_{44}$\& $e_{45}$\\
+    };
+
+
+ \matrix (mat) at (9,3) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $s_{1}$ \\
+      $s_{2}$ \\
+      $s_{3}$ \\
+      $s_{4}$ \\
+      $s_{5}$ \\
+    };
+
+\matrix (mat) at (9,-3) [matrix of nodes,ampersand replacement=\&, nodes={draw,rectangle, minimum width=1cm, minimum height=1cm}]
+    {
+      $s'_{1}$ \\
+      $s'_{2}$ \\
+      $s'_{3}$ \\
+      $s'_{4}$ \\
+      $s'_{5}$ \\
+    };
+\end{tikzpicture}
+\caption{\label{fig-embedding} Couche de plongements}
+\end{figure}
+ 
+Comme la matrice $\mathbf{E}$ est une matrice de paramètres,
+ceux-ci sont mis à jour, au même titre que tous les autres paramètres,
+ lors de la descente de gradient.
+
+
+
+
+
+
+
+
 
 \chapter{Perceptron structuré}
 
@@ -5364,85 +5743,85 @@ en arcs}
 
 \appendix
 \chapter{Représentations pour les modèles creux}
-\section{Représentation des matrices de poids}
+% \section{Représentation des matrices de poids}
 
-\subsection{Représentation explicite de la matrice de poids}
+% \subsection{Représentation explicite de la matrice de poids}
 
-Pour des modèles multiclasses à features,
-l'opération primitive consiste à scorer chaque classe de l'ensemble $\{a,b,c\ldots\}$ à l'aide du vecteur creux de features $\boldsymbol\Phi(x)$ et du vecteur de poids $\mathbf{w}_i$ correspondant à la classe $i$. Ainsi le score de la classe $i$ sera calculé comme suit~:
-\begin{displaymath}
-s_i =  \mathbf{w}_i \cdot \boldsymbol\Phi(x)
-\end{displaymath}
-Comme on souhaite en général donner un score à toutes les classes, on peut organiser les poids en matrice $\mathbf{W}$ dont chaque ligne représente les poids destinés à donner la pondération spécifique à une classe donnée, de telle sorte que le vecteur de scores $\mathbf{s} = \mathbf{W}\cdot \boldsymbol\Phi(x)$ se calcule en une opération.
-On illustre cette représentation ci-dessous~:
-\begin{center}
-\begin{tikzpicture}
-\matrix(S)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]} ] at (0,0)
-{
-	s_a\\s_b\\s_c\\
-};
-\node[shape=circle,draw=white] (X) at (1.25,0) {=};
-\matrix(A)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]}] at (4,0)
-{
- w_{a1} & w_{a2} & \ldots & w_{ap}\\
- w_{b1} & w_{b2} & \ldots & w_{bp}\\
- w_{c1} & w_{c2} & \ldots & w_{cp}\\
-};
-\matrix(V)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]}] at (8,0)
-{
- \phi_{1}(x) \\ \phi_{2}(x) \\ \vdots \\ \phi_{p}(x)\\
-};
-\end{tikzpicture}
-\end{center}
-On aura alors que le score $s_i$ de la classe $i$ sera donné en position $i$ dans $\mathbf{s}$.
+% Pour des modèles multiclasses à features,
+% l'opération primitive consiste à scorer chaque classe de l'ensemble $\{a,b,c\ldots\}$ à l'aide du vecteur creux de features $\boldsymbol\Phi(x)$ et du vecteur de poids $\mathbf{w}_i$ correspondant à la classe $i$. Ainsi le score de la classe $i$ sera calculé comme suit~:
+% \begin{displaymath}
+% s_i =  \mathbf{w}_i \cdot \boldsymbol\Phi(x)
+% \end{displaymath}
+% Comme on souhaite en général donner un score à toutes les classes, on peut organiser les poids en matrice $\mathbf{W}$ dont chaque ligne représente les poids destinés à donner la pondération spécifique à une classe donnée, de telle sorte que le vecteur de scores $\mathbf{s} = \mathbf{W}\cdot \boldsymbol\Phi(x)$ se calcule en une opération.
+% On illustre cette représentation ci-dessous~:
+% \begin{center}
+% \begin{tikzpicture}
+% \matrix(S)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]} ] at (0,0)
+% {
+% 	s_a\\s_b\\s_c\\
+% };
+% \node[shape=circle,draw=white] (X) at (1.25,0) {=};
+% \matrix(A)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]}] at (4,0)
+% {
+%  w_{a1} & w_{a2} & \ldots & w_{ap}\\
+%  w_{b1} & w_{b2} & \ldots & w_{bp}\\
+%  w_{c1} & w_{c2} & \ldots & w_{cp}\\
+% };
+% \matrix(V)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]}] at (8,0)
+% {
+%  \phi_{1}(x) \\ \phi_{2}(x) \\ \vdots \\ \phi_{p}(x)\\
+% };
+% \end{tikzpicture}
+% \end{center}
+% On aura alors que le score $s_i$ de la classe $i$ sera donné en position $i$ dans $\mathbf{s}$.
 
-Il faut remarquer que le vecteur $\boldsymbol\Phi(x) = \phi_1(x) \ldots \phi_p(x)$ est valué par des fonctions features qui valent 0 dans la plupart des cas et 1 dans de rares cas. 
-Par  conséquent $\boldsymbol\Phi(x)$ est un vecteur creux.
-
-
-
-\subsection{Représentation de la matrice de poids par un vecteur}
-
-{\bf dire que ce cas s'applique aux problèmes structurés où
-  l'ensemble $Y$ est très large ou infini (récursivement énumérable)}
+% Il faut remarquer que le vecteur $\boldsymbol\Phi(x) = \phi_1(x) \ldots \phi_p(x)$ est valué par des fonctions features qui valent 0 dans la plupart des cas et 1 dans de rares cas. 
+% Par  conséquent $\boldsymbol\Phi(x)$ est un vecteur creux.
 
 
-Dans un contexte ou le vecteur $\boldsymbol\Phi(x)$
-est un vecteur creux de très grande dimensionnalité, 
-on utilise couramment une représentation alternative qui consiste à coder la matrice $\mathbf{W}$ dans un vecteur $\mathbf{w}$ unique. Dans ce contexte le vecteur 
-de features sera valué à 1 uniquement pour certaines features de la forme $\phi_{y1},\phi_{y2}\ldots \phi_{yp}$ qui correspondent aux poids de la classe $y$ pour la feature $i$. Dans ce contexte le vecteur de features est noté $\boldsymbol\Phi(x,y)$ où $y$ indique la classe pour laquelle on calcule le score.
-Ainsi pour calculer le score $s_a$ de la classe $a$,  on réalisera un produit scalaire avec une représentation du type~:
-\begin{center}
-\begin{tikzpicture}
-\matrix(W)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]}] at (-1,0)
-{
- w_{a1} & w_{a2} & \ldots & w_{ap}& w_{b1} & w_{b2} & \ldots & w_{bp}&  w_{c1} & w_{c2} & \ldots & w_{cp}\\
-};
-\matrix(V)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]} ]at (5.5,0)
-{
- \phi_{a1}(x) \\ \phi_{a2}(x) \\ \vdots \\ \phi_{ap}(x)\\
-};
-\end{tikzpicture}
-\end{center}
-où seules certaines features de la forme $\phi_{a\cdot}$ sont valuées à 1 alors que les features de la forme $\phi_{b\cdot}$ et $\phi_{c\cdot}$ sont implicitement valuées à 0.
 
-\section{Exemple de structure de données}
+% \subsection{Représentation de la matrice de poids par un vecteur}
 
-Une large classe de modèles d'apprentissage utilisés en \ac{tal}
-fait intervenir des modèles creux. Il s'agit de modèles où le vecteur 
-$\boldsymbol\Phi(x,y) \in \{0,1\}^d$ est un vecteur booléen de très grande dimension.
-Les scores calculés par ces modèles sont essentiellement des produits scalaires de la forme :
-\begin{displaymath}
-s = \mathbf{w}\cdot \boldsymbol\Phi(x,y)
-\end{displaymath}
-où $\mathbf{w} \in \mathbb{R}^d$ est un vecteur de poids de dimension identique à $\boldsymbol\Phi(x,y)$. Dans ce contexte l'évaluation d'un produit scalaire revient à sommer les poids des features actives (mises à 1). 
+% {\bf dire que ce cas s'applique aux problèmes structurés où
+%   l'ensemble $Y$ est très large ou infini (récursivement énumérable)}
 
-Les autres opérations importantes est la mise à jour des poids lors de la descente de gradient, ce qui demande d'additionner (ou de soustraire) le vecteur de poids courant avec le vecteur gradient.
 
-La structure de données ci-dessous exprimée en python apporte une fonction de produit scalaire ({\sl dot}) à partir des valeurs discrètes de $(x,y)$. Pour les mises à jour, elle propose une fonction de codage {\sl code$\_$phi} qui code une liste de valeurs discrète $x$ et renvoie $\boldsymbol\Phi(x)$ ainsi que des opérateurs arithmétiques de vecteurs et de scalaires ($+,-,\times, / , +=$).
-Celle-ci peut-être étendue à d'autres usages, par exemple la surcharge d'opérateurs arithmétiques pour vecteurs et scalaires peut être complétée.
+% Dans un contexte ou le vecteur $\boldsymbol\Phi(x)$
+% est un vecteur creux de très grande dimensionnalité, 
+% on utilise couramment une représentation alternative qui consiste à coder la matrice $\mathbf{W}$ dans un vecteur $\mathbf{w}$ unique. Dans ce contexte le vecteur 
+% de features sera valué à 1 uniquement pour certaines features de la forme $\phi_{y1},\phi_{y2}\ldots \phi_{yp}$ qui correspondent aux poids de la classe $y$ pour la feature $i$. Dans ce contexte le vecteur de features est noté $\boldsymbol\Phi(x,y)$ où $y$ indique la classe pour laquelle on calcule le score.
+% Ainsi pour calculer le score $s_a$ de la classe $a$,  on réalisera un produit scalaire avec une représentation du type~:
+% \begin{center}
+% \begin{tikzpicture}
+% \matrix(W)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]}] at (-1,0)
+% {
+%  w_{a1} & w_{a2} & \ldots & w_{ap}& w_{b1} & w_{b2} & \ldots & w_{bp}&  w_{c1} & w_{c2} & \ldots & w_{cp}\\
+% };
+% \matrix(V)[matrix of math nodes,left delimiter  = {[}, right delimiter = {]} ]at (5.5,0)
+% {
+%  \phi_{a1}(x) \\ \phi_{a2}(x) \\ \vdots \\ \phi_{ap}(x)\\
+% };
+% \end{tikzpicture}
+% \end{center}
+% où seules certaines features de la forme $\phi_{a\cdot}$ sont valuées à 1 alors que les features de la forme $\phi_{b\cdot}$ et $\phi_{c\cdot}$ sont implicitement valuées à 0.
 
-La structure de donnée reste néanmoins exprimée dans le but pédagogique de rester facile à lire et à modifier mais réalise la plupart des opérations de manière peu efficace.  Pour privilégier l'efficacité, il est suggéré de s'appuyer sur des librairies numériques qui supportent les opérations creuses ou de réaliser des interfaces avec du code {\sl C} ou {\sl C++} spécialisé pour réaliser les opérations sur des vecteurs creux.
+% \section{Exemple de structure de données}
+
+% Une large classe de modèles d'apprentissage utilisés en \ac{tal}
+% fait intervenir des modèles creux. Il s'agit de modèles où le vecteur 
+% $\boldsymbol\Phi(x,y) \in \{0,1\}^d$ est un vecteur booléen de très grande dimension.
+% Les scores calculés par ces modèles sont essentiellement des produits scalaires de la forme :
+% \begin{displaymath}
+% s = \mathbf{w}\cdot \boldsymbol\Phi(x,y)
+% \end{displaymath}
+% où $\mathbf{w} \in \mathbb{R}^d$ est un vecteur de poids de dimension identique à $\boldsymbol\Phi(x,y)$. Dans ce contexte l'évaluation d'un produit scalaire revient à sommer les poids des features actives (mises à 1). 
+
+% Les autres opérations importantes est la mise à jour des poids lors de la descente de gradient, ce qui demande d'additionner (ou de soustraire) le vecteur de poids courant avec le vecteur gradient.
+
+% La structure de données ci-dessous exprimée en python apporte une fonction de produit scalaire ({\sl dot}) à partir des valeurs discrètes de $(x,y)$. Pour les mises à jour, elle propose une fonction de codage {\sl code$\_$phi} qui code une liste de valeurs discrète $x$ et renvoie $\boldsymbol\Phi(x)$ ainsi que des opérateurs arithmétiques de vecteurs et de scalaires ($+,-,\times, / , +=$).
+% Celle-ci peut-être étendue à d'autres usages, par exemple la surcharge d'opérateurs arithmétiques pour vecteurs et scalaires peut être complétée.
+
+% La structure de donnée reste néanmoins exprimée dans le but pédagogique de rester facile à lire et à modifier mais réalise la plupart des opérations de manière peu efficace.  Pour privilégier l'efficacité, il est suggéré de s'appuyer sur des librairies numériques qui supportent les opérations creuses ou de réaliser des interfaces avec du code {\sl C} ou {\sl C++} spécialisé pour réaliser les opérations sur des vecteurs creux.
 
 
 \begin{minted}{python}
