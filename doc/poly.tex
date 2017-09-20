@@ -1245,7 +1245,8 @@ de probabilités $(\text{surprise} =  -\log_2(p))$.
         \State localscore $\gets \delta(s) \otimes \psi(s,s')$
         \If{localscore $<\delta(s')$}
               \State $\delta(s') \gets$ localscore
-              \State \Call{ReordonnerClé}{Q,s'}
+              \State \Call{ReordonnerClé}{Q,s'}\Comment{Insertion le
+                cas échéant}
         \EndIf
        \EndIf
     \EndFor
