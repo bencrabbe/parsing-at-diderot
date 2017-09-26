@@ -88,11 +88,12 @@ enregistré dans un fichier nommé {\tt exo1-nombinomes.py}
 La procédure de notation sera partiellement automatisée et exécutera (au moins) la séquence d'instructions suivantes.
 %https://github.com/bencrabbe/parsing-at-diderot/blob/master/Multiclass.py
 \begin{verbatim}
-split(sequoia-corpus.np_conll)
-trainc = read_corpus(sequoia-corpus.np_conll.train)
-testc  = read_corpus(sequoia-corpus.np_conll.test)
+split('sequoia-corpus.np_conll')
+trainc = read_corpus('sequoia-corpus.np_conll.train')
+devc   = read_corpus('sequoia-corpus.np_conll.dev')
+testc  = read_corpus('sequoia-corpus.np_conll.test')
 p = AvgPerceptron()
-p.train(trainc)
+p.train(trainc,devc)
 print(p.test(testc))
 \end{verbatim}
 \end{document}
