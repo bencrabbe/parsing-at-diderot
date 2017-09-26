@@ -1229,7 +1229,7 @@ de probabilités $(\text{surprise} =  -\log_2(p))$.
 
 \begin{algorithm}[htbp]
 \begin{algorithmic}
-\Function{Dijsktra}{$S$,$E$,source,but}
+\Function{Dijkstra}{$S$,$E$,source,but}
 \State $ \delta(s) \gets +\infty$\qquad$(\forall s \in S)$ 
 \State $ \delta(\text{source}) \gets \bar{1}$ 
 \State $Q \gets s$
@@ -1567,11 +1567,6 @@ meilleure recherche que l'algorithme de Dijkstra. Une heuristique plus informati
 l'optimalité demande de vérifier des propriétés qui ne sont pas
 triviales à satisfaire en pratique. Pour cette raison, on trouve
 souvent dans la littérature des heuristiques approximatives qui sacrifient l'optimalité de la solution.
-
-
-\subsection{Recherche en largeur et en profondeur}
-mettre commentaires sur complexité -> depth first plus haute
-complexité pire des cas mais espoir d'atteindre la solution plus rapidement.
 
 
 \chapter{Rappels de classification non structurée}
