@@ -1,0 +1,98 @@
+\documentclass[a4paper,12pts]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{minted}
+
+\title{TD : descente de gradient}
+\date{ }
+
+\begin{document}
+\maketitle
+
+\section{Exercices introductifs (non évalués)}
+
+\begin{itemize}
+\item Comprendre et implémenter le code suivant et observer le comportement de
+  l'algorithme en faisant varier la valeur du pas de gradient (\verb+step_size+)
+\begin{minted}{python}
+def optimise_univariate(step_size=0.4,max_epochs=30):
+    """
+    Optimizes f(x) = (x-3)^2 (strictly convex)
+    """    
+    x = 0
+    for e in range(max_epochs):
+        x  -= step_size * 2*(x-3) #f'(x) = 2(x-3)
+        obj = (x-3)**2
+        print(x,obj)
+    return x
+\end{minted}
+\item Comprendre et implémenter le code suivant et observer le comportement de
+  l'algorithme en faisant varier la valeur du pas de gradient
+  (\verb+step_size+)
+\begin{minted}{python}
+def optimise_bivariate(step_size=0.4,max_epochs=30):
+    """
+    Optimizes f(x1,x2) = x1^2+x2^2+2x1+8x2 (strictly convex)
+    """    
+    (x1,x2) = (0,0)
+    for e in range(max_epochs):
+        obj = x1**2+x2**2+2*x1+8*x2
+        print((x1,x2),obj)
+        x1,x2 = (x1-step_size*(2*x1+2),x2-step_size*(2*x2+8))
+
+    obj = x1**2+x2**2+2*x1+8*x2
+    print((x1,x2),obj)
+    return (x1,x2)
+\end{minted}
+\item Lire le code de la classe \verb+LogisticModel+ dans le fichier
+  \verb+numericGD.py+. Vérifiez que vous comprenenez l'implémentation de la méthode \verb+train+
+\end{itemize}
+
+
+\section{Exercices notés (à faire en binome)}
+
+Télécharger le corpus
+\href{https://gforge.inria.fr/frs/?group_id=3597}{\tt Sequoia} (v6.0) et travailler avec le fichier {\tt sequoia-corpus.np$\_$conll}
+\begin{enumerate}
+\item Faire une fonction {\tt split(nomfichier)} qui lit un corpus et
+  écrit un corpus d'entrainement, un corpus de développement et un
+  corpus de test.
+\item Faire une fonction {\tt read$\_$corpus(nomfichier)} qui lit les données d'un
+  corpus à partir d'un nom de fichier et qui renvoie un jeu de données
+  d'entrainement pour votre classifieur.
+\item  Faire une classe {\tt AvgPerceptron}
+avec au moins une fonction appelée\\ {\tt train(self,dataset,step$\_$size=0.1,max$\_$epochs)}
+qui implémente une
+fonction d'entrainement d'un perceptron moyenné multiclasse pour
+prédire les tags des mots de votre corpus ainsi qu'une fonction
+{\tt test(self,dataset)} qui renvoie l'exactitude de votre classifieur sur
+le jeu de données passé en paramètres.
+\end{enumerate}
+\paragraph{Contrainte} Vous utiliserez la classe
+\href{https://github.com/bencrabbe/parsing-at-diderot/blob/master/SparseWeightVector.py}{\tt
+  SparseWeightVector.py} comme support pour implémenter le vecteur de
+poids du perceptron. Vous pouvez consulter le fichier 
+\href{https://github.com/bencrabbe/parsing-at-diderot/blob/master/Multiclass.py}{\tt
+  Multiclass.py} comme source d'inspiration.
+
+%\paragraph{Discussion} Sur base de tests réalisés à l'aide de votre
+%implémentation, illustrez et comparez brièvement les propriétés des courbes d'apprentissage de votre perceptron
+%moyenné et de la version non moyennée. Selon vous qu'est-ce qui
+%explique les différences ?
+
+
+\section{Procédure de notation}
+On attend le code qui répond aux exercices (1,2,3) ci-dessus
+enregistré dans un fichier nommé {\tt exo1-nombinomes.py} 
+La procédure de notation sera partiellement automatisée et exécutera (au moins) la séquence d'instructions suivantes.
+%https://github.com/bencrabbe/parsing-at-diderot/blob/master/Multiclass.py
+\begin{verbatim}
+split(sequoia-corpus.np_conll)
+trainc = read_corpus(sequoia-corpus.np_conll.train)
+testc  = read_corpus(sequoia-corpus.np_conll.test)
+p = AvgPerceptron()
+p.train(trainc)
+print(p.test(testc))
+\end{verbatim}
+\end{document}
