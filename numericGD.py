@@ -34,7 +34,7 @@ def make_dataset(istream,add_bias=True):
     """
     Also adds a bias dummy variable
     """
-    header = istream.readline()
+    #header = istream.readline()
 
     dataset = []
     for line in istream:
@@ -68,20 +68,17 @@ class LogisticModel:
             x = exp(score)
             return x/(1+x) 
     
-    def train(self,dataset,step_size=1.0,max_epochs=500,epsilon=0.0001):
-
+    def train(self,dataset,step_size=0.01,max_epochs=30):
+        
         D = len(dataset[0][1])
         weights = np.zeros(D)
 
         objective_history = [0.0]*max_epochs
-                 
         for e in range(max_epochs):
-            weights -= (step_size/(e+1))*self.batch_gradient(weights,dataset)
+            weights -= step_size*self.batch_gradient(weights,dataset)
             loglik = -self.loglikelihood(weights,dataset)
-            #print('LogLikelihood = ', loglik)
             objective_history[e] = loglik
         self.weights = weights
-        print(self.weights)
         print('LogLikelihood = ', loglik)
         return objective_history
 
@@ -162,12 +159,12 @@ if __name__ == '__main__':
     #sys.exit(0)
     #simple logistic 
     istream = open('data/logistic.dat')
-    D = make_dataset(istream,add_bias=True)
+    D = make_dataset(istream,add_bias=False)
     istream.close()
     m = LogisticModel()
-    objSGD   = m.trainSGD(D,step_size=5)
+    objBatch = m.train(D,step_size=0.01)
     print('Internal test accurracy :',m.test(D))
-    objBatch = m.train(D,step_size=5.0)
+    objSGD   = m.trainSGD(D,step_size=5)
     print('Internal test accurracy :',m.test(D))
     objBFGS = m.trainBFGS(D)
     print('Internal test accurracy :',m.test(D))
