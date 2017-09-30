@@ -157,7 +157,7 @@ class SparseWeightVector:
             if isinstance(X,tuple):
                 s += 'phi(%s,%s) = 1 : w = %f\n'%('&'.join(X),Y,value)
             else:
-                s += 'phi(%s,%s) = 1 : w = %f\n'%(key,Y,value)
+                s += 'phi(%s,%s) = 1 : w = %f\n'%(X,Y,value)
         return s
 
     
