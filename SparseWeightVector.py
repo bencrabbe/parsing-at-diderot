@@ -160,7 +160,6 @@ class SparseWeightVector:
                 s += 'phi(%s,%s) = 1 : w = %f\n'%(X,Y,value)
         return s
 
-    
 if __name__ == '__main__':
 
     #Simple usage example

@@ -2823,6 +2823,29 @@ habituellement présenté à partir de sa forme duale.  Celle-ci est
 toutefois inadaptée
 aux problèmes de \ac{tal}. 
 
+\begin{center}
+
+\scalebox{0.7}{\footnotesize
+\begin{tabular}{lll}\toprule
+{\sc Modèle} & {\sc Objectif} & {\sc Gradient}\\\midrule
+Régression softmax&$\prod_{i=1}^N P(y_i | \mathbf{x};\mathbf{w})$&
+$\sum_{i=1}^N\phi_j(\mathbf{x_i},y_i) - \sum_{y'\in Y} P(y'|\mathbf{x_i},\mathbf{w})\phi_j(\mathbf{x_i},y_i)$ \\
+Large marge & $\sum_{i=1}^N \text{max}(0, 1 + 
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i) ))$
+&$\sum_{i=1}^N
+\left\{
+\begin{array}{ll}
+\phi_j(\mathbf{x}_i,y*) - \phi_j(\mathbf{x}_i,y_i) & \text{si }  
+\mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y_i)   - \mathbf{w}^T\boldsymbol\Phi(\mathbf{x}_i,y^*_i) \leq 1\\
+0&\text{sinon}
+\end{array}\right.
+$\\\bottomrule
+\end{tabular}}
+\end{center}
+
+
+
+
 
 \section{Réseaux de neurones}
 

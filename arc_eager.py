@@ -103,7 +103,7 @@ class ArcEagerTransitionParser:
                 return ArcEagerTransitionParser.LEFTARC
             if  (i,j) in reference_arcs:
                 return ArcEagerTransitionParser.RIGHTARC
-        if S and any([(k,S[-1]) for k in all_words])\
+        if S and any([(k,S[-1]) in A for k in all_words])\
             and all ([(S[-1],k) in A for k in all_words if (S[-1],k) in reference_arcs]):
             return ArcEagerTransitionParser.REDUCE
         if B:
