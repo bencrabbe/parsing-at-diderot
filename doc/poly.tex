@@ -3703,9 +3703,15 @@ P(\mathbf{y} = y_1\ldots y_n | \mathbf{x};\mathbf{w}) \approx \prod_{i=2}^n P(y_
 L'équation (\ref{eq-local-model}) permet de réduire le problème d'apprentissage structuré à un cas d'apprentissage 
 non structuré où la tâche de prédiction consiste à prédire la probabilité du tag $y_i$ d'un mot donné sachant la séquence de mots 
 $\mathbf{x}$ et le tag du mot précédent $y_{i-1}$.  
-Un tel modèle se réduit donc à un modèle de régression logistique multinomiale (ou modèle à maximum d'entropie).
+Un tel modèle se réduit donc à un modèle de régression logistique
+multinomiale (ou modèle à maximum d'entropie) où:
+\begin{displaymath}
+P(y_i|y_{i-1},\mathbf{x};\mathbf{w}) = \frac{\text{exp}(  \mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}, y_{i-1}, y_i ))  }{ \sum_{y'\in Y }  \text{exp}(\mathbf{w}^T
+  \boldsymbol\Phi(\mathbf{x}, y_{i-1}, y')) } 
+\end{displaymath}
 
-Les paramètres du modèle étant connus, on peut réaliser la prédiction avec tout algorithme de recherche de solutions approprié
+Les paramètres du modèle étant connus, on peut en théorie réaliser la prédiction avec tout algorithme de recherche de solutions approprié
 (Viterbi, Dijkstra ou toute approximation en faisceau).
 
 \paragraph{Estimation des paramètres}
@@ -3720,7 +3726,7 @@ Il ne voit que les états supposés ``gold'', c'est-à-dire que $y_{i-1}$ sera t
 Par conséquent ce type de modèle est en théorie exposé à des effets de propagation d'erreur~: le modèle n'est pas naturellement entraîné pour traiter des 
 états où il est est arrivé par erreur.
 
-({\bf formalize here the label bias problem})
+({\bf formalize here the label bias problem and error propag})
 
 \section{Modèles neuronaux}
 
