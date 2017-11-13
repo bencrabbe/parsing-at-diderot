@@ -3761,7 +3761,8 @@ de gradient stochastique ou tout algorithme d'optimisation approprié.
 
 \paragraph{Réseaux de neurones récurrents pour le tagging} 
 Les réseaux de neurones récurrents constituent de nos jours une alternative très
-populaire aux {\sc  Memm} et à leurs variantes depuis Mikolov 2010. 
+populaire aux {\sc  Memm} et à leurs variantes depuis l'introduction 
+des modèles de langages à réseaux récurrents ({\sc Rnnlm}) par  Mikolov 2010. 
 
 Les réseaux de neurones récurrents ont pour propriété intéressante de
 permettre de mémoriser l'historique de la phrase dans une cellule
@@ -3821,12 +3822,19 @@ s'agit de réseaux empilés à deux couches dont la forme élémentaire est
 la suivante:
 \begin{align}
 \mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \left[ \begin{array}{c}\mathbf{h}^b_t \\\mathbf{h}^f_t \end{array}\right])\\
-\mathbf{h}^b_t &= g(\mathbf{W}^b_1\mathbf{x}_t + \mathbf{W}^b_2 \mathbf{h}^b_{t-1}+\mathbf{b}^b )\\
+\mathbf{h}^b_t &= g(\mathbf{W}^b_1\mathbf{x}_t + \mathbf{W}^b_2 \mathbf{h}^b_{t+1}+\mathbf{b}^b )\\
 \mathbf{h}^f_t &= g(\mathbf{W}^f_1\mathbf{x}_t + \mathbf{W}^f_2 \mathbf{h}^f_{t-1}+\mathbf{b}^f )
 \end{align}
 Ces réseaux bi-récurrents possèdent deux mémoires: $\mathbf{h}^b_t$ et
 $\mathbf{h}^f_t$ qui représentent respectivement les contextes non
 bornés droite et gauche du mot en position $t$. 
+
+Cette dernière propriété permet de voir un bi-{\sc Rnn} comme un procédé
+d'encodage de mots sur des vecteurs qui tient compte
+du contexte dans lequel apparaît chaque mot.
+Ainsi les vecteurs $\mathbf{h}^b_t$ et $\mathbf{h}^f_t$
+peuvent être utilisés à la place de word embeddings classiques comme représentation des mots pour des tâches
+additionnelles comme par exemple une tâche d'analyse syntaxique.  
 
 
 \paragraph{Estimation des paramètres} L'estimation des paramètres pour
