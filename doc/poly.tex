@@ -3706,7 +3706,7 @@ $\mathbf{x}$ et le tag du mot précédent $y_{i-1}$.
 Un tel modèle se réduit donc à un modèle de régression logistique multinomiale (ou modèle à maximum d'entropie).
 
 Les paramètres du modèle étant connus, on peut réaliser la prédiction avec tout algorithme de recherche de solutions approprié
-(Viterbi, Dijkstra ou toute approximation gloutonne).
+(Viterbi, Dijkstra ou toute approximation en faisceau).
 
 \paragraph{Estimation des paramètres}
 Un jeu de données pour un modèle local est un ensemble de couples $\mathop{(\mathbf{x}_i y_{i-1}, y_i)}_{i=1}^N$
@@ -3724,18 +3724,144 @@ Par conséquent ce type de modèle est en théorie exposé à des effets de prop
 
 \section{Modèles neuronaux}
 
-Une autre famille importante de modèles locaux sont constitués par des réseaux de neurones à propagation avant (ou récurrents) dont
+\paragraph{Modèles de langage neuronaux pour le tagging} Une autre famille importante de modèles locaux sont constitués par des réseaux de neurones à propagation avant dont
 la couche de sortie est de type softmax de telle sorte que les sorties du réseau s'interprètent comme des probabilités de la forme
 $P(y_t|y_{t-1},\mathbf{x};\mathbf{w})$.
 
-Notons que d'autres modèles peuvent être utilisés de manière locale, ainsi il est courant d'utiliser des
- modèles à large marge de type perceptron comme des modèles locaux plutôt que dans leur version structurée.
+L'archétype de ce type de modèle est le modèle de langage neuronal
+({\sc Nnlm} Bengio et al 2003) qui est un réseau à propagation avant qui prend la
+forme suivante~:
+\begin{align}
+\mathbf{y} &= \text{softmax}(\mathbf{W}_1 \mathbf{h})\\
+\mathbf{h} &= g(\mathbf{W}_2\mathbf{e})\\
+\mathbf{e} &= \left [ 
+\begin{array}{c}
+\mathbf{E} \mathbf{x}_1\\
+\vdots\\
+\mathbf{E} \mathbf{x}_k\\
+\end{array}\right]
+\end{align}
+où $\mathbf{x}_1 \ldots \mathbf{x}_k$  sont des vecteurs one-hot qui
+codent les symboles prédicteurs. Ces vecteurs représentent par
+exemple les quelques mots qui précèdent ou les quelques mots qui suivent le mot $w_t$ (à
+tagguer par $y_t$) ainsi que le tag du mot précédent $(y_{t-1})$.
+
+La couche de sortie softmax de ce modèle s'interprète comme une
+probabilité conditionnelle de la forme $P(y_t |
+y_{t-1},\mathbf{x})$. Autrement dit, ce modèle est une variante de
+{\sc Memm}.
+
+Les paramètres du modèle étant connus, on peut réaliser la prédiction avec tout algorithme de recherche de solutions approprié
+(Viterbi, Dijkstra ou toute approximation en faisceau).
+
+L'estimation des paramètres se fait de manière analogue au cas des
+{\sc Memm} en optimisant la log-vraisemblance des données en utilisant par exemple un algorithme de descente
+de gradient stochastique ou tout algorithme d'optimisation approprié.
 
 
- 
+\paragraph{Réseaux de neurones récurrents pour le tagging} 
+Les réseaux de neurones récurrents constituent de nos jours une alternative très
+populaire aux {\sc  Memm} et à leurs variantes depuis Mikolov 2010. 
+
+Les réseaux de neurones récurrents ont pour propriété intéressante de
+permettre de mémoriser l'historique de la phrase dans une cellule
+(vecteur noté $\mathbf{h}$) qui s'interprète comme une mémoire. 
+
+Le problème de prédiction de séquence est vu comme une succession
+d'étapes de prédiction temporelles qui à chaque étape mettent à jour
+la mémoire du système en fonction de l'état courant de la mémoire et
+du symbole courant. 
+La forme primitive d'un réseau de ce type est la suivante:
+\begin{align}
+\mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \mathbf{h}_t)\\
+\mathbf{h}_t &= g(\mathbf{W}_1\mathbf{x}_t + \mathbf{W}_2
+\mathbf{h}_{t-1}+\mathbf{b} )
+\end{align}
+Il faut remarquer que la mémoire $\mathbf{h}$ est mise à jour à chaque
+étape temporelle. Pour la modélisation du langage, on utilisera en
+général la forme où les données sont des embeddings, c'est-à-dire un
+réseau de la forme:
+\begin{align}
+\mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \mathbf{h}_t)\\
+\mathbf{h}_t &= g(\mathbf{W}_1\mathbf{e}_t + \mathbf{W}_2
+\mathbf{h}_{t-1}+\mathbf{b} )\\
+\mathbf{e}_t &= \mathbf{E}\mathbf{x}_t
+\end{align}
+où on suppose que chaque $\mathbf{x}_t$ est un vecteur one hot qui
+code le mot $w_t$ pris dans la séquence $w_1\ldots w_n$.
+
+Dans le cas du tagging, on observe que la probabilité de sortie du
+modèle décrit ci-dessus s'interprète comme la probabilité 
+$P(y_t | w_1\ldots w_t)$ car la mémoire du {\sc Rnn}
+n'est pas bornée.  Et c'est cet aspect non borné qui lui donne son
+originalité principale par contraste avec les autres modèles présentés
+dans ce cours qui posent tous des hypothèses simplificatrices de type
+markovienne.  
+
+La prédiction avec un tel modèle est en général réalisée de manière
+gloutonne. \`A chaque étape temporelle le tag prédit est celui dont le
+score maximise la couche de sortie:
+\begin{displaymath}
+\hat{y}_t  = \mathop{\text{argmax}}_{y_t \in Y} \mathbf{y}_t
+\end{displaymath}
 
 
- 
+\paragraph{Réseaux récurrents empilés}
+Parmi les nombreuses variantes de réseaux récurrents, signalons le cas des
+réseaux empilés. Il s'agit de réseaux de la forme: 
+\begin{align}
+\mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \mathbf{h}^j_t)\\
+\mathbf{h}^j_t &= g(\mathbf{W}^j_1\mathbf{h}^{j-1}_t + \mathbf{W}^j_2 \mathbf{h}^j_{t-1}+\mathbf{b}^j )\\
+& \vdots\\
+\mathbf{h}^1_t &= g(\mathbf{W}^1_1\mathbf{x}_t + \mathbf{W}^1_2 \mathbf{h}^1_{t-1}+\mathbf{b}^1 )
+\end{align}
+
+Parmi ceux-ci, les réseaux bi-récurrents constituent un cas particulier emblématique. Il
+s'agit de réseaux empilés à deux couches dont la forme élémentaire est
+la suivante:
+\begin{align}
+\mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \left[ \begin{array}{c}\mathbf{h}^b_t \\\mathbf{h}^f_t \end{array}\right])\\
+\mathbf{h}^b_t &= g(\mathbf{W}^b_1\mathbf{x}_t + \mathbf{W}^b_2 \mathbf{h}^b_{t-1}+\mathbf{b}^b )\\
+\mathbf{h}^f_t &= g(\mathbf{W}^f_1\mathbf{x}_t + \mathbf{W}^f_2 \mathbf{h}^f_{t-1}+\mathbf{b}^f )
+\end{align}
+Ces réseaux bi-récurrents possèdent deux mémoires: $\mathbf{h}^b_t$ et
+$\mathbf{h}^f_t$ qui représentent respectivement les contextes non
+bornés droite et gauche du mot en position $t$. 
+
+
+\paragraph{Estimation des paramètres} L'estimation des paramètres pour
+des réseaux récurrents se fait par maximum de vraisemblance à l'aide d'une descente de gradient
+classique comme {\sc Sgd}. 
+\`A chaque évaluation du gradient, pour l'ensemble des données,
+l'algorithme de rétropropagation du gradient compare la prédiction du
+modèle pour chaque mot à l'annotation de référence et met à jour les
+poids de manière appropriée.
+
+L'évaluation du gradient pose en général des problèmes formels
+non négligeables pour les {\sc Rnn} standards (disparition ou explosion du gradient). Pour cette raison on
+utilise en pratique des  variantes appelées {\sc Lstm} (long short
+term memory network) ou {\sc Gru} (gated recurrent unit)
+qui corrigent le problème mais dont les formulations explicites sont plus complexes.
+
+
+\paragraph{Aspects pratiques}
+Les jeux de données pour les modèles récurrents ont la forme $\mathop{\{(\mathbf{w}_i,\mathbf{t}_i)\}}_{i=1}^N$ 
+où $\mathbf{w}_i$ représente une séquence de mots et $\mathbf{t}_i$
+une séquence de tags. 
+
+La descente de gradient de modèles récurrents peut, selon les cas,
+demander un calcul long et intensif.
+Pour des raisons d'efficacité tant quant à l'utilisation de {\sc Cpu}
+que de {\sc Gpu}, les bibliothèques appliquent une
+procédure de descente de gradient organisée en mini-batches. 
+Les exemples d'un même mini batch sont traités en parallèle pour
+rendre la  descente de gradient plus efficace.
+
+Cette méthode impose que les séquences d'un même mini-batch ont
+toutes exactement la même longueur. Lorsque cela n'est pas possible il
+est d'usage d'ajouter des éléments factices au début ou à la fin de
+séquences trop courtes ({\em padding}) et de tronquer des séquences
+trop longues ({\em truncation}).
 
 
 
