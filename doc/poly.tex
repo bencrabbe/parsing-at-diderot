@@ -3778,22 +3778,24 @@ Le problème de prédiction de séquence est vu comme une succession
 d'étapes de prédiction temporelles qui à chaque étape mettent à jour
 la mémoire du système en fonction de l'état courant de la mémoire et
 du symbole courant. 
-La forme primitive d'un réseau de ce type est la suivante:
-\begin{align}
-\mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \mathbf{h}_t)\\
-\mathbf{h}_t &= g(\mathbf{W}_1\mathbf{x}_t + \mathbf{W}_2
-\mathbf{h}_{t-1}+\mathbf{b} )
-\end{align}
+La forme primitive d'un réseau de ce type est la suivante.
+Soit une séquence de vecteurs $\mathbf{x}_t$ ($1\leq t \leq n$) qui est
+donnée, le réseau prédit la séquence de vecteurs $\mathbf{y}_t$ comme suit:
+\begin{align*}
+\mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \mathbf{h}_t)    &(1 \leq t \leq n)\\
+\mathbf{h}_t &= g(\mathbf{W}_1\mathbf{x}_t + \mathbf{W}_2  
+\mathbf{h}_{t-1}+\mathbf{b} ) &(1 \leq t \leq n)
+\end{align*}
 Il faut remarquer que la mémoire $\mathbf{h}$ est mise à jour à chaque
 étape temporelle. Pour la modélisation du langage, on utilisera en
 général la forme où les données sont des embeddings, c'est-à-dire un
 réseau de la forme:
-\begin{align}
-\mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \mathbf{h}_t)\\
+\begin{align*}
+\mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \mathbf{h}_t)  &(1 \leq t \leq n)\\
 \mathbf{h}_t &= g(\mathbf{W}_1\mathbf{e}_t + \mathbf{W}_2
-\mathbf{h}_{t-1}+\mathbf{b} )\\
-\mathbf{e}_t &= \mathbf{E}\mathbf{x}_t
-\end{align}
+\mathbf{h}_{t-1}+\mathbf{b} )  &(1 \leq t \leq n)\\
+\mathbf{e}_t &= \mathbf{E}\mathbf{x}_t  &(1 \leq t \leq n)
+\end{align*}
 où on suppose que chaque $\mathbf{x}_t$ est un vecteur one hot qui
 code le mot $w_t$ pris dans la séquence $w_1\ldots w_n$.
 
@@ -3816,21 +3818,21 @@ score maximise la couche de sortie:
 \paragraph{Réseaux récurrents empilés}
 Parmi les nombreuses variantes de réseaux récurrents, signalons le cas des
 réseaux empilés. Il s'agit de réseaux de la forme: 
-\begin{align}
+\begin{align*}
 \mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \mathbf{h}^j_t)\\
 \mathbf{h}^j_t &= g(\mathbf{W}^j_1\mathbf{h}^{j-1}_t + \mathbf{W}^j_2 \mathbf{h}^j_{t-1}+\mathbf{b}^j )\\
 & \vdots\\
 \mathbf{h}^1_t &= g(\mathbf{W}^1_1\mathbf{x}_t + \mathbf{W}^1_2 \mathbf{h}^1_{t-1}+\mathbf{b}^1 )
-\end{align}
+\end{align*}
 
 Parmi ceux-ci, les réseaux bi-récurrents constituent un cas particulier emblématique. Il
 s'agit de réseaux empilés à deux couches dont la forme élémentaire est
 la suivante:
-\begin{align}
+\begin{align*}
 \mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \left[ \begin{array}{c}\mathbf{h}^b_t \\\mathbf{h}^f_t \end{array}\right])\\
 \mathbf{h}^b_t &= g(\mathbf{W}^b_1\mathbf{x}_t + \mathbf{W}^b_2 \mathbf{h}^b_{t+1}+\mathbf{b}^b )\\
 \mathbf{h}^f_t &= g(\mathbf{W}^f_1\mathbf{x}_t + \mathbf{W}^f_2 \mathbf{h}^f_{t-1}+\mathbf{b}^f )
-\end{align}
+\end{align*}
 Ces réseaux bi-récurrents possèdent deux mémoires: $\mathbf{h}^b_t$ et
 $\mathbf{h}^f_t$ qui représentent respectivement les contextes non
 bornés droite et gauche du mot en position $t$. 
@@ -3877,6 +3879,47 @@ est d'usage d'ajouter des éléments factices au début ou à la fin de
 séquences trop courtes ({\em padding}) et de tronquer des séquences
 trop longues ({\em truncation}).
 
+
+\paragraph{Réseaux de neurones récurrents pour la classification de phrases}
+\`A côté des réseaux récurrents transductifs comme ceux utilisés pour
+le cas de l'étiquetage morphosyntaxique, on utilise également des
+réseaux agglomérants dont le but est de prédire une étiquette $y$ pour
+une séquence d'observables $x_1\ldots x_n$ comme des mots ou des caractères.
+
+Les cas d'utilisations sont par exemple : catégoriser un mot inconnu à
+partir de la séquence de caractères qui le composent 
+ou catégoriser une phrase par une catégorie de sentiment.
+La forme d'un tel réseau récurrent est la suivante:
+\begin{align*}
+\mathbf{y}_t &= \text{softmax}(\mathbf{W}_0 \mathbf{h}_t) &(t = n)\\
+\mathbf{h}_t &= g(\mathbf{W}_1\mathbf{x}_t + \mathbf{W}_2
+\mathbf{h}_{t-1}+\mathbf{b} )& (1 \leq t \leq n)
+\end{align*}
+Lorsque les $\mathbf{x}_t$ sont produits par des embeddings de mots ou
+de caractères, le réseau prend alors la forme suivante:
+\begin{align*}
+\mathbf{y} &= \text{softmax}(\mathbf{W}_0 \mathbf{h}_t) & (t = n)\\
+\mathbf{h}_t &= g(\mathbf{W}_1\mathbf{e}_t + \mathbf{W}_2
+\mathbf{h}_{t-1}+\mathbf{b} ) &(1 \leq t \leq n)\\
+\mathbf{e}_t &= \mathbf{E}\mathbf{x}_t &  (1 \leq t \leq n)
+\end{align*}
+
+Il faut remarquer que $y$ n'est calculé q'une seule fois lors de la dernière
+étape temporelle. Dans ce contexte, on interprète la couche cachée de la dernière étape temporelle
+$\mathbf{h}_n$ comme une représentation vectorielle de la séquence
+tout entière (un
+embedding de séquence).
+
+Ce type de modèle peut être utilisé tel quel dans différents
+contextes~: comme par exemple pour catégoriser des phrases en analyse de sentiments.
+On peut également utiliser un tel réseau sur des séquences de
+caractères pour prédire la catégorie d'un mot inconnu ou encore
+utiliser $\mathbf{h}_n$ comme embedding 'morphologique' de mot et le
+donner comme embedding d'entrée à un modèle d'étiquetage
+morphosyntaxique ou d'analyse syntaxique.
+
+Dans la pratique, et pour les mêmes raisons que pour les modèles transductifs de séquences, les {\sc
+  Rnn} sont instanciés par des {\sc Lstm} ou des {\sc Gru}.
 
 
 \chapter{Représentations}
