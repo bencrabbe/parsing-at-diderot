@@ -3669,8 +3669,6 @@ Au terme de cette reformulation, l'évaluation du second terme revient à compte
 pour des détails supplémentaires.}
 
 
-\section{Fonctions features et potentiels}
-
 
 
 \chapter{Modèles locaux et modèles récurrents}
@@ -3904,7 +3902,7 @@ de caractères, le réseau prend alors la forme suivante:
 \mathbf{e}_t &= \mathbf{E}\mathbf{x}_t &  (1 \leq t \leq n)
 \end{align*}
 
-Il faut remarquer que $y$ n'est calculé q'une seule fois lors de la dernière
+Il faut remarquer que $\mathbf{y}$ n'est calculé q'une seule fois lors de la dernière
 étape temporelle. Dans ce contexte, on interprète la couche cachée de la dernière étape temporelle
 $\mathbf{h}_n$ comme une représentation vectorielle de la séquence
 tout entière (un
@@ -4303,11 +4301,11 @@ Dans la pratique pour un hyperarc $e=\langle h, v_1\ldots v_k \rangle$, la fonct
 Le poids $w(D(v))$ d'une dérivation $D(v)$ d'un noeud $v$ se définit récursivement comme suit~: 
 \begin{itemize}
 \item {\bf Base:} Si $e \in AE(v)$ et que $|e| = 0$ alors $w(D(v))  = \mathbf{\bar{1}}$. 
-\item {\bf Récurrence:} Si $e \in AE(v)$ et que $|e| = k > 0$ alors $w(D(v)) = \otimes(s(e), w(D_1(v_1)), \ldots , w(D_k(v_k)))$.
+\item {\bf Récurrence:} Si $e \in AE(v)$ et que $|e| = k > 0$ alors $w(D(v)) = \times(s(e), w(D_1(v_1)), \ldots , w(D_k(v_k)))$.
 \end{itemize}
 \end{definition}
-où $\otimes$ est une fonction qui combine les scores des $D_i$ dérivations qui mènent à $e$ avec le score $s(e)$ de $e$
-(il s'agit en général d'une multiplication  ou d'une addition selon le semi-anneau).
+où $\times$ est une fonction qui combine les scores des $D_i$ dérivations qui mènent à $e$ avec le score $s(e)$ de $e$
+(il s'agit en général d'une multiplication mais parfois d'une addition selon le semi-anneau).
 
 \begin{definition}[Poids maximal d'un noeud]
 Le poids maximal d'un noeud $\delta(v)$ est le poids de la meilleure dérivation qui mène à $v$~:
@@ -4315,7 +4313,7 @@ Le poids maximal d'un noeud $\delta(v)$ est le poids de la meilleure dérivation
 \delta(v) = 
 \begin{array}{ll}
 \bar{1} & \text{si $v$ est un noeud source}\\
-\bigoplus_{D \in {\cal D}(v)} w(D)&\text{sinon}
+\mathop{\text{max}}_{D \in {\cal D}(v)} w(D)&\text{sinon}
 \end{array}
 \end{displaymath}
 \end{definition}
@@ -4333,7 +4331,7 @@ les algorithmes qui suivent permettent de résoudre le problème~:
 On peut finalement remarquer que les définitions qui précèdent 
 ont pour conséquence que le score d'une dérivation $D$ se décompose comme le produit des scores de ses hyperarcs~:
 \begin{equation}
-w(D) = \bigotimes_{e\in D} w(e) 
+w(D) = \times_{e\in D} w(e) 
 \end{equation}
 
 \subsection{Algorithme CKY}
@@ -4366,7 +4364,7 @@ L'algorithme associe à chaque noeud $v$ le poids $\delta(v)$ de la meilleure d�
 \ForAll{$v \in V$ en suivant un ordre topologique}\Comment{Récurrence}
 \For {$e\in AE(v)$}
 \State $\langle h, v_1\ldots v_k\rangle \gets e$
-\State $\delta(v) \gets \oplus (\delta(v) , \otimes(s(e),\delta(v_1) ,\ldots \delta (v_k)))$
+\State $\delta(v) \gets \text{max} (\delta(v) , \times(s(e),\delta(v_1) ,\ldots \delta (v_k)))$
 \EndFor
 \EndFor
 \EndFunction
@@ -4394,7 +4392,7 @@ dans le pire des cas.
 \State $\delta(v) = \bar{0}$
 \For{$i < k < j$}\Comment{Applications de la règle de réduction}
 \State $v_1,v_2 \gets \langle i,k,Y_1 \rangle,\langle k,j,Y_2 \rangle$ \qquad $\forall (Y_1,Y_2) \in N\times N$
-\State $\delta(v) \gets \oplus(\delta(v), \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2))$
+\State $\delta(v) \gets \text{max}(\delta(v), \times(s(v,v_1,v_2),\delta(v_1),\delta(v_2))$
 \EndFor
 \EndFor
 \EndFor
@@ -4413,7 +4411,7 @@ Donner une extension de l'algorithme \ref{algo-cky-verbose} qui permet de renvoy
 L'algorithme CKY décompose les scores des dérivations comme suit~:
 \begin{equation}
 \label{cky-decomp}
-w(D) = \bigotimes_{e\in D} w(e) 
+w(D) = \mathop{\times}_{e\in D} w(e) 
 \end{equation}
 ce type de décomposition permet d'entraîner des modèles structurés à large marge très facilement.
 On donne un exemple pour l'algorithme du perceptron en Algorithme \ref{perceptron-cky} 
@@ -4479,7 +4477,7 @@ lorsqu'on combine deux chemins on s'attend à ce que le score du chemin global a
 \State $h, (v_1, v_2) \gets e$
 \State $rest(e) \gets rest(e) - 1$
 \If{$rest(e) = 0$}
-\State $\delta(h) \gets \oplus( \delta(h),  \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$
+\State $\delta(h) \gets \text{max}( \delta(h),  \times(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$
 \State \Call{RéordonnerClé}{$Q$,$h$}
 \EndIf
 \EndFor
@@ -4496,7 +4494,6 @@ la condition dite de supériorité)
 Ce sont des poids qui se dérivent naturellement de probabilités 
 ($w = -\log(p)$) ou à des sorties de modèles de régression logistique multinomiale ou de réseaux de neurones
 à couche de sortie softmax.
-
 
 \begin{algorithm}[htbp]
 \begin{algorithmic}
@@ -4515,7 +4512,7 @@ Ce sont des poids qui se dérivent naturellement de probabilités
 \State $e \gets \langle i,j , X_1 \rangle , \langle i , k , L \rangle \langle k , j , X_2 \rangle$
 \State $rest(e) \gets rest(e) - 1$
 \If{$rest(e) = 0$}
-\State $\delta(h) \gets \oplus( \delta(h),  \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$
+\State $\delta(h) \gets \text{max}( \delta(h),  \times(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$
 \State \Call{RéordonnerClé}{$Q$,$h$}
 \EndIf
 \EndFor
@@ -4526,7 +4523,7 @@ Ce sont des poids qui se dérivent naturellement de probabilités
 \State $e \gets \langle i,j , X_1 \rangle , \langle i , k , X_2 \rangle \langle k , j , L \rangle$
 \State $rest(e) \gets rest(e) - 1$
 \If{$rest(e) = 0$}
-\State $\delta(h) \gets \oplus( \delta(h),  \otimes(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$
+\State $\delta(h) \gets \text{max}( \delta(h),  \times(s(v,v_1,v_2),\delta(v_1),\delta(v_2)))$
 \State \Call{RéordonnerClé}{$Q$,$h$}
 \EndIf
 \EndFor
