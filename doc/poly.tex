@@ -4280,11 +4280,12 @@ On peut également définir une extension de la notion de chemin pour un graphe
 qui est appelée ici dérivation dans le cas des hypergraphes. Cette notion correspond également à la notion d'arbre syntaxique.
 
 \begin{definition}[Dérivation]
-La dérivation $D$ d'un noeud $v \in V$ se définit récursivement comme suit~: 
+Une dérivation $D(v)$ enracinée au noeud $v \in V$ se définit récursivement comme suit~: 
 \begin{itemize}
-\item {\bf Base:} Si $e \in AE(v)$ et que $|e| = 0$ alors $D = \langle e,\epsilon\rangle$ est une dérivation de $v$.
-\item {\bf Récurrence:} Si $e \in AE(v)$ et $|e| > 0$ et que $D_i$ est une dérivation de tout $v_i \in tail(e) \quad (1\leq i \leq k)$   
-alors $D = \langle v, D_1\ldots D_k \rangle$ est une dérivation de $v$. 
+\item {\bf Base:} Si $e \in AE(v)$ et que $|e| = 0$ alors $D(v) = \langle v,\epsilon\rangle$ est une dérivation de $v$.
+\item {\bf Récurrence:} Si $e \in AE(v)$ et $|e| = k > 0$ alors $D(v) =
+  \langle v, D(v_1)\ldots D(v_k) \rangle$ est une dérivation de $v$
+  $(1\leq i \leq k)$.
 \end{itemize}
 \end{definition}
 Comme plusieurs dérivations sont possibles pour un même noeud $v$ (cas d'ambiguité),
@@ -4300,11 +4301,12 @@ Dans la pratique pour un hyperarc $e=\langle h, v_1\ldots v_k \rangle$, la fonct
 \begin{definition}[Pondération d'une dérivation]
 Le poids $w(D(v))$ d'une dérivation $D(v)$ d'un noeud $v$ se définit récursivement comme suit~: 
 \begin{itemize}
-\item {\bf Base:} Si $e \in AE(v)$ et que $|e| = 0$ alors $w(D(v))  = \mathbf{\bar{1}}$. 
-\item {\bf Récurrence:} Si $e \in AE(v)$ et que $|e| = k > 0$ alors $w(D(v)) = \times(s(e), w(D_1(v_1)), \ldots , w(D_k(v_k)))$.
+\item {\bf Base:} Si $e \in AE(v)$ et que $|e| = 0$ alors $w(D(v))  = 1$. 
+\item {\bf Récurrence:} Si $e \in AE(v)$ et que $|e| = k > 0$ alors
+  $w(D(v)) =  s(e) \times \prod_{i=1}^k w(D(v_i))$ $(1\leq i \leq k)$.
 \end{itemize}
 \end{definition}
-où $\times$ est une fonction qui combine les scores des $D_i$ dérivations qui mènent à $e$ avec le score $s(e)$ de $e$
+où les scores des $D_i$ dérivations qui mènent à $e$ sont multipliées avec le score $s(e)$ de $e$
 (il s'agit en général d'une multiplication mais parfois d'une addition selon le semi-anneau).
 
 \begin{definition}[Poids maximal d'un noeud]
@@ -4312,8 +4314,8 @@ Le poids maximal d'un noeud $\delta(v)$ est le poids de la meilleure dérivation
 \begin{displaymath}
 \delta(v) = 
 \begin{array}{ll}
-\bar{1} & \text{si $v$ est un noeud source}\\
-\mathop{\text{max}}_{D \in {\cal D}(v)} w(D)&\text{sinon}
+1 & \text{si $v$ est un noeud source}\\
+\mathop{\text{max}}_{D(v) \in {\cal D}(v)} w(D(v))&\text{sinon}
 \end{array}
 \end{displaymath}
 \end{definition}
@@ -4326,13 +4328,38 @@ La résolution consiste à extraire la dérivation de poids maximal de tout item
 En considérant l'ensemble ${\cal D}(\mathbf{x}) = \bigcup_{X \in N} {\cal D} (\langle 0, n, X \rangle) $ de toutes les dérivations qui couvrent la phrase,
 les algorithmes qui suivent permettent de résoudre le problème~:
 \begin{equation}
-\hat{D} = \mathop{\text{argmax}}_{D \in {\cal D}(\mathbf{x})} w(D)
+\hat{D}(v) = \mathop{\text{argmax}}_{D(v) \in {\cal D}(\mathbf{x})} w(D(v))
 \end{equation}
 On peut finalement remarquer que les définitions qui précèdent 
 ont pour conséquence que le score d'une dérivation $D$ se décompose comme le produit des scores de ses hyperarcs~:
 \begin{equation}
-w(D) = \times_{e\in D} w(e) 
+w(D(v)) = \prod_{e\in D(v)} s(e) 
 \end{equation}
+
+
+\paragraph{Exemple de dérivation} Une dérivation est
+ la contrepartie d'un arbre d'analyse (en général partiel) pour le traitement algorithmique.
+Ainsi pour l'arbre:
+\begin{center}
+\Tree[.S [.NP [.D Le ]  [.N chat ] ] [.VN [.V dort ] ] ]
+\end{center}
+La dérivation sera : 
+{\footnotesize
+\begin{displaymath}
+( \langle 0,3,S\rangle, ( \langle 0,2,NP \rangle , (\langle 0,1,D
+\rangle , (\langle 0,1,Le \rangle, \epsilon )) (\langle 1,2,N \rangle
+, (\langle 1,2, chat \rangle ,\epsilon )))   (\langle 2,3,VN \rangle ,
+(\langle 2,3,V \rangle ,( \langle 2,3,dort \rangle , \epsilon ) )))
+\end{displaymath}
+}
+ce que l'on peut alternativement écrire :
+\begin{center}
+\Tree[.$\langle 0,3,S\rangle$ [.$\langle 0,2,NP\rangle$ [.$\langle 0,1,D\rangle$ [. $\langle 0,1,Le\rangle$ $\epsilon$ ] ]   [.$\langle 1,2,N\rangle$ [.$\langle 1,2,chat\rangle$ $\epsilon$ ] ]  ]  [.$\langle 2,3,VN\rangle$ [.$\langle 2,3,V\rangle$ [.$\langle 2,3,dort\rangle$ $\epsilon$ ] ] ] ]
+\end{center}
+
+La pondération d'une dérivation consiste à faire le produit (selon le demi-anneau) des hyperarcs qui connectent les noeuds. 
+On peut voir à partir de l'exemple que le procédé est analogue à la pondération d'une dérivation {\sc Pcfg}.
+
 
 \subsection{Algorithme CKY}
 
@@ -4359,12 +4386,14 @@ L'algorithme associe à chaque noeud $v$ le poids $\delta(v)$ de la meilleure d�
 \Function{Viterbi-Cky}{$w_1\ldots w_n$}
 \For{$ 0 \leq i < n$}\Comment{Initialisation}
 \State $v \gets \langle i,i+1,w_{i+1} \rangle$
-\State $\delta(v) \gets \bar{1}$
+\State $\delta(v) \gets 1$
 \EndFor
 \ForAll{$v \in V$ en suivant un ordre topologique}\Comment{Récurrence}
+\State $\delta (v) \gets 0$
 \For {$e\in AE(v)$}
 \State $\langle h, v_1\ldots v_k\rangle \gets e$
-\State $\delta(v) \gets \text{max} (\delta(v) , \times(s(e),\delta(v_1) ,\ldots \delta (v_k)))$
+\State $\delta(v) \gets \text{max} \left(\delta(v) , s(e) \times
+\prod_{i=1}^k \delta(v_i)\right)$
 \EndFor
 \EndFor
 \EndFunction
@@ -4382,14 +4411,14 @@ dans le pire des cas.
 \Function{Viterbi-Cky}{$w_1\ldots w_n$}
 \For{$ 0 \leq i < n$}\Comment{Initialisation}
 \State $v \gets \langle i,i+1,w_{i+1} \rangle$
-\State $\delta(v) \gets \bar{1}$
+\State $\delta(v) \gets 1$
 \EndFor
 \For{$1 < span \leq n $}\Comment{Récurrence}
 \For{$0\leq i \leq n - span $}
 \State $j \gets i+span$
 \For{$X \in N$}\Comment{Boucle sur non terminaux}
 \State $v \gets \langle i,j,X \rangle$
-\State $\delta(v) = \bar{0}$
+\State $\delta(v) \gets 0$
 \For{$i < k < j$}\Comment{Applications de la règle de réduction}
 \State $v_1,v_2 \gets \langle i,k,Y_1 \rangle,\langle k,j,Y_2 \rangle$ \qquad $\forall (Y_1,Y_2) \in N\times N$
 \State $\delta(v) \gets \text{max}(\delta(v), \times(s(v,v_1,v_2),\delta(v_1),\delta(v_2))$
@@ -4411,7 +4440,7 @@ Donner une extension de l'algorithme \ref{algo-cky-verbose} qui permet de renvoy
 L'algorithme CKY décompose les scores des dérivations comme suit~:
 \begin{equation}
 \label{cky-decomp}
-w(D) = \mathop{\times}_{e\in D} w(e) 
+w(D) = \prod_{e\in D} w(e) 
 \end{equation}
 ce type de décomposition permet d'entraîner des modèles structurés à large marge très facilement.
 On donne un exemple pour l'algorithme du perceptron en Algorithme \ref{perceptron-cky} 
