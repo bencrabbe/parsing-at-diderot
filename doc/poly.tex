@@ -4361,18 +4361,9 @@ ce que l'on peut alternativement écrire :
 La pondération d'une dérivation consiste à faire le produit (selon le demi-anneau) des hyperarcs qui connectent les noeuds. 
 On peut voir à partir de l'exemple que le procédé est analogue à la pondération d'une dérivation {\sc Pcfg}.
 
-
-\paragraph{Exemple de calcul de $\delta(v)$}
-L' exemple donné en figure \ref{fig-forest-delta} illustre les interactions entre dérivations dans une même forêt notamment 
-pour le calcul de $\delta(v)$. On donne en rouge, dans les deux figures de gauche, une pondération pour les différents hyperarcs. Celui-ci correspond à un score 
-qui serait produit par une méthode d'apprentissage. La figure de droite, qui illustre une forêt à proprement parler, donne les $\delta(v)$ pour chacun des noeuds
-de cette forêt. 
-
-
-
 \begin{figure}[htbp]
 \begin{center}
-\scalebox{0.7}{
+\scalebox{0.6}{
 \begin{tabular}[h]{ccc}\toprule
 \raisebox{2.25cm}{\Tree [.$\langle 0,3,X\rangle$   [.$\langle 0,2,X\rangle$   $\langle 0,1,w_1\rangle$ \edge[draw=none]; {\bf\color{red} 3}  $\langle 1,2,w_2\rangle$ ] \edge[draw=none]; {\bf\color{red} 2} $\langle 2,3,w_3\rangle$  ] }
 &
@@ -4402,6 +4393,16 @@ de cette forêt.
 \end{center}
 \caption{\label{fig-forest-delta} Calcul de $\delta (v)$ dans une forêt}
 \end{figure}
+
+
+
+\paragraph{Exemple de calcul de $\delta(v)$}
+L'exemple donné en figure \ref{fig-forest-delta} illustre les interactions entre dérivations dans une même forêt notamment 
+pour le calcul de $\delta(v)$. On donne en rouge, dans les deux figures de gauche, une pondération pour les différents hyperarcs. Celui-ci correspond à un score 
+qui serait produit par une méthode d'apprentissage. La figure de droite, qui illustre une forêt à proprement parler, donne les $\delta(v)$ pour chacun des noeuds
+de cette forêt. 
+
+
 
 
 
