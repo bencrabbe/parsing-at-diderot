@@ -4,6 +4,7 @@
 \title{Analyse syntaxique automatique du langage naturel}
 
 \usepackage{pagenote}
+%\usepackage[usenames]{xcolor}
 \usepackage{booktabs}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
@@ -25,7 +26,6 @@
 \usepackage{minted}
 \usepackage{tikz-dependency}%dependency trees
 \usepackage{forest}
-
 
 
 \newtheorem{definition}{Définition}[chapter]
@@ -4313,10 +4313,11 @@ où les scores des $D_i$ dérivations qui mènent à $e$ sont multipliées avec 
 Le poids maximal d'un noeud $\delta(v)$ est le poids de la meilleure dérivation qui mène à $v$~:
 \begin{displaymath}
 \delta(v) = 
+\left\{
 \begin{array}{ll}
 1 & \text{si $v$ est un noeud source}\\
 \mathop{\text{max}}_{D(v) \in {\cal D}(v)} w(D(v))&\text{sinon}
-\end{array}
+\end{array}\right.
 \end{displaymath}
 \end{definition}
 
@@ -4359,6 +4360,50 @@ ce que l'on peut alternativement écrire :
 
 La pondération d'une dérivation consiste à faire le produit (selon le demi-anneau) des hyperarcs qui connectent les noeuds. 
 On peut voir à partir de l'exemple que le procédé est analogue à la pondération d'une dérivation {\sc Pcfg}.
+
+
+\paragraph{Exemple de calcul de $\delta(v)$}
+L' exemple donné en figure \label{fig-forest-delta} illustre les interactions entre dérivations dans une même forêt notamment 
+pour le calcul de $\delta(v)$. On donne en rouge, dans les deux figures de gauche, une pondération pour les différents hyperarcs. Celui-ci correspond à un score 
+qui serait produit par une méthode d'apprentissage. La figure de droite, qui illustre une forêt à proprement parler, donne les $\delta(v)$ pour chacun des noeuds
+de cette forêt. 
+
+
+
+\begin{figure}[htbp]
+\begin{center}
+\scalebox{0.7}{
+\begin{tabular}[h]{ccc}\toprule
+\raisebox{2.25cm}{\Tree [.$\langle 0,3,X\rangle$   [.$\langle 0,2,X\rangle$   $\langle 0,1,w_1\rangle$ \edge[draw=none]; {\bf\color{red} 3}  $\langle 1,2,w_2\rangle$ ] \edge[draw=none]; {\bf\color{red} 2} $\langle 2,3,w_3\rangle$  ] }
+&
+\raisebox{2.25cm}{\Tree [.$\langle 0,3,X\rangle$  $\langle 0,1,w_1\rangle$ \edge[draw=none]; {\bf\color{red} 1}  [.$\langle 1,3,X\rangle$ $\langle 1,2,w_2\rangle$ \edge[draw=none]; {\bf\color{red} 2}  $\langle 2,3,w_3\rangle$  ] ] }
+&
+\begin{tikzpicture}
+\node  (leftn) at (0,0) {$\langle 0,1, w_1\rangle $ {\color{red}:1}};
+\node (centern)  at (2,0) {$\langle 1,2, w_2 \rangle$ {\color{red}:1} } ;
+\node (rightn) at (4,0) {$\langle 2,3,  w_3 \rangle$ {\color{red}:1} };
+
+\node (xleft) at (0,1) {$\langle 0,2, X\rangle$ {\color{red}:3}};
+\node (xright) at (4,1) {$\langle 2,3,X\rangle$ {\color{red}:2}};
+\node (xtop) at (2,2) {$\langle 0,3,X\rangle$ {\color{red}:6}};
+\draw[-] (xleft) --  (leftn);
+\draw[-] (xleft) --  (centern);
+\draw[-] (xtop) --  (xleft);
+\draw[-] (xtop) --  (rightn);
+
+\draw[-,dashed] (xtop) --  (leftn);
+\draw[-,dashed] (xtop) --  (xright);
+\draw[-,dashed] (xright) --  (rightn);
+\draw[-,dashed] (xright) --  (centern);
+\end{tikzpicture}\\\midrule
+{\sc Analyse A}&{\sc Analyse B}&{\sc Forêt}
+\\\bottomrule
+\end{tabular}}
+\end{center}
+\caption{\label{fig-forest-delta} Calcul de $\delta (v)$ dans une forêt}
+\end{figure}
+
+
 
 
 \subsection{Algorithme CKY}
