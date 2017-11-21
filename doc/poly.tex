@@ -4423,6 +4423,29 @@ Un ordre topologique pour $H$ est tout ordonnancement total de ses noeuds
 qui est un ordre topologique pour son graphe projeté $G$.
 \end{definition}
 
+\begin{figure}[htbp]
+\begin{center}
+\begin{tikzpicture}
+\node  (leftn) at (0,0) {$\langle 0,1, w_1\rangle $};
+\node (centern)  at (2,0) {$\langle 1,2, w_2 \rangle$} ;
+\node (rightn) at (4,0) {$\langle 2,3,  w_3 \rangle$};
+
+\node (xleft) at (0,1) {$\langle 0,2, X\rangle$};
+\node (xright) at (4,1) {$\langle 2,3,X\rangle$};
+\node (xtop) at (2,2) {$\langle 0,3,X\rangle$};
+\draw[<-] (xleft) --  (leftn);
+\draw[<-] (xleft) --  (centern);
+\draw[<-] (xtop) --  (xleft);
+\draw[<-] (xtop) --  (rightn);
+\draw[<-] (xtop) --  (xright);
+\draw[->] (centern) --  (xright);
+\draw[->] (rightn) --  (xright);
+\draw[->] (leftn) --  (xtop);
+\end{tikzpicture}
+\caption{Graphe projeté correspondant à la forêt de Figure \ref{fig-forest-delta}}
+\end{center}
+\end{figure}
+
 L'algorithme prend alors la forme générale donnée en algorithme \ref{algo-cky}.
 L'algorithme associe à chaque noeud $v$ le poids $\delta(v)$ de la meilleure dérivation qui mène à $v$.
 
