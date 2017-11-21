@@ -4489,8 +4489,10 @@ dans le pire des cas.
 \State $v \gets \langle i,j,X \rangle$
 \State $\delta(v) \gets 0$
 \For{$i < k < j$}\Comment{Applications de la règle de réduction}
-\State $v_1,v_2 \gets \langle i,k,Y_1 \rangle,\langle k,j,Y_2 \rangle$ \qquad $\forall (Y_1,Y_2) \in N\times N$
+\For{$ (Y_1,Y_2) \in N\times N$}
+\State $v_1,v_2 \gets \langle i,k,Y_1 \rangle,\langle k,j,Y_2 \rangle$
 \State $\delta(v) \gets \text{max}(\delta(v), \times(s(v,v_1,v_2),\delta(v_1),\delta(v_2))$
+\EndFor
 \EndFor
 \EndFor
 \EndFor
