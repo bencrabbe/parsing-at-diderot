@@ -4298,6 +4298,18 @@ La fonction de pondération $s:E\mapsto \mathbb{R}$ est une fonction qui attribu
 Dans la pratique pour un hyperarc $e=\langle h, v_1\ldots v_k \rangle$, la fonction de pondération attribue un score
 à un hyperarc en ayant accès à la valeur de chacun des noeuds. Autrement dit, elle prend la forme $s(h,e_1,\ldots e_k)$.
 
+
+Notons que dans le cas d'une {\sc Pcfg} $s(e)$ sera une probabilité de
+la forme $P(\alpha | A )$ pour une règle $A\rightarrow \alpha$ alors
+que pour un modèle discriminant $s(e)$ se reformule avec un paramètre
+additionel $\mathbf{x}$ qui représente la séquence de mots.
+Dans ce dernier cas la fonction prend la forme $s(e,\mathbf{x}) =
+\mathbf{w}^T \boldsymbol\Phi(e,\mathbf{x})$ pour un perceptron
+structuré
+et $s(e,\mathbf{x}) =
+\psi(e,\mathbf{x}) = \text{exp}(\mathbf{w}^T \boldsymbol\Phi(e,\mathbf{x}))$ pour un {\sc Crf}.
+
+
 \begin{definition}[Pondération d'une dérivation]
 Le poids $w(D(v))$ d'une dérivation $D(v)$ d'un noeud $v$ se définit récursivement comme suit~: 
 \begin{itemize}
@@ -4306,8 +4318,9 @@ Le poids $w(D(v))$ d'une dérivation $D(v)$ d'un noeud $v$ se définit récursiv
   $w(D(v)) =  s(e) \times \prod_{i=1}^k w(D(v_i))$ $(1\leq i \leq k)$.
 \end{itemize}
 \end{definition}
-où les scores des $D_i$ dérivations qui mènent à $e$ sont multipliées avec le score $s(e)$ de $e$
-(il s'agit en général d'une multiplication mais parfois d'une addition selon le semi-anneau).
+où les scores des $D_i$ dérivations qui mènent à $e$ sont multipliées
+avec le score $s(e)$ de $e$\footnote{Il s'agit en général d'une multiplication mais parfois d'une addition
+selon le semi-anneau considéré (cas du perceptron structuré).}.
 
 \begin{definition}[Poids maximal d'un noeud]
 Le poids maximal d'un noeud $\delta(v)$ est le poids de la meilleure dérivation qui mène à $v$~:
@@ -4401,7 +4414,6 @@ L'exemple donné en figure \ref{fig-forest-delta} illustre les interactions entr
 pour le calcul de $\delta(v)$. On donne en rouge, dans les deux figures de gauche, une pondération pour les différents hyperarcs. Celui-ci correspond à un score 
 qui serait produit par une méthode d'apprentissage. La figure de droite, qui illustre une forêt à proprement parler, donne les $\delta(v)$ pour chacun des noeuds
 de cette forêt. 
-
 
 
 
