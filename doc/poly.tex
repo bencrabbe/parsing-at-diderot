@@ -4299,7 +4299,7 @@ Dans la pratique pour un hyperarc $e=\langle h, v_1\ldots v_k \rangle$, la fonct
 à un hyperarc en ayant accès à la valeur de chacun des noeuds. Autrement dit, elle prend la forme $s(h,e_1,\ldots e_k)$.
 
 
-Notons que dans le cas d'une {\sc Pcfg} $s(e)$ sera une probabilité de
+Notons que dans le cas d'une {\sc Pcfg}, $s(e)$ sera une probabilité de
 la forme $P(\alpha | A )$ pour une règle $A\rightarrow \alpha$ alors
 que pour un modèle discriminant $s(e)$ se reformule avec un paramètre
 additionel $\mathbf{x}$ qui représente la séquence de mots.
@@ -4311,7 +4311,7 @@ et $s(e,\mathbf{x}) =
 
 
 \begin{definition}[Pondération d'une dérivation]
-Le poids $w(D(v))$ d'une dérivation $D(v)$ d'un noeud $v$ se définit récursivement comme suit~: 
+Le poids $w(D(v))$ d'une dérivation $D(v)$ enracinée au noeud $v$ se définit récursivement comme suit~: 
 \begin{itemize}
 \item {\bf Base:} Si $e \in AE(v)$ et que $|e| = 0$ alors $w(D(v))  = 1$. 
 \item {\bf Récurrence:} Si $e \in AE(v)$ et que $|e| = k > 0$ alors
@@ -4320,7 +4320,7 @@ Le poids $w(D(v))$ d'une dérivation $D(v)$ d'un noeud $v$ se définit récursiv
 \end{definition}
 où les scores des $D_i$ dérivations qui mènent à $e$ sont multipliées
 avec le score $s(e)$ de $e$\footnote{Il s'agit en général d'une multiplication mais parfois d'une addition
-selon le semi-anneau considéré (cas du perceptron structuré).}.
+selon le semi-anneau considéré (cas du perceptron structuré par exemple).}.
 
 \begin{definition}[Poids maximal d'un noeud]
 Le poids maximal d'un noeud $\delta(v)$ est le poids de la meilleure dérivation qui mène à $v$~:
@@ -5049,6 +5049,190 @@ conséquent habituel de l'augmenter (1) d'une méthode de pondération des
 hypothèses et (2) d'une méthode de recherche de solutions
 approximative (en général non exhaustive en faisceau).
 
+\begin{figure}[htbp]
+
+\scalebox{0.7}
+{\begin{tabular}{llll}\toprule
+{\sc Arcs} & {\sc Pile} & {\sc File}&{\sc Action}\\\midrule
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\end{dependency}}
+&{\bf root}
+&j' ,  ai ,  réservé , un , vol , pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \&  j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\end{dependency}
+}
+&{\bf root} , j'
+& ai ,  réservé , un , vol , pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\end{dependency}
+}
+&{\bf root} , j',ai
+&réservé , un , vol , pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\end{dependency}}
+&{\bf root} , j', ai, réservé 
+& un , vol , pour , Paris
+&left-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\end{dependency}
+}
+&{\bf root} , j', réservé 
+& un , vol , pour , Paris
+&left-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\end{dependency}
+}
+&{\bf root} , réservé 
+& un , vol , pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\end{dependency}
+}
+&{\bf root} , réservé , un
+& vol , pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\end{dependency}
+}
+&{\bf root} , réservé , un, vol
+&pour , Paris
+&left-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\end{dependency}
+}
+&{\bf root} , réservé , vol
+&pour , Paris
+&right-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\depedge{4}{6}{}
+\end{dependency}
+}
+&{\bf root} , réservé
+&pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\depedge{4}{6}{}
+\end{dependency}
+}
+&{\bf root} , réservé , pour 
+&Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\depedge{4}{6}{}
+\end{dependency}
+}
+&{\bf root} , réservé , pour , Paris
+& $\epsilon$
+&right-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\depedge{4}{6}{}
+\depedge{7}{8}{}
+\end{dependency}
+}
+&{\bf root} , réservé , pour 
+& $\epsilon$
+&right-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\depedge{4}{6}{}
+\depedge{7}{8}{}
+\depedge{4}{7}{}
+\end{dependency}
+}
+&{\bf root} , réservé
+& $\epsilon$
+&right-arc\\
+\bottomrule
+\end{tabular}}
+\caption{Exemple de dérivation arc-standard}
+\end{figure}
+
+
+
+
 \paragraph{Dérivations et pondérations} 
 Un pas de dérivation est le passage d'une configuration $c_i$ à une
 configuration $c_{i+1}$ en utilisant une transition (ou action) $t\in
@@ -5134,7 +5318,8 @@ de $i$ soient déjà identifiés.
 \Function{ArcStandardStaticOracle}{$\mathbf{S},\mathbf{B},A, A_{ref}$}
 \If{ $\mathbf{S} | i | j $} \Comment{Il y a au moins 2 éléments sur la
 pile}
-\If{$i\rightarrow j \in A_{ref}$ {\bf and} $j\not = 0$ {\bf and}
+\If{$i\rightarrow j \in A_{ref}$ %{\bf and} $j\not = 0$
+ {\bf and}
   $\forall k (j \rightarrow k \in A_{ref} \Rightarrow  j \rightarrow k \in A)$}
 \State \Return $\mathbf{right-arc}$
 \ElsIf{$j\rightarrow i \in A_{ref}$ {\bf and} $i\not = 0$ {\bf and} 
@@ -5312,6 +5497,153 @@ plusieurs racines sont possibles. Il est par conséquent classique
 d'ajouter une étape de finalisation dans les implémentations qui
 relie l'ensemble des racines résultantes à $w_0$.
 
+
+\begin{figure}[htbp]
+
+\scalebox{0.7}
+{\begin{tabular}{llll}\toprule
+{\sc Arcs} & {\sc Pile} & {\sc File}&{\sc Action}\\\midrule
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\end{dependency}}
+&{\bf root}
+&j' ,  ai ,  réservé , un , vol , pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\end{dependency}}
+&{\bf root} , j' 
+&  ai ,  réservé , un , vol , pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\end{dependency}}
+&{\bf root} , j' , ai 
+&  réservé , un , vol , pour , Paris
+&left-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\end{dependency}}
+&{\bf root} , j'  
+&  réservé , un , vol , pour , Paris
+&left-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\end{dependency}}
+&{\bf root}  
+&  réservé , un , vol , pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\end{dependency}}
+&{\bf root} , réservé 
+&  un , vol , pour , Paris
+&shift\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\end{dependency}}
+&{\bf root} , réservé ,  un ,
+& vol , pour , Paris
+&left-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\end{dependency}}
+&{\bf root} , réservé ,
+& vol , pour , Paris
+&right-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\depedge{4}{6}{}
+\end{dependency}}
+&{\bf root} , réservé , vol
+& pour , Paris
+&reduce\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\depedge{4}{6}{}
+\end{dependency}}
+&{\bf root} , réservé
+& pour , Paris
+&right-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\depedge{4}{6}{}
+\depedge{4}{7}{}
+\end{dependency}}
+&{\bf root} , réservé ,  pour 
+&Paris
+&right-arc\\
+\raisebox{-0.25cm}{
+\begin{dependency}[theme=simple]
+\begin{deptext}
+{\bf root} \& j' \& ai \& réservé \& un \& vol \& pour \& Paris\\  
+\end{deptext}
+\depedge{4}{3}{}
+\depedge{4}{2}{}
+\depedge{6}{5}{}
+\depedge{4}{6}{}
+\depedge{4}{7}{}
+\depedge{7}{8}{}
+\end{dependency}}
+&{\bf root} , réservé ,  pour , Paris
+& $\epsilon$
+&terminate (or reduce) \\
+\bottomrule
+\end{tabular}}
+
+\end{figure}
 
 \paragraph{Dérivations et pondérations} 
 Un pas de dérivation est le passage d'une configuration $c_i$ à une
