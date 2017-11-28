@@ -4580,7 +4580,7 @@ lorsqu'on combine deux chemins on s'attend à ce que le score du chemin global a
 \For{$ 0 \leq i < n$}\Comment{Initialisation}
 \State $v \gets \langle i,i+1,w_{i+1} \rangle$
 \State $\delta(v) \gets \bar{1}$
-\State  \Call{RéordonnerClé}{$Q$,$b$}
+\State  \Call{RéordonnerClé}{$Q$,$v$}
 \EndFor
 \State   $rest(e) \gets |e| \quad (\forall e \in E)$ \Comment{Init arités hyperarcs}
 \While{$Q \not = \emptyset$}
