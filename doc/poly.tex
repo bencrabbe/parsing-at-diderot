@@ -1231,7 +1231,7 @@ de probabilités $(\text{surprise} =  -\log_2(p))$.
 \begin{algorithmic}
 \Function{Dijkstra}{$S$,$E$,source,but}
 \State $ \delta(s) \gets +\infty$\qquad$(\forall s \in S)$ 
-\State $ \delta(\text{source}) \gets \bar{1}$ 
+\State $ \delta(\text{source}) \gets \bar{0}$ 
 \State $Q \gets s$
 \State $V \gets \emptyset$
 \While {$Q \not = \emptyset$}
@@ -1242,7 +1242,7 @@ de probabilités $(\text{surprise} =  -\log_2(p))$.
     \EndIf
     \ForAll{$(s,s') \in AS(s)$}
     \If{$s'\not \in V$}
-        \State localscore $\gets \delta(s) \otimes \psi(s,s')$
+        \State localscore $\gets \delta(s) \oplus \psi(s,s')$
         \If{localscore $<\delta(s')$}
               \State $\delta(s') \gets$ localscore
               \State \Call{ReordonnerClé}{Q,s'}\Comment{Insertion le
