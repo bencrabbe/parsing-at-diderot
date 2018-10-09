@@ -1756,7 +1756,7 @@ précision de la solution n'est pas essentielle.
 \caption{\label{algo-GD}Algorithme de descente de gradient}
 \end{algorithm}
 
-
+ 
 Un des points difficile concerne le choix du pas de gradient $\alpha$.
 Trop petit, l'algorithme progresse trop lentement vers la solution,
 trop grand, l'algorithme risque de diverger. Il existe un très grand
@@ -1764,7 +1764,7 @@ nombre de méthodes de descente de gradient qui traitent les problèmes
 mentionnés ici et qui ont fait l'objet d'études considérables en
 calcul numérique et en optimisation. 
 Les méthodes utilisées en \ac{tal}, et abordées dans ce cours restent en général particulièrement
-simples et approximatices. Celles-ci sont adaptées au traitement de jeux de données (1) de très
+simples et approximatives. Celles-ci sont adaptées au traitement de jeux de données (1) de très
 grande dimensionalité et (2) comportant un très grand nombre d'exemples.
 Ceci dit, dans certains cas, il peut être utile de s'appuyer sur des librairies de
 calcul numérique comme {\tt scipy.optimize}.
@@ -3159,11 +3159,25 @@ sera évaluée par la fonction de score suivante~:
 \begin{equation}
 \Psi(\mathbf{y}) = \sum_{i=1}^m \mathbf{w}^T \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)
 \end{equation}
-Autrement dit, le score d'une séquence est la somme des scores
+Autrement dit, le score d'une séquence est la somme des scores 
+$\psi_i(\mathbf{x}, y_{i-1},y_i) = \mathbf{w}^T \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)$
 attribués à tous les couples de tags qui la composent. Lorsqu'il
 s'agit de donner un score à un ensemble de séquences, il est ainsi
 possible de représenter le problème dans un \ac{dag} de programmation
 dynamique et de réutiliser l'algorithmique décrite dans les chapitres précédents.
+
+\begin{tikzpicture}
+
+\node[draw,circle,above] at (0,0) (a) { $y_1$ };
+\node[draw,circle,above] at (3,0) (b) { $y_2$ };
+\node[draw,circle,above] at (6,0) (c) { $y_3$ };
+\node[draw,circle,above] at (10,0) (d) { $y_n$ };
+
+\draw (a) -- node[above] {$\psi(\mathbf{x}, y_1,y_2)$} (b) -- node[above] {$\psi(\mathbf{x}, y_2,y_3)$} (c);
+\draw[dashed] (c) -- (d);
+
+\end{tikzpicture}
+
 
 
 \section{Recherche de la meilleure analyse}
@@ -3235,8 +3249,6 @@ $\hat{\mathbf{y}} \gets \mathop{\text{argmax}}_{\mathbf{y}\in \mathbf{Y}} \mathb
   perceptron moyenné}
 \end{algorithm}
 
-SGD + ASGD
-ASGD
 
 \section{Estimation des paramètres et approximations}
 
@@ -3280,10 +3292,32 @@ beam $\tilde{\mathbf{y}} = \text{argmax}_{\mathbf{y} \in \mathbf{Y'}}
 \mathbf{w}^T \boldsymbol\Phi(\mathbf{x},\mathbf{y})$ ne correspond pas nécessairement à
 la meilleure séquence optimale $\hat{\mathbf{y}} = \text{argmax}_{\mathbf{y} \in \mathbf{Y}}
 \mathbf{w}^T \boldsymbol\Phi(\mathbf{x},\mathbf{y})$ qui a pu être écartée du faisceau prématurément.  
-Le cas suivant devient désormais possible~:
-\begin{displaymath}
-\Psi(\tilde{\mathbf{y}}) < \Psi(\mathbf{y}) \text{ alors que } \hat{\mathbf{y}} = \mathbf{y}
-\end{displaymath}
+Le cas suivant devient désormais possible $\Psi(\tilde{\mathbf{y}}) < \Psi(\mathbf{y}) \text{ alors que } \hat{\mathbf{y}} = \mathbf{y}$
+\begin{center}
+\begin{tikzpicture}
+\draw [thick,->](0,0) -- (7,0);
+
+\foreach \x in {1,2,3,4,5,6}
+   \draw (\x cm,1pt) -- (\x cm,-1pt) node[anchor=north] {$\x$};
+
+\draw [thick,->](0,-2) -> (0,2);
+
+\node[text=blue,right] at (7,1)   (a) {$\tilde{\mathbf{y}}$};
+\node[right] at (7,2)   (b) {{\color{red}$\hat{\mathbf{y}}$} = {\color{green} ${\mathbf{y}}$}} ;
+
+
+\draw [draw=blue](0,0) -- (2,1) -- (4,3) -- (6,2) -- (7,1);
+\draw [draw=green](0,0) -- (2,-1) -- (4,-2) -- (6,-3) -- (7,2);
+\draw [draw=red](0,0) -- (2,0.5) -- (4,0.5) -- (6,-1);
+\draw [dashed,draw=red] (6,-1) -- (7,2);
+
+
+\end{tikzpicture}
+\\{\em On doit garantir que $score(\tilde{\mathbf{y}}) > score(\mathbf{y})$ pour que l'update
+soit valide}
+\end{center}
+
+
 Une telle configuration entraine la mise à jour des paramètres du perceptron. Dans
 ce cas on parle de mise à jour invalide. Il a été démontré
 \cite{huang-2012} qu'une mise à jour valide respecte nécessairement la
@@ -3309,9 +3343,6 @@ $\Delta_k =  \Psi(\tilde{\mathbf{y}}_{1\ldots k}^*) -
 \text{argmax}_{1\leq k \leq m} \Delta_k$ on obtient la mise à jour
 dite à \kw{violation maximale}. 
 
-{\bf Dire que c'est utilisé par les systèmes de transitions qui
-  utilisent un historique très riche}
-
 
 
 \chapter{Champs conditionnels aléatoires}
@@ -3327,7 +3358,7 @@ On se rappelle qu'un modèle de régression logistique multinomiale prédit une 
 \label{eq-logistic-base}
 P(Y = y \,|\, \mathbf{x},\mathbf{w}) = \frac{\text{exp}(\mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y))}{\sum_{y'\in Y}\text{exp}(\mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y'))}
 \end{equation}
-Le numérateur représente un score $\psi(y) \geq 0$~: la fonction exponentielle transforme toute valeur réelle en  réel positif. 
+Le numérateur représente un score $\psi(y) = \text{exp}(\mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y))$ tel que  $\psi(y) \geq 0$~: la fonction exponentielle transforme toute valeur réelle en  réel positif. 
 
 Comme chaque classe $y\in Y$ reçoit un score $\psi(y)$,
 le dénominateur ne dit rien d'autre qu'un score se transforme en probabilité en le divisant par la somme totale des scores pour toutes les classes. Le dénominateur est parfois appelé constante de normalisation.
@@ -3342,11 +3373,12 @@ P(\mathbf{Y} = \mathbf{y} \,|\, \mathbf{x},\mathbf{w}) = \frac{\text{exp}\left(\
 {\sum_{\mathbf{y}'\in \mathbf{Y}}
 \text{exp}\left(\sum_{i=1}^m \mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y^{'}_{i-1},y^{'}_i)\right)}
 \end{equation}
-On voit que dans cette formulation le score global d'une séquence se décompose en une somme de scores locaux.  Il ne s'agit de rien d'autre que d'imposer une décomposition du calcul d'un produit scalaire destiné à évaluer une séquence (un produit scalaire est une grosse addition de toute façon).
+On voit que dans cette formulation le score global d'une séquence se
+décompose en une somme de scores locaux\footnote{Le tout est encore
+  argument d'une fonction exponentielle. Le traitement est détaillé en
+section suivante.}.  Il ne s'agit de rien d'autre que d'imposer une décomposition du calcul d'un produit scalaire destiné à évaluer une séquence (un produit scalaire est une grosse addition de toute façon).
 
-<DESSIN QUI ILLUSTRE QU'UNE SEQUENCE EST UNE SOMME DE SCORES>
-
-On va évidemment tirer parti de cette propriété pour exprimer des algorithmes qui partagent des sous parties de calculs efficacement\ldots  On traite en priorité l'algorithmique des deux problèmes d'inférence suivants~:
+On va évidemment développer et exploiter  cette propriété pour exprimer des algorithmes qui partagent des sous parties de calculs efficacement\ldots  On traite en priorité l'algorithmique des deux problèmes d'inférence suivants~:
 \begin{itemize}
 \item Prédire la séquence de tags la plus probable $\hat{\mathbf{y}}$ pour une séquence de mots $\mathbf{x}$, c'est-à-dire résoudre le problème suivant~:
 \begin{equation}
@@ -3383,7 +3415,25 @@ devient~:
 \begin{displaymath}
 \prod_{i=1}^m \text{exp}\left(\mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)\right)
 \end{displaymath}
-On peut donc remarquer qu'on peut reformuler le score d'une séquence par un produit de réels strictement positifs appelés potentiels (et notés $\psi(\mathbf{x},y_{i-1},y_i)$). La conséquence est que l'algorithme de Viterbi pour \ac{crf} a exactement la même forme que pour \ac{hmm}~:
+On peut donc remarquer qu'on peut reformuler le score d'une séquence
+par un produit de réels strictement positifs appelés potentiels (et
+notés $\psi(\mathbf{x},y_{i-1},y_i)$). 
+
+\begin{tikzpicture}
+
+\node[draw,circle,above] at (0,0) (a) { $y_1$ };
+\node[draw,circle,above] at (3,0) (b) { $y_2$ };
+\node[draw,circle,above] at (6,0) (c) { $y_3$ };
+\node[draw,circle,above] at (10,0) (d) { $y_n$ };
+
+\draw (a) -- node[above] {$\psi(\mathbf{x}, y_1,y_2)$} (b) -- node[above] {$\psi(\mathbf{x}, y_2,y_3)$} (c);
+\draw[dashed] (c) -- (d);
+
+\end{tikzpicture}
+
+
+
+La conséquence est que l'algorithme de Viterbi pour \ac{crf} a exactement la même forme que pour \ac{hmm}~:
 les scores de séquences sont des produits de potentiels et les séquences sont comparées par la fonction maximum. Plus généralement, la reformulation de (\ref{eq-crf-predict}) par 
 \begin{equation}
 P(\mathbf{Y} = \mathbf{y} \,|\, \mathbf{x},\mathbf{w}) = \frac{\prod_{i=1}^m\text{exp}\left( \mathbf{w}^T \cdot \boldsymbol\Phi(\mathbf{x},y_{i-1},y_i)\right)}
@@ -3663,10 +3713,6 @@ Le développement qui suit consiste à montrer comment utiliser les techniques d
 &=  \sum_{j=1}^m \sum_{y_{j-1}}\sum_{y_j} P(\lhd,y_{j-1},y_j,\rhd|\mathbf{x},\mathbf{w})  \phi_k(\mathbf{x},y_{j-1},y_j)
 \end{align}
 Au terme de cette reformulation, l'évaluation du second terme revient à compter les occurrences de la feature $\phi_k$ --~pondérées par les probabilités de transitions où elles apparaissent~-- dans le \ac{dag} de programmation dynamique, et ce pour l'ensemble des exemples du jeu de données.
-
-{\color{red} Développement un peu sloppy en l'état, voir par ex.
-\url{http://perso.telecom-paristech.fr/~essid/teach/CRF_tutorial_ISMIR-2013.pdf}
-pour des détails supplémentaires.}
 
 
 
