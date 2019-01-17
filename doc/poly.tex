@@ -4453,9 +4453,14 @@ On peut voir à partir de l'exemple que le procédé est analogue à la pondéra
 {\sc Analyse A}&{\sc Analyse B}&{\sc Forêt}
 \\\bottomrule
 \end{tabular}}
-\end{center}
+\end{center} 
 \caption{\label{fig-forest-delta} Calcul de $\delta (v)$ dans une forêt}
 \end{figure}
+
+
+
+
+
 
 
 
@@ -5002,7 +5007,7 @@ arcs $(i,j) \in E$ sont étiquetés par des types qui représentent les
 fonctions syntaxiques. Ces aspects pratiques sont secondaires pour les
 problèmes algorithmiques et seront largement ignorés dans la suite de ce chapitre.
 
-
+  
 \paragraph{Propriétés}
 Les arbres de dépendances sont des graphes $G = \langle W,E \rangle$ qui satisfont les
 contraintes suivantes~:
@@ -5737,7 +5742,7 @@ propriété que leur longueur vaut {\bf au plus} $2n-1$ pas de dérivation pour 
 phrase de $w_0\ldots w_n$ mots~: il est en effet possible de terminer
 une analyse en $n$ étapes (après $n$ décalages tous les mots sont
 racines d'un arbre différent et l'analyse est potentiellement terminée). 
-
+ 
 Cette propriété complique l'usage du système arc-eager en
 combinaison avec une méthode de recherche de solutions en faisceau.
 En effet il faut pouvoir comparer des dérivations de longueurs
@@ -6446,6 +6451,149 @@ en arcs}
 \item Add bi-LSTM tagger input (and switch to feed forward scorer ?)
 \item Error analysis
 \end{itemize}
+
+
+
+
+\chapter{Convolutions}
+
+
+\section{Origine}
+Les modèles de convolutions proviennent du traitement du signal.
+\'Etant donné un signal source représenté par une fonction du temps
+$x(t)$, et un filtre $h(t)$, la convolution des fonctions $x$ et $h$ est
+la fonction : 
+\begin{displaymath}
+(x \circledast h) (t) = \sum_{i = -\infty}^\infty x(i)\, h(t-i)  
+\end{displaymath}
+pour le cas discret.
+
+La fonction de filtre est une fonction qui en général vaut 0 pour la
+très grande partie du domaine temporel. Elle prend des valeurs
+non nulles plutôt autour de 0.
+\`A titre d'exemple, si:
+\begin{displaymath}
+  h(j) =
+\left\{  \begin{array}{ll}
+1 &\text{si } j = 0\\
+0 & \text{sinon}
+\end{array}\right.
+\end{displaymath}
+alors le filtre $h$ reproduit le signal $x$ à l'identique. Si
+maintenant on définit : 
+\begin{displaymath}
+  h(j) =
+\left\{  \begin{array}{ll}
+\frac{1}{3} &\text{si } -1\leq  j \leq 1\\
+0 & \text{sinon}
+\end{array}\right.
+\end{displaymath}
+alors le filtre $h$ produit une sortie qui moyenne la valeur $x(t)$
+avec les valeurs $x(t\pm 1)$ trouvées dans une fenêtre autour de $t$. 
+Intuitivement l'opération de convolution déplace le filtre comme une
+fenêtre glissante le long du domaine. 
+
+Lorsqu'on calcule $(x \circledast h)(t)$ pour tout le domaine temporel,
+Chaque valeur résultante est fonction des valeurs de $x$ autour de $t$. Par
+exemple, en supposant un signal discrétisé $x(t)$:
+\begin{center}
+\begin{tabular}{lcccccccc}
+$x(t)$ & 1 &3 &1 &1 &1& 1 & 3 & 1\\
+$t$     & 0 &1 &2 &3 &4&5 & 6&7
+\end{tabular}
+\end{center}
+La convolution en $(x \circledast h)(1) = \frac{1}{3} (1+3+1) =
+\frac{5}{3}$. On peut calculer la convolution sur tout le domaine, ce
+qui donne:
+\begin{center}
+\begin{tabular}{l|cccccccc}
+$x(t)$                     & 1 &3 &1 &1 &1& 1 & 3 & 1\\
+  $t$                       & 0 &1 &2 &3 &4&5 & 6  &7   \\
+\hline\hline
+$(x \circledast h)(t)$ & $\frac{4}{3}$& $\frac{5}{3}$&$\frac{5}{3}$&1&1&$\frac{5}{3}$&$\frac{5}{3}$&$\frac{4}{3}$
+\end{tabular}
+\end{center}
+On peut observer que dans ce cas-ci le filtre produit un effet de
+lissage autour des valeurs maximales de $x(t)$. Ici , il calcule
+une moyenne glissante.
+
+\paragraph{Filtre comme tableau de nombres}Observons toutefois que le filtre ne doit pas contenir que
+des paramètres constants, par exemple : 
+\begin{displaymath}
+  h(j) =
+\left\{  \begin{array}{ll}
+           \frac{1}{2}  &\text{si }  j = \pm 1\\
+           2 &\text{si }  j = 0\\
+0 & \text{sinon}
+\end{array}\right.
+\end{displaymath}
+Ce dernier filtre peut être noté alternativement comme un tableau de nombres de la forme
+:
+\begin{center}
+  \begin{tabular}{l|ccc}
+    $h(t)$ &$\frac{1}{2}$&2&$\frac{1}{2}$\\\hline
+    $t$     &-1&0&1
+  \end{tabular}
+\end{center}
+où seules les valeurs de $t$ pour lesquelles $h(t)$ est non nulle sont renseignées.
+
+
+\section{Implémentations}
+%http://colah.github.io/posts/2014-07-Understanding-Convolutions/
+
+Les librairies numériques (Matlab, Numpy) proposent des fonctions de convolution
+qui tirent parti de l'intuition qu'un filtre peut être vu comme une
+fenêtre glissante de nombres que l'on fait progresser dans le temps. L'idée des
+implémentations est de ne pas calculer le grand nombre d'opérations de
+multiplication par 0 mais uniquement les opérations où le filtre a des
+valeurs non nulles.
+
+Ainsi dans les librairies numériques où le vecteur $h$ est de longueur
+$h_N$ et celui-ci sera indexé à partir de 0, comme par exemple:
+\begin{center}
+  \begin{tabular}{l|ccc} 
+    $h(t)$ &$\frac{1}{2}$&2&$\frac{1}{2}$\\\hline
+    $t$     &0&1&2
+  \end{tabular}
+\end{center}
+La convolution est implémentée
+en itérant uniquement sur les valeurs de $h$
+\begin{displaymath}
+(x \circledast h)(t) = \sum_{j=0}^{h_N-1} x(t-j-1+ \lceil h_N/2\rceil)\quad h(j)
+\end{displaymath}
+les valeurs de $j$ sont choisies pour que les indices soient valides
+pour les tableaux de nombres $x$ et $h$. Par exemple, supposons que l'on veuille calculer $(x \circledast
+h)(2)$ dans l'exemple ci-dessous. 
+\begin{center}
+  \begin{tabular}{l|cccccccc}
+                              &    &\color{gray}$\frac{1}{2}$&\color{gray}$2$&\color{gray}$\frac{1}{2}$\\ 
+$x(t)$                     & 0 &0 &3 &0 &0& 0 & 3 & 0\\
+  $t$                       & 0 &1 &2 &3 &4& 5 & 6  &7   \\
+\hline\hline
+$(x \circledast h)(t)$ & $0$& $\frac{3}{2}$&$6$&$\frac{3}{2}$&0&$\frac{3}{2}$&$6$&$\frac{3}{2}$
+\end{tabular}
+\end{center}
+La formule nous indique qu'il faut centrer le filtre autour de
+$t=2$ (illustré en gris). Ce qui donne  $\frac{1}{2} \times 0 + 2\times 3 +\frac{1}{2}\times 0
+= 6$
+
+
+
+\section{Convolutions et apprentissage profond} 
+
+Les convolutions sont utilisées en deep learning principalement pour
+traiter les problèmes de vision artificielle. Mais une application au
+modèles de langage existe également.
+Celle-ci consiste à représenter un mot ou un caractère par un vecteur
+(embedding) à chaque étape $t$ temporelle. La convolution, au lieu de
+réaliser des opérations sur des scalaires, opère directement sur des
+vecteurs pour renvoyer un scalaire qui caractérise $t$.
+ 
+
+%http://debajyotidatta.github.io/nlp/deep/learning/word-embeddings/2016/11/27/Understanding-Convolutions-In-Text/
+
+
+
 
 
 
