@@ -30,7 +30,7 @@ def generate_train_data(filename,datalines):
     ostream.close()
 
 def generate_student_test(filename,datalines):
-    ostream = open('sentimentIMDB_test.csv','w')
+    ostream = open(filename,'w')
     print('idx,text',file=ostream)
     for idx,line in enumerate(test):
         text, label  = line 
@@ -38,7 +38,7 @@ def generate_student_test(filename,datalines):
     ostream.close()
     
 def generate_kaggle_solution(filename,datalines):
-    ostream = open('sentimentIMDB_gold.csv','w')
+    ostream = open(filename,'w')
     print('idx,sentY',file=ostream)
     for idx,line in enumerate(test):
         text,y1  = line
