@@ -28,8 +28,8 @@ test = testpos + testneg
 random.shuffle(test)
 
 ostream = open('sentimentIMDB_test.csv','w')
-print('text\tbool_sentiment\tscaled_sentiment',file=ostream)
+print('text,bool_sentiment,scaled_sentiment',file=ostream)
 for line in test:
-    print('\t'.join(line),file=ostream)
+    print(','.join(line),file=ostream)
 ostream.close()
     
