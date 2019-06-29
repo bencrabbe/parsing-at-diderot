@@ -17,7 +17,7 @@ def load_dataset(dir_path,ref_label):
         filepath      = os.path.join(dpath,f)
         file_stream   = open(filepath)
         #normalize spaces and removes tabs
-        text          = ' '.join(file_stream.read().split())
+        text          = file_stream.read()
         file_stream.close()
         data_set.append((text,ref_label,ordinal_value))
     return data_set
@@ -27,9 +27,19 @@ testneg = load_dataset("aclImdb/test/neg","0")
 test = testpos + testneg
 random.shuffle(test)
 
+#generate student test data
 ostream = open('sentimentIMDB_test.csv','w')
-print('text,bool_sentiment,scaled_sentiment',file=ostream)
-for line in test:
-    print(','.join(line),file=ostream)
+print('idx,text',file=ostream)
+for idx,line in enumerate(test):
+    text, y1,y2 = line 
+    print('%d,%s'%(idx,text),file=ostream)
+ostream.close()
+
+#generate gold data
+ostream = open('sentimentIMDB_gold.csv','w')
+print('idx,bool_sentiment,scaled_sentiment',file=ostream)
+for idx,line in enumerate(test):
+    text,y1,y2 = line
+    print(','.join([str(idx),y1,y2]),file=ostream)
 ostream.close()
     
