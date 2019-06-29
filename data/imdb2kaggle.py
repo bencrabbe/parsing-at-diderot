@@ -36,6 +36,14 @@ def generate_student_test(filename,datalines):
         text, label  = line 
         print('%d,%s'%(idx,text),file=ostream)
     ostream.close()
+
+def generate_sample(filename,datalines):
+    ostream = open(filename,'w')
+    print('idx,text',file=ostream)
+    for idx,line in enumerate(test):
+        text, label  = line 
+        print('%d,%s'%(idx,1),file=ostream)
+    ostream.close()
     
 def generate_kaggle_solution(filename,datalines):
     ostream = open(filename,'w')
@@ -60,3 +68,4 @@ if __name__ == '__main__':
     
     generate_student_test('sentimentIMDB_test.csv',test)
     generate_kaggle_solution('sentimentIMDB_solution.csv',test)
+    generate_sample('sentimentIMDB_sample.csv',test)
