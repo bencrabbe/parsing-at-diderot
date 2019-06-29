@@ -39,7 +39,7 @@ def generate_student_test(filename,datalines):
 
 def generate_sample(filename,datalines):
     ostream = open(filename,'w')
-    print('idx,text',file=ostream)
+    print('idx,sentY',file=ostream)
     for idx,line in enumerate(test):
         text, label  = line 
         print('%d,%s'%(idx,1),file=ostream)
