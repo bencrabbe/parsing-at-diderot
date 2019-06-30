@@ -24,6 +24,7 @@ def load_dataset(dir_path,ref_label):
 
 def generate_train_data(filename,datalines):
     ostream = open(filename,'w')
+    print('sentY,text',file=ostream)
     for idx,line in enumerate(datalines):
         text,label  = line        
         print(','.join([label,text]),file=ostream)
