@@ -1225,8 +1225,6 @@ Intuitivement l'algorithme de Dijkstra peut s'utiliser dans un
 contexte de tagging lorsque les scores associés aux arcs
 s'interprètent comme des mesures dites de \kw{surprise} que l'on obtient à partir
 de probabilités $(\text{surprise} =  -\log_2(p))$.
-
-
 \begin{algorithm}[htbp]
 \begin{algorithmic}
   \Function{Dijkstra}{V,E,s}
@@ -1244,7 +1242,6 @@ de probabilités $(\text{surprise} =  -\log_2(p))$.
 \end{algorithmic}
 \caption{\label{algo-dijkstra-general}Algorithme de Dijkstra}
 \end{algorithm}
-
 
 Commençons par rappeler le fonctionnement de l'algorithme de Dijkstra
 dans le cas classique. On suppose un graphe dont les arcs sont
@@ -1271,6 +1268,51 @@ est le but à atteindre.
 Il faut remarquer que l'algorithme de Dijkstra fonctionne uniquement
 si les poids des chemins sont positifs. Dans le cas où certains
 chemins ont des poids négatifs, l'algorithme donne un résultat incorrect.
+
+
+
+\begin{figure}[htbp]
+\begin{center}
+\begin{tikzpicture}[xscale=2,yscale=3]
+\def\x{0.0}
+\def\y{0.2}
+\node[shape=circle,draw=black,double=red] (S) at (0,0.5) {S};
+\node[shape=circle,draw=black,double=red] (E) at (4,0.5) {E};
+\node[shape=circle,draw=black] (1) at (1,0) {A};
+\node[shape=circle,draw=black] (2) at (1,1) {B};
+\node[shape=circle,draw=black] (3) at (2,0) {A};
+\node[shape=circle,draw=black] (4) at (2,1) {B};
+\node[shape=circle,draw=black] (5) at (3,0) {A};
+\node[shape=circle,draw=black] (6) at (3,1) {B};
+
+\draw [->,opacity=0.75](S) -- (1) node[midway,fill=white]{5};
+\draw [->,opacity=0.75](S) -- (2) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](1) -- (3) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](1) -- (4) node[near end,fill=white]{4};
+\draw [->,opacity=0.75](2) -- (3) node[near end,fill=white]{7};
+\draw [->,opacity=0.75](2) -- (4) node[midway,fill=white]{4};
+\draw [->,opacity=0.75](3) -- (5) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](3) -- (6) node[near end,fill=white]{3};
+\draw [->,opacity=0.75](4) -- (5) node[near end,fill=white]{2};
+\draw [->,opacity=0.75](4) -- (6) node[midway,fill=white]{1};
+\draw [->,opacity=0.75](5) -- (E) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](6) -- (E) node[midway,fill=white]{3};
+
+%deltas
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (0+\x,0.5+\y){1};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (4+\x,0.5+\y){10};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,0+\y){5};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,1+\y){2};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,0+\y){8};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,1+\y){6};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,0+\y){8};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,1+\y){7};
+
+\end{tikzpicture}
+\end{center}
+\caption{Exemple de recherche du plus court chemin avec Dijkstra}
+\end{figure}
+
 
 % \begin{figure}
 % \scalebox{0.7}{
@@ -1464,20 +1506,57 @@ Si l'heuristique $h(s)$ est mal définie l'algorithme $A\star$ n'est
 pas garanti de renvoyer la solution optimale. On propose d'illustrer
 ce point par l'exemple
 
+\begin{figure}[htbp]
 \begin{center}
-{\bf INCLUDE EXAMPLE HERE}
-\end{center}
-  
+\begin{tikzpicture}[xscale=2,yscale=3]
+\def\x{0.0}
+\def\y{0.2}
+\node[shape=circle,draw=black,double=red] (S) at (0,0.5) {S};
+\node[shape=circle,draw=black,double=red] (E) at (4,0.5) {E};
+\node[shape=circle,draw=black] (1) at (1,0) {A};
+\node[shape=circle,draw=black] (2) at (1,1) {B};
+\node[shape=circle,draw=black] (3) at (2,0) {A};
+\node[shape=circle,draw=black] (4) at (2,1) {B};
+\node[shape=circle,draw=black] (5) at (3,0) {A};
+\node[shape=circle,draw=black] (6) at (3,1) {B};
 
-On peut constater que l'heuristique $h_1$ renvoie effectivement la solution
-optimale en moins d'itérations que l'algorithme de Dijkstra
-classique. 
-Par contre l'heuristique $h_2$ renvoie une solution non
-optimale (en peu d'itérations également).
-La cause de la non optimalité de $h_2$ vient essentiellement du fait que l'algorithme
-fait -- à tort -- l'hypothèse qu'il est très couteux de rejoindre la
-destination en passant par Châtelet~: l'heuristique $h_2$ indique un coût de
-11 pour rejoindre la destination alors que le coût réel est de 3.
+\draw [->,opacity=0.75](S) -- (1) node[midway,fill=white]{5};
+\draw [->,opacity=0.75](S) -- (2) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](1) -- (3) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](1) -- (4) node[near end,fill=white]{4};
+\draw [->,opacity=0.75](2) -- (3) node[near end,fill=white]{7};
+\draw [->,opacity=0.75](2) -- (4) node[midway,fill=white]{4};
+\draw [->,opacity=0.75](3) -- (5) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](3) -- (6) node[near end,fill=white]{3};
+\draw [->,opacity=0.75](4) -- (5) node[near end,fill=white]{2};
+\draw [->,opacity=0.75](4) -- (6) node[midway,fill=white]{1};
+\draw [->,opacity=0.75](5) -- (E) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](6) -- (E) node[midway,fill=white]{3};
+
+%deltas
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (0+\x,0.5+\y){1};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (4+\x,0.5+\y){10};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,0+\y){5};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,1+\y){2};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,0+\y){8};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,1+\y){6};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,0+\y){8};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,1+\y){7};
+
+
+
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (0+\x,0.5-\y){4};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (4+\x,0.5-\y){0};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (1+\x,0-\y){3};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (1+\x,1-\y){3};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (2+\x,0-\y){2};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (2+\x,1-\y){2};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (3+\x,0-\y){1};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (3+\x,1-\y){1};
+\end{tikzpicture}
+\end{center}
+\caption{Exemple d'heuristique valide si $\psi(x,y) \geq 1$}
+\end{figure}
 
 Une heuristique $h$ est dite \kw{admissible} si pour tout $s\in S$ 
 la distance estimée $h(s)$ n'est jamais strictement supérieure à la distance
@@ -1507,6 +1586,56 @@ l'autre. Mais ce n'est pas toujours vrai.
 En \ac{tal} la recherche $A\star$ a surtout été utilisée dans des
 contextes d'analyse syntaxique automatique (comme extensions de
 l'algorithme de Knuth).
+
+\begin{figure}[htbp]
+\begin{center}
+\begin{tikzpicture}[xscale=2,yscale=3]
+\def\x{0.0}
+\def\y{0.2}
+\node[shape=circle,draw=black,double=red] (S) at (0,0.5) {S};
+\node[shape=circle,draw=black,double=red] (E) at (4,0.5) {E};
+\node[shape=circle,draw=black] (1) at (1,0) {A};
+\node[shape=circle,draw=black] (2) at (1,1) {B};
+\node[shape=circle,draw=black] (3) at (2,0) {A};
+\node[shape=circle,draw=black] (4) at (2,1) {B};
+\node[shape=circle,draw=black] (5) at (3,0) {A};
+\node[shape=circle,draw=black] (6) at (3,1) {B};
+
+\draw [->,opacity=0.75](S) -- (1) node[midway,fill=white]{5};
+\draw [->,opacity=0.75](S) -- (2) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](1) -- (3) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](1) -- (4) node[near end,fill=white]{4};
+\draw [->,opacity=0.75](2) -- (3) node[near end,fill=white]{7};
+\draw [->,opacity=0.75](2) -- (4) node[midway,fill=white]{4};
+\draw [->,opacity=0.75](3) -- (5) node[midway,fill=white]{2};
+\draw [->,opacity=0.75](3) -- (6) node[near end,fill=white]{3};
+\draw [->,opacity=0.75](4) -- (5) node[near end,fill=white]{2};
+\draw [->,opacity=0.75](4) -- (6) node[midway,fill=white]{1};
+\draw [->,opacity=0.75](5) -- (E) node[midway,fill=white]{3};
+\draw [->,opacity=0.75](6) -- (E) node[midway,fill=white]{3};
+
+%deltas
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (0+\x,0.5+\y){1};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (4+\x,0.5+\y){10};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,0+\y){5};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (1+\x,1+\y){2};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,0+\y){8};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (2+\x,1+\y){6};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,0+\y){8};
+\node [shape=rectangle,fill=blue,opacity=0.3,draw=black] at (3+\x,1+\y){7};
+
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (0+\x,0.5-\y){4};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (4+\x,0.5-\y){0};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (1+\x,0-\y){3};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (1+\x,1-\y){3};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (2+\x,0-\y){2};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (2+\x,1-\y){2};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (3+\x,0-\y){1};
+\node [shape=rectangle,fill=red,opacity=0.3,draw=black] at (3+\x,1-\y){10};
+\end{tikzpicture}
+\end{center}
+\caption{Exemple d'heuristique invalide si $\psi(x,y) \geq 1$}
+\end{figure}
 
 En résumé, la conception d'une bonne heuristique $A\star$ est en
 général non
