@@ -1229,28 +1229,17 @@ de probabilités $(\text{surprise} =  -\log_2(p))$.
 
 \begin{algorithm}[htbp]
 \begin{algorithmic}
-\Function{Dijkstra}{$S$,$E$,source,but}
-\State $ \delta(s) \gets +\infty$\qquad$(\forall s \in S)$ 
-\State $ \delta(\text{source}) \gets \bar{0}$ 
-\State $Q \gets s$
-\State $V \gets \emptyset$
-\While {$Q \not = \emptyset$}
-    \State $s \gets$ \Call{Extraire-Min}{$Q$} 
-    \State $V \gets V \cup \{s\}$
-    \If{$s =$ but}
-        \State\Return $\delta(s)$
-    \EndIf
-    \ForAll{$(s,s') \in AS(s)$}
-    \If{$s'\not \in V$}
-        \State localscore $\gets \delta(s) \oplus \psi(s,s')$
-        \If{localscore $<\delta(s')$}
-              \State $\delta(s') \gets$ localscore
-              \State \Call{ReordonnerClé}{Q,s'}\Comment{Insertion le
-                cas échéant}
-        \EndIf
-       \EndIf
-    \EndFor
-\EndWhile
+  \Function{Dijkstra}{V,E,s}
+  \State $\delta(x) \gets \infty\qquad  (\forall x \in V)$
+  \State $\delta(s) \gets 0$
+  \State $\Call{PushPriorityQueue}{Q ,V}$
+  \While {$Q \not = \emptyset$}
+       \State $x \gets \Call{PopMin}{Q}$
+        \For{$y \in AS(x)$}
+        \State $\delta (y) \gets \Call{min}{\delta(y), \delta(x)+ \psi(x,y)}$
+        \State $\Call{UpdatePriorityQueue}{Q,\delta(y)}$
+        \EndFor
+  \EndWhile
 \EndFunction
 \end{algorithmic}
 \caption{\label{algo-dijkstra-general}Algorithme de Dijkstra}
@@ -1283,147 +1272,147 @@ Il faut remarquer que l'algorithme de Dijkstra fonctionne uniquement
 si les poids des chemins sont positifs. Dans le cas où certains
 chemins ont des poids négatifs, l'algorithme donne un résultat incorrect.
 
-\begin{figure}
-\scalebox{0.7}{
-\begin{tikzpicture}[xscale=2.5,yscale=2.5]
-    \node[shape=ellipse,draw=black] (C) at (-0.5,0.3) {Châtelet};
-    \node[shape=ellipse,draw=black] (E) at (-2.5,1) {Etoile};
-    \node[shape=ellipse,draw=black] (N) at (3,0) {Nation};
-    \node[shape=ellipse,draw=black] (S) at (-1.5,2.5) {Saint-Lazare};
-    \node[shape=ellipse,draw=black] (R) at (1,1) {République};
-    \node[shape=ellipse,draw=black] (B) at (0.75,-0.25) {Bastille};
-    \node[shape=ellipse,draw=black] (M) at (-1.4,-1.5) {Montparnasse};
-    \node[shape=ellipse,draw=black] (O) at (-1,1) {Opéra};
-    \node[shape=ellipse,draw=black] (I) at (0.75,-2) {Pl. Italie};
+% \begin{figure}
+% \scalebox{0.7}{
+% \begin{tikzpicture}[xscale=2.5,yscale=2.5]
+%     \node[shape=ellipse,draw=black] (C) at (-0.5,0.3) {Châtelet};
+%     \node[shape=ellipse,draw=black] (E) at (-2.5,1) {Etoile};
+%     \node[shape=ellipse,draw=black] (N) at (3,0) {Nation};
+%     \node[shape=ellipse,draw=black] (S) at (-1.5,2.5) {Saint-Lazare};
+%     \node[shape=ellipse,draw=black] (R) at (1,1) {République};
+%     \node[shape=ellipse,draw=black] (B) at (0.75,-0.25) {Bastille};
+%     \node[shape=ellipse,draw=black] (M) at (-1.4,-1.5) {Montparnasse};
+%     \node[shape=ellipse,draw=black] (O) at (-1,1) {Opéra};
+%     \node[shape=ellipse,draw=black] (I) at (0.75,-2) {Pl. Italie};
 
 
-    \node[shape=rectangle,fill=white] (X) at (-0.55,1.5) {3};
-    \node[shape=rectangle,fill=white] (Y) at (-0.25,2.4) {22};
+%     \node[shape=rectangle,fill=white] (X) at (-0.55,1.5) {3};
+%     \node[shape=rectangle,fill=white] (Y) at (-0.25,2.4) {22};
 
-    \draw [-,opacity=1] (C) -- (O) node[midway,fill=white]{3};
-    \draw [-,opacity=1] (C) -- (B) node[midway,fill=white]{3};
-    \draw [-,opacity=1] (C) -- (R) node[near end,fill=white]{4};
-    \draw [-,opacity=1] (C) -- (E) node[midway,fill=white]{7};
-    \draw [-,opacity=1] (C) -- (M) node[midway,fill=white]{7};
-    \draw [-,opacity=1] (C) -- (I) node[midway,fill=white]{7};
-    \draw [-,opacity=1] (C) -- (I) node[midway,fill=white]{6};
-    \draw [-,opacity=1] (C) to [out=30,in=-70] (S);
-    \draw [-,opacity=1] (E) -- (M) node[midway,fill=white]{11};
-    \draw [-,opacity=1] (M) -- (I) node[midway,fill=white]{7};
-    \draw [-,opacity=1] (B) -- (I) node[midway,fill=white]{5};
-    \draw [-,opacity=1] (B) -- (R) node[midway,fill=white]{4};
-    \draw [-,opacity=1] (N) -- (I) node[midway,fill=white]{9};
-    \draw [-,opacity=1] (N) -- (B) node[midway,fill=white]{3};
-    \draw [-,opacity=1] (N) -- (R) node[midway,fill=white]{6};
-    \draw [-,opacity=1] (O) -- (R) node[near end,fill=white]{5};
-    \draw [-,opacity=1] (O) -- (E) node[midway,fill=white]{3};
-    \draw [-,opacity=1] (S) -- (M) node[near end,fill=white]{9};
-    \draw [-,opacity=1] (S) -- (O) node[midway,fill=white]{2};
-    \draw [-,opacity=1] (S) -- (R) node[midway,fill=white]{9};
-    \draw [-,opacity=1] (E) to [out=70,in=90] (N);
-\end{tikzpicture}
-}
-\caption{\label{fig-ratp}Plan simplifié du métro parisien}
-\end{figure}
+%     \draw [-,opacity=1] (C) -- (O) node[midway,fill=white]{3};
+%     \draw [-,opacity=1] (C) -- (B) node[midway,fill=white]{3};
+%     \draw [-,opacity=1] (C) -- (R) node[near end,fill=white]{4};
+%     \draw [-,opacity=1] (C) -- (E) node[midway,fill=white]{7};
+%     \draw [-,opacity=1] (C) -- (M) node[midway,fill=white]{7};
+%     \draw [-,opacity=1] (C) -- (I) node[midway,fill=white]{7};
+%     \draw [-,opacity=1] (C) -- (I) node[midway,fill=white]{6};
+%     \draw [-,opacity=1] (C) to [out=30,in=-70] (S);
+%     \draw [-,opacity=1] (E) -- (M) node[midway,fill=white]{11};
+%     \draw [-,opacity=1] (M) -- (I) node[midway,fill=white]{7};
+%     \draw [-,opacity=1] (B) -- (I) node[midway,fill=white]{5};
+%     \draw [-,opacity=1] (B) -- (R) node[midway,fill=white]{4};
+%     \draw [-,opacity=1] (N) -- (I) node[midway,fill=white]{9};
+%     \draw [-,opacity=1] (N) -- (B) node[midway,fill=white]{3};
+%     \draw [-,opacity=1] (N) -- (R) node[midway,fill=white]{6};
+%     \draw [-,opacity=1] (O) -- (R) node[near end,fill=white]{5};
+%     \draw [-,opacity=1] (O) -- (E) node[midway,fill=white]{3};
+%     \draw [-,opacity=1] (S) -- (M) node[near end,fill=white]{9};
+%     \draw [-,opacity=1] (S) -- (O) node[midway,fill=white]{2};
+%     \draw [-,opacity=1] (S) -- (R) node[midway,fill=white]{9};
+%     \draw [-,opacity=1] (E) to [out=70,in=90] (N);
+% \end{tikzpicture}
+% }
+% \caption{\label{fig-ratp}Plan simplifié du métro parisien}
+% \end{figure}
 
-\begin{exo}[De \'Etoile à Nation]
-Simuler l'algorithme de Dijkstra pour calculer le plus court chemin
-entre \'Etoile et Nation sur le plan du métro parisien donné en Figure \ref{fig-ratp}.
-\end{exo}
-\begin{exo}[De place d'Italie à Saint-Lazare]
-Simuler l'algorithme de Dijkstra pour calculer le plus court chemin
-entre Place d'Italie et Saint-Lazare sur le plan du métro parisien donné en Figure \ref{fig-ratp}.
-\end{exo}
-\begin{center}
-\scalebox{0.7}{
-\begin{tabular}{cl}\toprule
-Itération&File de priorité ($Q$)\\\midrule
-1& Italie(0)\\
-2& Bastille(5) $\prec$ Chatelet(6) $\prec$ Montparnasse(7) $\prec$ Nation(9)\\
-3& Chatelet(6) $\prec$ Montparnasse(7) $\prec$ Nation(8) $\prec$ République(9)\\
-4& Montparnasse(7) $\prec$ Nation(8) $\prec$ Saint-Lazare(9) $\prec$ Opéra(9) $\prec$ Republique(10) $\prec$ Etoile(13)\\
-5 & Nation(8) $\prec$ Saint-Lazare(9) $\prec$ Opéra(9) $\prec$ Republique(10) $\prec$ Etoile(13)\\
-6 & {\bf Saint-Lazare(9)} $\prec$ Opéra(9) $\prec$ Republique(10) $\prec$ Etoile(13)\\\bottomrule
-\end{tabular}}
-\end{center}
+% \begin{exo}[De \'Etoile à Nation]
+% Simuler l'algorithme de Dijkstra pour calculer le plus court chemin
+% entre \'Etoile et Nation sur le plan du métro parisien donné en Figure \ref{fig-ratp}.
+% \end{exo}
+% \begin{exo}[De place d'Italie à Saint-Lazare]
+% Simuler l'algorithme de Dijkstra pour calculer le plus court chemin
+% entre Place d'Italie et Saint-Lazare sur le plan du métro parisien donné en Figure \ref{fig-ratp}.
+% \end{exo}
+% \begin{center}
+% \scalebox{0.7}{
+% \begin{tabular}{cl}\toprule
+% Itération&File de priorité ($Q$)\\\midrule
+% 1& Italie(0)\\
+% 2& Bastille(5) $\prec$ Chatelet(6) $\prec$ Montparnasse(7) $\prec$ Nation(9)\\
+% 3& Chatelet(6) $\prec$ Montparnasse(7) $\prec$ Nation(8) $\prec$ République(9)\\
+% 4& Montparnasse(7) $\prec$ Nation(8) $\prec$ Saint-Lazare(9) $\prec$ Opéra(9) $\prec$ Republique(10) $\prec$ Etoile(13)\\
+% 5 & Nation(8) $\prec$ Saint-Lazare(9) $\prec$ Opéra(9) $\prec$ Republique(10) $\prec$ Etoile(13)\\
+% 6 & {\bf Saint-Lazare(9)} $\prec$ Opéra(9) $\prec$ Republique(10) $\prec$ Etoile(13)\\\bottomrule
+% \end{tabular}}
+% \end{center}
 
-\begin{exo}[Historique]
-Donner une extension au pseudo-code en figure
-\ref{algo-dijkstra-general} pour renvoyer également le plus court
-chemin et pas seulement sa valeur.
-\end{exo}
-\begin{exo}[Invariant de l'algorithme et poids négatifs]
-Donner un exemple de graphe comportant au moins un arc de poids
-négatif pour lequel une exécution naïve de l'algorithme de Dijkstra
-renvoie un résultat incorrect.
-\end{exo}
-\begin{exo}[Graphe acyclique orienté]
-En faisant l'hypothèse que le graphe est un \ac{dag}, proposez une
-simplification de l'algorithme \ref{algo-dijkstra-general}
-\end{exo}
+% \begin{exo}[Historique]
+% Donner une extension au pseudo-code en figure
+% \ref{algo-dijkstra-general} pour renvoyer également le plus court
+% chemin et pas seulement sa valeur.
+% \end{exo}
+% \begin{exo}[Invariant de l'algorithme et poids négatifs]
+% Donner un exemple de graphe comportant au moins un arc de poids
+% négatif pour lequel une exécution naïve de l'algorithme de Dijkstra
+% renvoie un résultat incorrect.
+% \end{exo}
+% \begin{exo}[Graphe acyclique orienté]
+% En faisant l'hypothèse que le graphe est un \ac{dag}, proposez une
+% simplification de l'algorithme \ref{algo-dijkstra-general}
+% \end{exo}
 
-\paragraph{Application de l'algorithme de Dijkstra en \ac{tal}} 
- Pour les problèmes de \ac{tal} comme le tagging, le problème peut se
- reformuler comme un problème de recherche du plus court chemin
- lorsque le modèle d'apprentissage produit des poids qui s'apparentent
- à des probabilités.  Dans le cadre de ce cours, cet algorithme sera donc approprié pour
-être utilisé en combinaison avec des modèles d'apprentissage tels que
-\ac{hmm}, \ac{memm} et des modèles neuronaux qui généralisent \ac{memm}.
+% \paragraph{Application de l'algorithme de Dijkstra en \ac{tal}} 
+%  Pour les problèmes de \ac{tal} comme le tagging, le problème peut se
+%  reformuler comme un problème de recherche du plus court chemin
+%  lorsque le modèle d'apprentissage produit des poids qui s'apparentent
+%  à des probabilités.  Dans le cadre de ce cours, cet algorithme sera donc approprié pour
+% être utilisé en combinaison avec des modèles d'apprentissage tels que
+% \ac{hmm}, \ac{memm} et des modèles neuronaux qui généralisent \ac{memm}.
 
-L'algorithme peut ainsi être réutilisé en représentant le problème par
-un graphe identique aux \ac{dags} de programmation dynamique manipulés
-par l'algorithme de Viterbi. Contrairement à l'algorithme
-de Viterbi, l'algorithme de Dijkstra cherche explicitement un court
-chemin, ce qui demande de remplacer la fonction de pondération
-probabiliste par une fonction de pondération qui calcule des scores
-qui se comportent de manière analogue aux distances entre stations de métro.
+% L'algorithme peut ainsi être réutilisé en représentant le problème par
+% un graphe identique aux \ac{dags} de programmation dynamique manipulés
+% par l'algorithme de Viterbi. Contrairement à l'algorithme
+% de Viterbi, l'algorithme de Dijkstra cherche explicitement un court
+% chemin, ce qui demande de remplacer la fonction de pondération
+% probabiliste par une fonction de pondération qui calcule des scores
+% qui se comportent de manière analogue aux distances entre stations de métro.
 
-Il est d'usage, notamment pour \ac{hmm},
-d'utiliser des log-probabilités dans les implémentations pour éviter
-les problèmes de manque de précision dans la manipulation de réels
-trop proches de 0.  Ici on réutilise cette pratique allègrement~:  si
-$p$ est une probabilité de transition, on peut interpréter $-\log(p)$ comme l'effort (ou une longueur de chemin ou encore une surprise) qui permet
-d'avancer dans la séquence. Dans ce cas suivre un chemin de très haute
-probabilité ($p\approx 1.0$) aura un coût très faible ($-\log(1.0)\approx 0$)
-alors que suivre un chemin de très basse probabilité ($p\approx 0.0$)
-aura un coût énorme ($-\log(0.0) \approx +\infty$). 
-Autrement dit, on suppose que fonction de score $\psi(s_i,s_{i+1}) =
--\log(p)$ où $p$ est une probabilité de transition.
-Dans ce contexte, utiliser l'algorithme de Dijkstra revient à chercher
-le chemin pour lequel l'effort (ou la surprise) global est le plus
-faible\footnote{On verra en section \ref{sec-semi-ring} que ces
-  intuitions se formalisent explicitement en termes algébriques. 
-L'algorithme de Dijkstra est utilisable lorsque le demi-anneau utilisé pour combiner les
-  scores possède une propriété dite de supériorité. Celle-ci
-  généralise l'idée que lorsque deux chemins sont combinés la distance
-  augmente. Le demi-anneau décrit informellement ici est en fait le demi-anneau tropical.
-}.
+% Il est d'usage, notamment pour \ac{hmm},
+% d'utiliser des log-probabilités dans les implémentations pour éviter
+% les problèmes de manque de précision dans la manipulation de réels
+% trop proches de 0.  Ici on réutilise cette pratique allègrement~:  si
+% $p$ est une probabilité de transition, on peut interpréter $-\log(p)$ comme l'effort (ou une longueur de chemin ou encore une surprise) qui permet
+% d'avancer dans la séquence. Dans ce cas suivre un chemin de très haute
+% probabilité ($p\approx 1.0$) aura un coût très faible ($-\log(1.0)\approx 0$)
+% alors que suivre un chemin de très basse probabilité ($p\approx 0.0$)
+% aura un coût énorme ($-\log(0.0) \approx +\infty$). 
+% Autrement dit, on suppose que fonction de score $\psi(s_i,s_{i+1}) =
+% -\log(p)$ où $p$ est une probabilité de transition.
+% Dans ce contexte, utiliser l'algorithme de Dijkstra revient à chercher
+% le chemin pour lequel l'effort (ou la surprise) global est le plus
+% faible\footnote{On verra en section \ref{sec-semi-ring} que ces
+%   intuitions se formalisent explicitement en termes algébriques. 
+% L'algorithme de Dijkstra est utilisable lorsque le demi-anneau utilisé pour combiner les
+%   scores possède une propriété dite de supériorité. Celle-ci
+%   généralise l'idée que lorsque deux chemins sont combinés la distance
+%   augmente. Le demi-anneau décrit informellement ici est en fait le demi-anneau tropical.
+% }.
 
-On peut illustrer cela par un exemple. Considérons les séquence de tags 
-$t_1,t_2,t_3,t_4$ et $t_1,t_2,t_3,t_5$. Supposons que $P(t_1) = 0.2, P(t_2|t_1) = 0.8,
-P(t_3|t_2) = 0.1,P(t_4|t_3) = 0.5, P(t_5|t_3) = 0.2$. En termes de surprise cumulée, 
-on a que~:
-\begin{displaymath}
-\sigma(t_1,t_2,t_3,t_4) = \sum_{i} \psi(t_{i}, t_{i-1}) = 1.61 + 0.22 + 2.30 + 0.69 
-\end{displaymath}
-\begin{displaymath}
-\sigma(t_1,t_2,t_3,t_5) = \sum_{i} \psi(t_{i} , t_{i-1})  = 1.61 + 0.22 + 2.30 + 1.61 
-\end{displaymath}
-On voit que la surprise cumulée augmente lors de chaque transition.
-et que la séquence de plus haute probabilité aura la plus petite
-surprise cumulée. 
+% On peut illustrer cela par un exemple. Considérons les séquence de tags 
+% $t_1,t_2,t_3,t_4$ et $t_1,t_2,t_3,t_5$. Supposons que $P(t_1) = 0.2, P(t_2|t_1) = 0.8,
+% P(t_3|t_2) = 0.1,P(t_4|t_3) = 0.5, P(t_5|t_3) = 0.2$. En termes de surprise cumulée, 
+% on a que~:
+% \begin{displaymath}
+% \sigma(t_1,t_2,t_3,t_4) = \sum_{i} \psi(t_{i}, t_{i-1}) = 1.61 + 0.22 + 2.30 + 0.69 
+% \end{displaymath}
+% \begin{displaymath}
+% \sigma(t_1,t_2,t_3,t_5) = \sum_{i} \psi(t_{i} , t_{i-1})  = 1.61 + 0.22 + 2.30 + 1.61 
+% \end{displaymath}
+% On voit que la surprise cumulée augmente lors de chaque transition.
+% et que la séquence de plus haute probabilité aura la plus petite
+% surprise cumulée. 
 
-On peut démontrer que dans le pire des cas, l'algorithme de Dijkstra a
-une complexité un peu plus élevée que l'algorithme de Viterbi. 
-La complexité additionnelle est liée à l'usage de la file de priorité
-$Q$. 
-Par
-contre l'algorithme de Viterbi explore en largeur l'ensemble des
-noeuds du graphe alors que l'algorithme de Dijkstra est un exemple
-d'algorithme d'exploration en profondeur (meilleur d'abord). 
-Il est susceptible dans certains cas de
-trouver la solution en explorant moins de noeuds. 
-C'est ce qui motive l'extension de cet algorithme connue sous le nom d'heuristique \kw{A$\star$}.
+% On peut démontrer que dans le pire des cas, l'algorithme de Dijkstra a
+% une complexité un peu plus élevée que l'algorithme de Viterbi. 
+% La complexité additionnelle est liée à l'usage de la file de priorité
+% $Q$. 
+% Par
+% contre l'algorithme de Viterbi explore en largeur l'ensemble des
+% noeuds du graphe alors que l'algorithme de Dijkstra est un exemple
+% d'algorithme d'exploration en profondeur (meilleur d'abord). 
+% Il est susceptible dans certains cas de
+% trouver la solution en explorant moins de noeuds. 
+% C'est ce qui motive l'extension de cet algorithme connue sous le nom d'heuristique \kw{A$\star$}.
 
 \subsection{Algorithme A$\star$}
 
@@ -1444,34 +1433,22 @@ chemin déjà parcouru et d'une heuristique $h(n)$ qui estime le coût du
 chemin qui reste à parcourir.  Ainsi l'algorithme de Dijkstra classique est un algorithme $A\star$
 pour lequel $h(s) = 0\, (\forall s \in S)$. 
 
-
 \begin{algorithm}[htbp]
 \begin{algorithmic}
-\Function{A-star}{$S$,$E$,source,but}
-\State $ \phi(s) \gets +\infty$\qquad$(\forall s \in S)$ 
-\State $ \phi(\text{source}) \gets \bar{1}$ 
-\State $Q \gets \text{source}$
-\State $V \gets \emptyset$
-\While {$Q \not = \emptyset$}
-    \State $s \gets$ \Call{Extraire-Min}{$Q$} 
-    \State $V \gets V \cup s$
-    \If{$s =$ but}
-        \State\Return $\delta(s)$
-    \EndIf
-    \ForAll{$(s,s') \in AS(s)$}
-      \If{$s' \not \in V$}
-        \State localscore $\gets \delta(s) \otimes \psi(s,s') \otimes h(s')$        
-        \If{localscore $<\phi(s')$}
-              \State $\phi(s') \gets$ localscore
-              \State $\delta(s') \gets \delta(s) \otimes \psi(s,s')$ 
-              \State \Call{ReordonnerClé}{Q,s'}
-        \EndIf
-        \EndIf
-    \EndFor
-\EndWhile
+  \Function{Astar}{V,E,s}
+  \State $\delta(x) \gets \infty\qquad  (\forall x \in V)$
+  \State $\delta(s) \gets 0$
+  \State $\Call{PushPriorityQueue}{Q ,V}$
+  \While {$Q \not = \emptyset$}
+       \State $x \gets \Call{PopMin}{Q}$
+        \For{$y \in AS(x)$}
+        \State $\delta (y) \gets \Call{min}{\delta(y), \delta(x)+  \psi(x,y)}$
+        \State $\Call{UpdatePriorityQueue}{Q,\delta(y)+ h(y)}$
+        \EndFor
+  \EndWhile
 \EndFunction
 \end{algorithmic}
-\caption{\label{algo-astar-general}Algorithme A$\star$}
+\caption{\label{algo-astar-general}Algorithme A star}
 \end{algorithm}
 
 
@@ -1485,43 +1462,13 @@ l'algorithme de Dijkstra.
 
 Si l'heuristique $h(s)$ est mal définie l'algorithme $A\star$ n'est
 pas garanti de renvoyer la solution optimale. On propose d'illustrer
-ce point par l'exemple de la recherche du court chemin entre {\sl Place
-d'Italie} et {\sl Saint Lazare} à partir du graphe \ref{fig-ratp}.
-en comparant l'effet des heuristiques $h_1(s)$ et $h_2(s)$ suivantes
-sur la procédure de recherche~:
-\begin{center}
-\begin{tabular}{lll}\\\toprule
-  $s$ & $h_1(s)$&$h_2(s)$\\\midrule
-Châtelet& 1&11\\
-Bastille&5&12\\
-Opéra & 1&1\\
-Montparnasse&4&4\\
-Nation & 12&12\\
-Etoile & 1&1\\
-Autres & 0&0\\\bottomrule
-\end{tabular}
-\end{center}
-\begin{center}
-\scalebox{0.65}{
-\begin{tabular}{cl}\toprule
-Itération&File de priorité ($Q$) pour l'heuristique $h_1$\\\midrule
-1& Italie(0)\\
-2 & Chatelet(7) $\prec$ Bastille(10)  $\prec$ Montparnasse(11) $\prec$ Nation(21)\\
-3 & Bastille(10)  $\prec$ Montparnasse(11) $\prec$ Nation(21)\\
-4 & {\bf Saint Lazare(9)} $\prec$ Opéra(10) $\prec$ Republique(10) $\prec$
-Montparnasse(11) $\prec$ Etoile(13) $\prec$  Nation(21)\\\bottomrule
-\end{tabular}}
-\end{center}
+ce point par l'exemple
 
 \begin{center}
-\scalebox{0.8}{
-\begin{tabular}{cl}\toprule
-Itération&File de priorité ($Q$) pour l'heuristique $h_2$\\\midrule
-1& Italie(0)\\
-2&Montparnasse(11) $\prec$ Bastille(17) $\prec$ Chatelet(17) $\prec$ Nation(21)\\ 
-3&{\bf Saint-Lazare(16)} $\prec$ Etoile(17) $\prec$  Bastille(17) $\prec$ Chatelet(17) $\prec$ Nation(21)\\\bottomrule
-\end{tabular}}
+{\bf INCLUDE EXAMPLE HERE}
 \end{center}
+  
+
 On peut constater que l'heuristique $h_1$ renvoie effectivement la solution
 optimale en moins d'itérations que l'algorithme de Dijkstra
 classique. 
@@ -1561,7 +1508,8 @@ En \ac{tal} la recherche $A\star$ a surtout été utilisée dans des
 contextes d'analyse syntaxique automatique (comme extensions de
 l'algorithme de Knuth).
 
-En résumé, la conception d'une bonne heuristique $A\star$ est non
+En résumé, la conception d'une bonne heuristique $A\star$ est en
+général non
 triviale. L'heuristique évidente $h(s) = 0$ n'aide pas à réaliser une
 meilleure recherche que l'algorithme de Dijkstra. Une heuristique plus informative qui préserve
 l'optimalité demande de vérifier des propriétés qui ne sont pas

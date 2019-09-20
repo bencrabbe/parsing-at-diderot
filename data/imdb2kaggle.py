@@ -46,7 +46,7 @@ def generate_sample(filename,datalines):
         print('%d,%s'%(idx,1),file=ostream)
     ostream.close()
     
-def generate_kaggle_solution(filename,datalines):
+def generate_kaggle_solution(filename,datalines): 
     ostream = open(filename,'w')
     print('idx,sentY',file=ostream)
     for idx,line in enumerate(test):
