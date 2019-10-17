@@ -4047,6 +4047,385 @@ Dans la pratique, et pour les mêmes raisons que pour les modèles transductifs 
   Rnn} sont instanciés par des {\sc Lstm} ou des {\sc Gru}.
 
 
+
+\section{Différenciation automatique et graphe de calcul}
+
+Les réseaux de neurones s'analysent comme une composition, en général complexe, de fonctions à paramètres et à valeurs vectorielles. Celles-ci sont fréquemment non linéaires.
+
+L'optimisation de telles fonctions se résoud en général par descente de gradient. Le calcul du vecteur de dérivées partielles n'est en général pas réalisé analytiquement mais par une méthode de différentiation automatique qui s'appuie sur la notion de {\bf graphe de calcul}.
+
+Un graphe de calcul est un graphe acyclique orienté dont les feuilles représentent soit des paramètres soit des données et dont les noeuds représentent des fonctions (ou des opérateurs). Le graphe de calcul est une manière commode de représenter informatiquement une fonction.
+Pour illustrer, prenons l'exemple de la fonction~:
+\begin{displaymath}
+f(x) = \sigma(\alpha\, \text{tanh}(a x + b) +\beta)
+\end{displaymath}
+dont la donnée est le réel $x$ et les paramètres sont les réels $a,b,\alpha,\beta$. Le graphe de calcul est le suivant~:
+\begin{center}
+\begin{tikzpicture}
+\node[circle,fill=red!20] (times1) at (1,1) {$\times$};
+\node[circle,fill=red!20] (plus1) at (2.5,2) {$+$};
+\node[circle,fill=red!20] (tanh) at (2.5,3) {\tiny tanh};
+\node[circle,fill=red!20] (times2) at (0,4) {$\times$};
+\node[circle,fill=red!20] (plus2) at (3,5) {$+$};
+\node[circle,fill=red!20] (sigmoid) at (3,6) {$\sigma$};
+
+\node[circle,fill=blue!20] (alpha) at (-2,3) {$\alpha$};
+\node[circle,fill=blue!20] (beta) at (6,4) {$\beta$};
+\node[circle,fill=blue!20] (a) at (0,0) {$a$};
+\node[circle,fill=blue!20] (x) at (2,0) {$x$};
+\node[circle,fill=blue!20] (b) at (4,1) {$b$};
+
+\draw (times1) -- (a);
+\draw (times1) -- (x);
+\draw (plus1) -- (times1);
+\draw (plus1) -- (b);
+\draw (tanh) -- (plus1);
+\draw (times2) -- (alpha);
+\draw (times2) -- (tanh);
+\draw (plus2) -- (times2);
+\draw (plus2) -- (beta);
+\draw (sigmoid) -- (plus2);
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Propagation avant} Un graphe de calcul peut être utilisé pour valuer une fonction si on connait les valeur des paramètres et qu'on reçoit une donnée. \'Evaluer une fonction à l'aide d'un graphe de calcul c'est utiliser l'algorithme de propagation avant.
+
+Sur l'exemple précédent, en supposant la valuation des paramètres suivante~:
+\begin{center}
+\begin{tabular}{ll}\hline
+$a$       & 1\\
+$b$       & 2\\
+$\alpha$  & 0.5\\
+$\beta$   & -1\\\hline
+$x$       & 1\\\hline
+\end{tabular}
+\end{center}
+on obtient le graphe de calcul valué suivant~:
+\begin{center}
+\begin{tikzpicture}
+\node[circle,fill=red!20] (times1) at (1,1) {$\times$};
+\node[circle,fill=red!20] (plus1) at (2.5,2) {$+$};
+\node[circle,fill=red!20] (tanh) at (2.5,3) {\tiny tanh};
+\node[circle,fill=red!20] (times2) at (0,4) {$\times$};
+\node[circle,fill=red!20] (plus2) at (3,5) {$+$};
+\node[circle,fill=red!20] (sigmoid) at (3,6) {$\sigma$};
+
+\node[circle,fill=blue!20] (alpha) at (-2,3) {$\alpha$};
+\node[circle,fill=blue!20] (beta) at (6,4) {$\beta$};
+\node[circle,fill=blue!20] (a) at (0,0) {$a$};
+\node[circle,fill=blue!20] (x) at (2,0) {$x$};
+\node[circle,fill=blue!20] (b) at (4,1) {$b$};
+
+\node (aval) at (a.north west) {\bf\scriptsize 1};
+\node (bval) at (b.north east) {\bf\scriptsize 2};
+\node (xval) at (x.north east) {\bf\scriptsize 1};
+\node (times1val) at (times1.north west) {\bf\scriptsize 1};
+\node (plus1val) at (plus1.north east) {\bf\scriptsize 3};
+\node (tanhval) at (tanh.north east) {\bf\scriptsize 0.99};
+\node (alphaval) at (alpha.north west) {\bf\scriptsize 0.5};
+\node (times2val) at (times2.north west) {\bf\scriptsize 0.5};
+\node (betaval) at (beta.north east) {\bf\scriptsize -1};
+\node (plus2val) at (plus2.north east) {\bf\scriptsize -0.5};
+\node (sigmoidval) at (sigmoid.north east) {\bf\scriptsize 0.38};
+
+\draw (times1) -- (a);
+\draw (times1) -- (x);
+\draw (plus1) -- (times1);
+\draw (plus1) -- (b);
+\draw (tanh) -- (plus1);
+\draw (times2) -- (alpha);
+\draw (times2) -- (tanh);
+\draw (plus2) -- (times2);
+\draw (plus2) -- (beta);
+\draw (sigmoid) -- (plus2);
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Propagation arrière} L'algorithme de descente de gradient
+demande à chaque itération de réévaluer le gradient de la fonction, c'est-à-dire le vecteur de dérivées partielles pour chacune des variables de la fonction objective. Le graphe de calcul permet également d'automatiser cette opération.
+
+Pour en comprendre le fonctionnement, rappelons nous la règle de dérivation des fonctions composées~:
+\begin{displaymath}
+(f \circ g)' (x) = f'(g(x)) g'(x) 
+\end{displaymath}
+Celle-ci peut s'exprimer également en notation de Leibniz en donnant un nom à $g(x)$, comme par exemple $y=g(x)$~:
+\begin{displaymath}
+\frac{\delta f}{\delta x} =\frac{\delta f}{\delta y} \frac{\delta g}{\delta x}
+\end{displaymath}
+Ce rappel effectué, on propose maintenant de continuer notre exemple en dérivant d'abord analytiquement le gradient de la fonction par rapport à chacun des paramètres $a,b,\alpha,\beta$ en utilisant la règle de composition. Pour simplifier la notation, on propose d'abord de nommer les différentes sous-fonctions~:
+\begin{align*}
+    g &= \alpha\, \text{tanh}(a x + b) +\beta\\
+    h &= \alpha\,\text{tanh}(a x + b) \\
+    i &= \text{tanh}(a x + b)\\
+    j &= a x + b\\
+    k &= a x 
+\end{align*}
+On peut ainsi exprimer aisément les dérivées partielles pour les différents paramètres\footnote{Rappelons nous que la dérivée de la fonction sigmoide est la fonction $\sigma'(x) = \sigma(x)(1-\sigma(x))$ et que la dérivée de la fonction tangent hyperbolique est la fonction $tanh'(x) = 1-tanh(x)^2$ }~:
+\begin{align*}
+\frac{\partial f}{\partial \beta} = \frac{\partial \sigma}{\partial g} \frac{\partial + }{\partial \beta} &=  \sigma(g)(1-\sigma(g)) (0-1)\\
+    &= \sigma(-0.5)(1-\sigma(-0.5)) (-1)\\
+    &= -0.23\\
+\frac{\partial f}{\partial \alpha} = \frac{\partial \sigma}{\partial g}\frac{\partial +}{\partial h}\frac{\partial \times}{\partial \alpha}  &=  \sigma(g)(1-\sigma(g)) i\\
+&=\sigma(-0.5)(1-\sigma(-0.5)) 0.99 \\
+&=0.23\\
+ \frac{\partial f}{\partial b} = \frac{\partial \sigma}{\partial g}\frac{\partial +}{\partial h}\frac{\partial \times}{\partial i}\frac{\partial\, \text{tanh}}{\partial j}  \frac{\partial +}{\partial b}&=\sigma(g)(1-\sigma(g)) (1-\text{tanh}^2(j)) 1\\
+ &= \sigma(-0.5)(1-\sigma(-0.5)) (1-\text{tanh}^2(3))\\
+ &= 0.002\\
+ \frac{\partial f}{\partial a} = \frac{\partial \sigma}{\partial g}\frac{\partial +}{\partial h}\frac{\partial \times}{\partial i}\frac{\partial\, \text{tanh}}{\partial j}  \frac{\partial +}{\partial k}\frac{\partial \times}{\partial a}&=\sigma(g)(1-\sigma(g)) (1-\text{tanh}^2(j)) x\\
+ &=\sigma(-0.5)(1-\sigma(-0.5)) (1-\text{tanh}^2(3)) 1\\
+ &=0.002
+\end{align*}
+On voit que le développement analytique, qui repose sur l'utilisation de la règle de dérivation des fonctions composées 
+produit pour chaque paramètre une multiplication qui correspond au produit des dérivées des fonctions que l'on trouve sur le chemin qui mène de la racine de l'arbre à la feuille qui représente ce paramètre.
+
+Une implémentation informatique de ce graphe de calcul pour calculer le vecteur gradient d'une fonction objective est une application  de l'{\bf algorithme de rétropropagation du gradient}. En général l'exécution de l'algorithme garde en mémoire les valeurs déjà calculées et organise le calcul en suivant une structure de graphe acyclique orienté pour éviter les reduplications, à la manière des algorithmes de programmation dynamique.
+
+\begin{center}
+\begin{tikzpicture}
+\node[circle,fill=red!20] (times1) at (1,1) {$\times$};
+\node[circle,fill=red!20] (plus1) at (2.5,2) {$+$};
+\node[circle,fill=red!20] (tanh) at (2.5,3) {\tiny tanh};
+\node[circle,fill=red!20] (times2) at (0,4) {$\times$};
+\node[circle,fill=red!20] (plus2) at (3,5) {$+$};
+\node[circle,fill=red!20] (sigmoid) at (3,6) {$\sigma$};
+
+\node[circle,fill=blue!20] (alpha) at (-2,3) {$\alpha$};
+\node[circle,fill=blue!20] (beta) at (6,4) {$\beta$};
+\node[circle,fill=blue!20] (a) at (0,0) {$a$};
+\node[circle,fill=blue!20] (x) at (2,0) {$x$};
+\node[circle,fill=blue!20] (b) at (4,1) {$b$};
+
+\node (aval) at (a.north west) {\bf\scriptsize 1};
+\node (bval) at (b.north east) {\bf\scriptsize 2};
+\node (xval) at (x.north east) {\bf\scriptsize 1};
+\node (times1val) at (times1.north west) {\bf\scriptsize 1};
+\node (plus1val) at (plus1.north east) {\bf\scriptsize 3};
+\node (tanhval) at (tanh.north east) {\bf\scriptsize 0.99};
+\node (alphaval) at (alpha.north west) {\bf\scriptsize 0.5};
+\node (times2val) at (times2.north west) {\bf\scriptsize 0.5};
+\node (betaval) at (beta.north east) {\bf\scriptsize -1};
+\node (plus2val) at (plus2.north east) {\bf\scriptsize -0.5};
+\node (sigmoidval) at (sigmoid.north east) {\bf\scriptsize 0.38};
+
+\node (aback) at (a.south west) {\bf\scriptsize 0.002};
+\node (bback) at (b.south east) {\bf\scriptsize 0.002};
+\node (xback) at (x.south east) {\bf\scriptsize -};
+\node (times1back) at (times1.south west) {\bf\scriptsize 0.002};
+\node (plus1back) at (plus1.south east) {\bf\scriptsize 0.002};
+\node (tanhback) at (tanh.south east) {\bf\scriptsize 0.002};
+\node (alphaback) at (alpha.south west) {\bf\scriptsize 0.23};
+\node (times2back) at (times2.south west) {\bf\scriptsize 0.23};
+\node (betaback) at (beta.south east) {\bf\scriptsize -0.23};
+\node (plus2back) at (plus2.south east) {\bf\scriptsize 0.23};
+\node (sigmoidback) at (sigmoid.south east) {\bf\scriptsize 0.23};
+
+
+\draw (times1) -- (a);
+\draw (times1) -- (x);
+\draw (plus1) -- (times1);
+\draw (plus1) -- (b);
+\draw (tanh) -- (plus1);
+\draw (times2) -- (alpha);
+\draw (times2) -- (tanh);
+\draw (plus2) -- (times2);
+\draw (plus2) -- (beta);
+\draw (sigmoid) -- (plus2);
+\end{tikzpicture}
+\end{center}
+
+On généralise ce premier exemple au cas d'un réseau de neurones quelconque en remplaçant les entrées et les sorties par des valeurs vectorielles plutôt que scalaires. Les paramètres prennent alors en général la forme de matrices (ou de vecteurs lorsqu'il s'agit des biais). Cette généralisation ne change rien au principe de l'algorithme de rétropropagation exposé ci-dessus.
+
+L'exemple dévéloppé ici se réexprime sous forme vectorielle par un réseau du type perceptron multi-couche classique~:
+\begin{displaymath}
+f(\mathbf{x}) = \sigma(\mathbf{A}_1 \text{tanh}(\mathbf{A}_2\mathbf{x}+\mathbf{b}_2) + \mathbf{b}_1)
+\end{displaymath}
+
+\paragraph{Graphes de calculs dynamiques en NLP} ...
+
+
+\section{Calculs massivement parallèles sur GPU}
+
+Les modèles de Deep Learning contemporains se caractérisent par une certaine lenteur à l'apprentissage qui est notamment liée à la quantité considérable de paramètres dans les modèles.
+
+\paragraph{Observation de départ}
+On observe toutefois que les modèles de Deep Learning réalisent essentiellement des opérations sur des matrices (ou des Tenseurs\footnote{Un tenseur est une généralisation de vecteurs ou de matrices à un ordre supérieur.}) et que ces opérations se parallélisent très facilement. 
+
+Pour illustrer rappelons nous qu'un modèle linéaire est un modèle de la forme 
+\begin{displaymath}
+y = \mathbf{w}^T \mathbf{x}
+\end{displaymath}
+c'est-à-dire un produit scalaire d'un vecteur ligne $\mathbf{w}$
+qui représente les paramètres et d'un vecteur colonne $\mathbf{x}$ qui représente un exemple dans un jeu de données. Si on organise le jeu de données de $N$ exemples comme une matrice $\mathbf{X}$ de $N$ colonnes, le modèle linéaire réalise l'opération~:
+\begin{displaymath}
+\mathbf{y} = \mathbf{w}^T \mathbf{X}
+\end{displaymath}
+ce qui a pour effet de réaliser toutes les opérations de prédiction
+d'un jeu de données en une seule opération. Conceptuellement cette opération matricielle se parallélise très simplement car elle correspond à $N$ opérations indépendantes de multiplication de $\mathbf{w}$ par les vecteurs $\mathbf{x}_1\ldots \mathbf{x}_N$.
+
+C'est très exactement le type d'opérations qui sont réalisées très efficacement et en parallèle par un GPU moderne (en plus des opérations purement graphiques).
+
+\paragraph{Architecture matérielle et usage du GPU} L'usage du GPU pose toutefois un problème pratique dont la cause provient de l'architecture même des ordinateurs. Schématiquement les ordinateurs suivent une architecture de von Neumann~:
+\begin{center}
+\begin{tikzpicture}
+
+\node[draw] (C) at (2,0) {
+\begin{tikzpicture}
+\node[draw,fill=red!30] (CPU) at (0,0)  {CPU};
+\node[draw,fill=blue!30!green!20] (M) at (0,1)  {Mémoire};
+\draw[very thick] (CPU) -- (M);
+\end{tikzpicture}
+};
+\node (ES) at (8,0) {\em Entrées/Sorties};
+\node[draw,fill=blue!30] (GPU) at (5,-1) {GPU};
+\draw[<->] (C) -- (ES);
+\draw (C) -- (5,0) -- (GPU);
+\end{tikzpicture}
+\end{center}
+On observe que suivant cette architecture le processeur est lié à la mémoire par un bus qui permet une communication rapide avec le CPU alors que le GPU fait partie des dispositifs d'entrée sortie (au même titre que la souris, le clavier ou la carte son pour ne citer que les principaux). Le bus qui connecte les appareils d'entrée/sortie à la mémoire ne permet par contre qu'une communication lente.
+
+La conséquence pratique est que le GPU  autorise de réaliser des opérations matricielles très efficacement mais que le transfert de données depuis (et vers) la mémoire centrale est lent. 
+
+Par conséquent la méthode de programmation avec GPU consiste à minimiser le transfert de données entre le GPU et l'unité centrale. Cela se fait en réalisant peu d'opérations impliquant de gros calculs plutôt qu'en multipliant des petits calculs qui répètent le transfert de données sur un bus lent.
+
+\paragraph{La méthode du (mini-)batch en deep learning}
+Comme la mémoire sur un GPU est limitée, on stockera typiquement le jeu de données dans la mémoire centrale de la machine et on transfère successivement des {\bf batchs} d'exemples pour lesquels on va réaliser les calculs de prédiction\footnote{Avec la plupart des librairies modernes, les paramètres du modèle résident en permanence sur le GPU, ce sont les vecteurs $\mathbf{x}$ de données et $\mathbf{y}$ de prédictions qui sont transférés.}.
+
+Dans le cas du modèle linéaire, plutôt que de répéter successivement des opérations de la forme $\mathbf{w}^T\mathbf{x}_i$ pour chaque vecteur $\mathbf{x}_i$ d'un jeu de données on préfère réaliser des opérations de la forme $\mathbf{w}^T\mathbf{X}$ où $\mathbf{X}$ est un mini-batch d'exemples $\mathbf{x}_i\ldots \mathbf{x}_{i+B}$ ($B$ est la taille du mini-batch). 
+
+Dans un contexte de deep learning, l'utilisation de mini-batchs généralise le cas d'exemple donné pour le modèle linéaire à des modèles d'apprentissage profond de structure beaucoup plus complexe. Toutefois, on ne peut en général pas utiliser des batchs comportant un trop grand nombre d'exemples (comme la totalité du jeu de données) pour éviter de saturer la mémoire du GPU.
+
+\paragraph{Batcher des données structurées} Pour la modélisation du langage, le cas classique est que la donnée du problème de prédiction ne se réduit pas à un simple vecteur $\mathbf{x}$. Une ligne de données est une séquence de vecteurs d'embeddings $\mathbf{X} = \mathbf{x}_1\ldots \mathbf{x}_n$, un par mot. Par exemple, pour le tagging le jeu de données est typiquement une liste d'exemples $D = \mathop{(\mathbf{X}_i,\mathbf{Y}_i)}_{i=1}^N$ où $\mathbf{X}_i$ et $\mathbf{Y}_i$ représentent des séquences d'embeddings de mots et des séquences d'embeddings de catégories
+
+Batcher des telles données fonctionnerait simplement  si tous les exemples avaient exactement le même nombre de mots~:
+\newcommand{\greenvec}[2]{
+\draw [fill=blue!30!green!30] (#1-0.5,#2) rectangle (#1-0.25,#2+0.25);
+\draw [fill=blue!30!green!30] (#1-0.25,#2) rectangle (#1,#2+0.25);
+\draw [fill=blue!30!green!30] (#1,#2) rectangle (#1+0.25,#2+0.25);
+\draw [fill=blue!30!green!30] (#1+0.25,#2) rectangle (#1+0.5,#2+0.25);
+}
+
+\begin{center}
+\begin{tikzpicture}
+\node (w1) at (0,0) {$w_1$};
+\node (w2) at (2,0) {$w_2$};
+\node (dots) at (4,-0.25) {$\ldots$};
+\node (wn) at (6,0) {$w_n$};
+\greenvec{0}{-0.5} 
+\greenvec{2}{-0.5} 
+\greenvec{6}{-0.5} 
+\greenvec{0}{-1} 
+\greenvec{2}{-1} 
+\greenvec{6}{-1} 
+\greenvec{0}{-1.5} 
+\greenvec{2}{-1.5} 
+\greenvec{6}{-1.5} 
+\end{tikzpicture}
+\end{center}
+Or la réalité est différente~: les textes ou les phrases sont de {\bf longueur variable}. De telle sorte que certains éléments du batch (plus courts) ont des vecteurs manquants (par comparaison avec les éléments les plus longs)~:
+
+\newcommand{\redvec}[2]{
+\draw [fill=red!30] (#1-0.5,#2) rectangle (#1-0.25,#2+0.25);
+\draw [fill=red!30] (#1-0.25,#2) rectangle (#1,#2+0.25);
+\draw [fill=red!30] (#1,#2) rectangle (#1+0.25,#2+0.25);
+\draw [fill=red!30] (#1+0.25,#2) rectangle (#1+0.5,#2+0.25);
+}
+
+\begin{center}
+\begin{tikzpicture}
+\node (w1) at (0,0) {$w_1$};
+\node (w2) at (2,0) {$w_2$};
+\node (dots) at (4,-0.25) {$\ldots$};
+\node (wn) at (6,0) {$w_{n-1}$};
+\node (wn) at (8,0) {$w_n$};
+
+\greenvec{0}{-0.5} 
+\greenvec{2}{-0.5} 
+\greenvec{6}{-0.5} 
+\greenvec{8}{-0.5} 
+\greenvec{0}{-1} 
+\greenvec{2}{-1} 
+\redvec{6}{-1} 
+\redvec{8}{-1} 
+\greenvec{0}{-1.5} 
+\greenvec{2}{-1.5} 
+\greenvec{6}{-1.5} 
+\redvec{8}{-1.5} 
+\end{tikzpicture}
+\end{center}
+Pour contourner ce problème, il est d'usage~:
+\begin{itemize}
+    \item D'ajouter des vecteurs factices (en général nuls) dans les positions manquantes. (Technique de {\bf padding})
+    \item De tronquer les exemples du batch de telle sorte que toutes les séquences de mots aient la même longueur. Les mots supplémentaires sont simplement ignorés. (Technique de {\bf troncation})
+\end{itemize}
+
+Plus généralement, le calcul par batchs est facile à mettre en oeuvre si la structure du réseau est identique (statique) pour tous les exemples du jeu de données. La mise en oeuvre du calcul par batchs est plus complexe lorsque la structure du réseau varie d'exemple à exemple (on parle de modèle dynamique). C'est ce dernier cas qui est classique pour la modélisation du langage. 
+
+Lorsque la structure de données est plus complexe qu'une simple séquence, le problème de batching n'a pas de solution généralement admise par la communauté. Par exemple si il s'agit d'arbres, une méthode consiste à coder l'arbre par une séquence d'actions de shift et de reduce (cf chapitre de Parsing) ce qui permet de se ramener au cas séquentiel.
+
+
+
+
+\section{Préparation des données}
+On remarque que modéliser des données langagières écrites demande de déployer un certain nombre de traitements sujets à erreur, commme par exemple le codage du vocabulaire sur des entiers, les traitements par batchs\ldots. On donne ici quelques indications sur le workflow typique lié au prétraitement des données d'un modèle pour le TAL ainsi que quelques points de repères pour éviter les erreurs.
+
+Il est commode de voir un jeu de données comme un fichier tabulaire de type {\tt csv}. Chaque colonne correspond à une variable (ou champ) et chaque ligne à une observation dans les données, comme par exemple~:
+\begin{center}
+\begin{tabular}{ccc}\hline
+Source    & Phrase                          & Article cible \\\hline
+Wikipedia & Le chat mange la souris         &  chat\\
+Wikipedia & Trump est président des USA     &  Trump\\
+\ldots    &\ldots                            &\ldots\\\hline
+\end{tabular}
+\end{center}
+\`A partir d'un jeu de données, on peut identifier différentes étapes de traitement qui reviennent régulièrement~:
+\begin{itemize}
+\item Pour les colonnes qui contiennent du texte libre, 
+il faut d'abord penser à donner une segmentation à ce texte.
+\item Le codage de chaque colonne sur des entiers. Il s'agit d'identifier la totalité du vocabulaire utilisé dans la colonne et de définir une fonction qui envoie les symboles sur des entiers. Il faut se poser la question des symboles inconnus (mots du vocabulaire d'une langue mais non vus dans les données) et éventuellement prévoir des symboles artificiels pour coder les mots inconnus, des symboles de début de phrase, de fin de phrase\ldots 
+\item Il faut le cas échéant charger un dictionnaire d'embeddings qui permet d'associer les mots à des vecteurs de type embedding
+\item Il faut le cas échéant penser à structurer le jeu de données en batchs. Si les données sont des phrases de longueur variables, il faut également réaliser des opérations de padding et de troncation
+\end{itemize}
+L'ensemble de ces opérations peut soit se programmer manuellement soit s'appuyer sur des librairies comme {\tt torchtext}, ce qui permet d'éviter d'introduire des erreurs potentiellement difficiles à détecter lors de ces étapes de préparation des données 
+
+\section{Deep Learning sur le cloud}
+
+Comme les modèles de deep learning mobilisent des moyens de calcul importants,
+on réalise fréquemment les calculs sur le "cloud", c'est-à-dire sur des serveurs de calcul distants qui comportent un bon nombre de CPU, une mémoire suffisante et parfois des GPU. 
+
+Parmi les plus connus on citera par exemple {\sc Amazon Web Services}  (\url{https://aws.amazon.com}) et {\sc Google Colab} (\url{https://colab.research.google.com}).
+Dans le cadre de ce cours on utilisera {\sc Kaggle} (\url{https://www.kaggle.com}) qui permet également d'évaluer des projets. Une compétition {\sc Kaggle} est organisée autour d'un jeu de données sur lequel il faut résoudre un problème d'apprentissage. Dans le cadre de ce cours, la procédure pour participer est la suivante~:
+\begin{itemize}
+    \item On reçoit une invitation à la compétition par email. Cette invitation renseigne le lien de la compétition.
+    \item Depuis la page d'accueil de la compétition, il faut créer une machine virtuelle (appelée {\bf Kernel}). Dans le cadre de ce cours, on créera toujours un notebook python.
+    \begin{itemize}
+        \item Le kernel est un notebook python. On peut entrer du code dans la partie notebook. On dispose d'une console qui simule un shell et on peut monitorer ou configurer l'usage de la machine virtuelle en consultant les onglets appropriés.
+        \item Comme le code est entré dans un navigateur web, il y a risque de le perdre lorsqu'on ferme la fenêtre.
+    Il est recommandé de cliquer régulièrement sur le bouton commit (en haut à droite) pour sauvegarder.
+    \item Lorsqu'on utilise un kernel dans une compétition, les données liées à la compétition sont préinstallées dans un répertoire dédié (sous {\tt ../input/}). Il s'agit de données d'entrainement et de données de test. Ces dernières sont vierges d'annotations.
+    \item Le code réalisé dans un kernel sera destiné essentiellement à créer un fichier {\tt csv} qui représente les prédictions du modèle d'apprentissage. Ce fichier aura en général la forme suivante~:
+    \begin{center}
+    \begin{tabular}{cc}\hline
+    idx & prédiction\\\hline
+      1 &    A\\
+      2 &    B\\
+      3 &    A\\
+      \ldots\\\hline
+      \end{tabular}
+      \end{center}
+    \end{itemize}
+    \item Lorsque le noyau a produit un fichier {\tt csv} satisfaisant, on peut décider de soumettre le résultat à la compétition.
+    Il faut pour cela :
+    \begin{itemize}
+        \item Effectuer un commit
+        \item  se reconnecter à la page d'accueil\footnote{Depuis l'éditeur de code, cliquer sur le {\bf\color{blue} K} bleu en haut à gauche.}, suivre l'onglet {\em Kernels}, cliquer sur le nom du kernel dont vous souhaitez soumettre les prédictions et enfin cliquer sur le bouton de soumission dans la page résumant ce kernel (onglet ouptut data).
+    \end{itemize}
+    \item Il est possible d'observer facilement la structure des jeux de données utilisés. Depuis la page d'accueil de la compétition, suivre l'onglet {\em Data} et explorer.
+\end{itemize}
+Remarquons que les calculs exécutés dans un kernel sont limités. 
+Un kernel doit terminer toute exécution en moins de six heures et la quantité de données qu'il est possible d'écrire dans le kernel est de l'ordre de quelques Gigabytes (5Gb). Il est également possible de choisir le processeur utilisé~: on peut utiliser soit 4 CPUs soit 1 GPU pour réaliser les calculs.
+
+
+
 \chapter{Représentations}
 
 En {\sc Tal}, on fait de l'analyse syntaxique et de la syntaxe non pas pour décider
