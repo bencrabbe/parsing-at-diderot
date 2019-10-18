@@ -3846,12 +3846,21 @@ L'estimation des paramètres du modèle se fait donc en optimisant la log-vraise
 de gradient stochastique ou tout algorithme d'optimisation approprié.
 
 
-On peut remarquer que contrairement à un {\sc crf}, un modèle markovien à maximum d'entropie ne visite pas tous les états.
+\paragraph{Error propagation} On peut remarquer que contrairement à un {\sc crf}, un modèle markovien à maximum d'entropie ne visite pas tous les états.
 Il ne voit que les états supposés ``gold'', c'est-à-dire que $y_{i-1}$ sera toujours supposé correct dans les données d'entrainement.
 Par conséquent ce type de modèle est en théorie exposé à des effets de propagation d'erreur~: le modèle n'est pas naturellement entraîné pour traiter des 
 états où il est est arrivé par erreur.
 
-({\bf formalize here the label bias problem and error propag})
+\paragraph{Label bias} Le problème du {\em label bias} est lié à la
+prise de décision locale, par exemple :
+\begin{itemize}
+\item The robot wheels Fred round
+\item The robot wheels are round
+\end{itemize}
+Si la tâche est de prédire la catégorie morphologique des mots,
+la décision sera identique dans les deux cas avec un modèle local
+(dont les facteurs sont de la forme $P(y_i|y_{i-1},\mathbf{x})$) pour
+étiqueter {\em wheels}. 
 
 \section{Modèles neuronaux}
 
